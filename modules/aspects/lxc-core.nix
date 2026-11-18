@@ -30,9 +30,12 @@
         # nixos-base enables zram by default, so the setup unit would fail.
         zramSwap.enable = false;
 
+        # SECURITY: keys only. Root stays reachable by key because clan
+        # deploys as root with the operator keys; unified allowed passwords.
         services.openssh.settings = {
-          PasswordAuthentication = lib.mkDefault true;
-          PermitRootLogin = lib.mkDefault "yes";
+          PasswordAuthentication = false;
+          KbdInteractiveAuthentication = false;
+          PermitRootLogin = "prohibit-password";
           X11Forwarding = false;
         };
 
