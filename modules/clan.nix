@@ -4,7 +4,8 @@
 # a non-x86 machine joins.
 { inputs, config, lib, ... }:
 let
-  denHosts = config.den.hosts.x86_64-linux;
+  # WHY: den outputs with their own destination are evaluation fixtures.
+  denHosts = lib.filterAttrs (_: host: host.intoAttr == [ ]) config.den.hosts.x86_64-linux;
 in
 {
   imports = [ inputs.clan-core.flakeModules.default ];
@@ -31,8 +32,8 @@ in
       roles.client.tags.all = { };
     };
 
-    # INVARIANT: den hosts set intoAttr = [ ] (modules/den.nix), so clan is
-    # the only producer of nixosConfigurations.
+    # INVARIANT: fleet hosts reserve nixosConfigurations for Clan by setting
+    # intoAttr = [ ] (modules/den.nix).
     # den adds hostPlatform only when it instantiates the host itself.
     machines = lib.mapAttrs (_: host: {
       imports = [ host.mainModule ];
