@@ -44,12 +44,12 @@ beads-rust create "<title>" --parent nch-sny -l <labels> -d "<why + acceptance>"
 
 ## Deploying a host
 
-From the repo root, run `nix develop -c deploy <host>`. The dispatcher
+From the repo root, run `nix develop -c fleet-deploy <host>`. The dispatcher
 rejects unknown hosts and hosts that have yet to migrate to Clan. It uses
 `clan machines update` through `clan-admin` for routine deploys and
 deploy-rs with magic rollback for hosts with the `router` inventory role.
 Preview the command without deploying with
-`nix develop -c deploy --dry-run <host>`.
+`nix develop -c fleet-deploy --dry-run <host>`.
 
 Magic rollback requires one successful deploy-rs deploy after installing a
 router. Do that first deploy with a known-good configuration and console

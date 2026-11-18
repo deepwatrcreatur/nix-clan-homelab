@@ -18,11 +18,13 @@ in
   perSystem =
     { inputs', pkgs, ... }:
     {
-      packages.deploy = pkgs.writeShellApplication {
-        name = "deploy";
+      # GOTCHA: not `deploy`: `.#deploy` would then resolve to this package
+      # instead of the top-level deploy-rs output, and deploy-rs breaks.
+      packages.fleet-deploy = pkgs.writeShellApplication {
+        name = "fleet-deploy";
         text = ''
           usage() {
-            printf 'Usage: deploy [--dry-run] <host>\n' >&2
+            printf 'Usage: fleet-deploy [--dry-run] <host>\n' >&2
             exit 2
           }
 
