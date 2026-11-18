@@ -117,14 +117,6 @@ vmbr0). Steps, all from emerald:
      the final reboot boots the installed system from its own disk, so no
      boot-order change is needed.
 
-**Corrected procedure (use this):** skipping clan's `reboot` phase and then
-force-stopping the VM left the ESP's FAT filesystem corrupt; the next deploy
-failed in grub-install with a read-only /boot. Instead set the boot order to
-`order=scsi0;ide2` before installing: a blank disk falls through to the ISO,
-and clan's own reboot (which unmounts and syncs) lands on the installed
-system. Run `clan machines install` with the default phases minus kexec:
-`--phases disko,install,reboot`.
-
 Observations:
 
 - Clan collects facter.json first and builds with it, then commits three
