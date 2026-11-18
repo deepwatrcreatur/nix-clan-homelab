@@ -222,3 +222,27 @@ closure, `nix run github:serokell/deploy-rs -- .#<m>`):
 **Decision for nch-sny.7:** routers (elitedesk, router) deploy with
 deploy-rs; everything else with `clan machines update`. Firewall,
 networking and sshd changes to any host should also go through deploy-rs.
+
+### nch-sny.6: den users, Home Manager and darwin under clan (done)
+
+- NixOS (verified on clan-spike): den users, `primary-user` groups, the
+  user's own nixos content (via `den.batteries.user-aspects`) and Home
+  Manager all work inside clan machines.
+- Darwin (evaluation only, on a throwaway branch): a den host under
+  `den.hosts.aarch64-darwin` with `intoAttr = [ ]`, mapped into clan with
+  `inventory.machines.<m>.machineClass = "darwin"`, becomes
+  `darwinConfigurations.<m>`; the full system derivation evaluates with the
+  den user and Home Manager wired in. Needs: a nix-darwin input,
+  `aarch64-darwin` in `systems`, `system.stateVersion` (an integer on
+  darwin), and `darwin.users.users.<u>.home = "/Users/<u>"` in the user
+  aspect (nix-darwin leaves it null, and Home Manager takes it from there).
+  Clan supports `clan machines update` and vars on darwin; the first
+  nix-darwin install stays manual (clan docs, guides/macos).
+- Standalone homes (Proxmox root homes): den keeps producing
+  `homeConfigurations` itself (homes keep their default `intoAttr`); clan
+  does not manage them. Needs a den aspect per user with
+  `den.batteries.define-user`; root's `home.homeDirectory` defaults to
+  `/home/root` and must be overridden to `/root`.
+- Recommendation: one repo for everything. NixOS and darwin machines go
+  through clan; Proxmox node homes stay den-only and are deployed as today
+  (`home-manager switch`, e.g. via the existing Ansible playbook).
