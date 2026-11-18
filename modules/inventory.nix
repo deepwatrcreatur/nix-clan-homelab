@@ -106,6 +106,12 @@ let
   );
 in
 {
+  options.homelab.domain = mkOption {
+    type = types.str;
+    default = "deepwatercreature.com";
+    description = "LAN DNS zone; SSH host certificates name <machine>.<domain>.";
+  };
+
   options.homelab.hosts = mkOption {
     type = types.attrsOf hostType;
     description = "Homelab inventory keyed by canonical host name.";

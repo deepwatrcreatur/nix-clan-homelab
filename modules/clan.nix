@@ -18,7 +18,7 @@ in
     meta.name = "deepwater";
     # WHY: the LAN zone Technitium serves and Kea registers hosts in; SSH host
     # certificates are issued for <machine>.<domain>.
-    meta.domain = "deepwatercreature.com";
+    meta.domain = config.homelab.domain;
 
     inventory.machines = lib.mapAttrs (
       name: _:
@@ -27,7 +27,10 @@ in
       in
       {
         tags = host.roles;
-        deploy.targetHost = "${host.sshUser}@${host.sshTarget}";
+        # WHY: host certificates name <machine>.<domain>; the alias checks them
+        # even when the inventory targets an address (e.g. elitedesk's
+        # management IP, which has no DNS record).
+        deploy.targetHost = "${host.sshUser}@${host.sshTarget}?HostKeyAlias=${name}.${config.homelab.domain}";
       }
     ) denHosts;
 

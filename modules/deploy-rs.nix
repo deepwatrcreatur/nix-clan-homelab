@@ -15,6 +15,8 @@
     {
       hostname = host.sshTarget;
       inherit (host) sshUser;
+      # WHY: same certificate check as clan's targetHost (modules/clan.nix).
+      sshOpts = [ "-o" "HostKeyAlias=${name}.${config.homelab.domain}" ];
       autoRollback = true;
       magicRollback = true;
       profiles.system.path = inputs.deploy-rs.lib.x86_64-linux.activate.nixos nixos;

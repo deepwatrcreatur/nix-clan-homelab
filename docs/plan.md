@@ -262,3 +262,37 @@ networking and sshd changes to any host should also go through deploy-rs.
 - Recommendation: one repo for everything. NixOS and darwin machines go
   through clan; Proxmox node homes stay den-only and are deployed as today
   (`home-manager switch`, e.g. via the existing Ansible playbook).
+
+### Bare-metal install findings (nch-sny.21, elitedesk)
+
+Found while preparing the first bare-metal install, testing on clan-spike
+first (now UEFI/OVMF so the ESP convention is exercised):
+
+- **kexec from a clan machine fails.** nixos-images' kexec `run` copies
+  `/etc/ssh/ssh_host_*` into the new system and its initrd
+  (`restore-state-from-initrd`) exits 1 when there are none; the installer
+  lands in emergency mode with no network. Clan's sshd keeps host keys in
+  vars, so a clan-managed host has none. Before reinstalling a clan machine
+  in place, run `ssh-keygen -A` on it. Hosts still on unified have the keys
+  and are unaffected. Verified: with the keys present the installer came up
+  in about 20 s with the same host key and static address.
+- **Hosts without internet need a local kexec tarball.** elitedesk (standby,
+  WAN down, no default route) cannot download the image. Build it on the
+  workstation and pass it:
+  `nix build github:nix-community/nixos-images#kexec-installer-nixos-stable-noninteractive`,
+  then `clan machines install ... --kexec <result>/nixos-kexec-installer-noninteractive-x86_64-linux.tar.gz`.
+- **Proxmox applies boot-order changes only at a cold start**; `qm reset`
+  keeps the old order. Use `qm stop` + `qm start`.
+- **ESP convention verified on UEFI:** `/boot` on ext4 root, `/boot/efi` an
+  idle automount, `switch-to-configuration boot` reinstalls GRUB. An
+  accidental hard kill of the VM left root replaying its journal and the ESP
+  untouched (no FAT dirty-bit warnings), which is the point of the layout.
+- **SSH certificates vs addresses:** certificates name
+  `<machine>.<domain>`; targets that are addresses (elitedesk's management
+  IP has no DNS record) pass `HostKeyAlias=<machine>.<domain>` (set for all
+  machines in `modules/clan.nix` and `modules/deploy-rs.nix`).
+- **Data disks are never in disko.** elitedesk's disko file names only the
+  OS SSD; sdb and sdc are `fileSystems` by UUID with `nofail`. Check with
+  `grep -oE '/dev/disk/by-id/[^ ]+' $(nix build --print-out-paths
+  .#nixosConfigurations.<m>.config.system.build.diskoScript)` before
+  installing.
