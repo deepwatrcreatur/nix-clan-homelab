@@ -26,6 +26,15 @@ beads-rust create "<title>" --parent nch-sny -l <labels> -d "<why + acceptance>"
 - Commit `.beads/issues.jsonl` with the change that closes a bead.
 - Found new work? Create a bead with a dependency rather than widening scope.
 
+## Layout and validation
+
+- `modules/` is imported wholesale (import-tree): `den.nix` (hosts, users),
+  `clan.nix` (den host -> clan machine), `aspects/`, `hosts/`.
+  `machines/<name>/` holds per-machine files (disko, facter.json).
+- Validate: `nix flake check`, then
+  `nix build .#nixosConfigurations.<name>.config.system.build.toplevel` and
+  `nix develop -c clan machines list`.
+
 ## Rules
 
 - Do not deploy to or change live hosts unless the bead is `live` and the user

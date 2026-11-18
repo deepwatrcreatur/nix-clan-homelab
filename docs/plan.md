@@ -65,3 +65,26 @@ elitedesk, router. unified is archived last.
 - `owner:claude`: touches decrypted secrets or live hosts; Claude does it
   with the user's approval.
 - `live`: changes a running machine.
+
+## Spike findings
+
+### nch-sny.1: skeleton (done)
+
+- Layout: flake-parts with import-tree over `modules/` (dendritic). `modules/den.nix`
+  declares hosts and users; `modules/clan.nix` turns every den host into a clan
+  machine; aspects live in `modules/aspects/` and `modules/hosts/`.
+- Join point: den hosts set `intoAttr = [ ]`, and each `clan.machines.<name>`
+  imports `config.den.hosts.<system>.<name>.mainModule`. Clan is the only
+  producer of `nixosConfigurations`; den produces none.
+- den sets `nixpkgs.hostPlatform` only when it instantiates the host, so the
+  clan wrapper sets it (`lib.mkDefault host.system`). facter.json will set it
+  for real machines.
+- den warned that a user's nixos content reaches hosts only via a transition
+  default ending 2027-01-01 (denful/den#694); we include
+  `den.batteries.user-aspects` on hosts explicitly.
+- Verified in `clan-spike`: hostname, base aspect, primary-user groups,
+  authorized keys from the user aspect, Home Manager packages, disko root.
+  Partly answers nch-sny.6: den users and Home Manager work under clan.
+- unified's `den/` is a local den-inspired framework, not upstream den.
+  Porting aspects (`nch-sny` foundation bead) means rewriting them as
+  `den.aspects.*`, not importing unified's files.
