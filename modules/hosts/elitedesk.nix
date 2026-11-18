@@ -6,7 +6,10 @@
   den.aspects.elitedesk = {
     # SECURITY: router-class host: no nix-cache-auth or remote-builder-client
     # (routers hold no outbound keys or fleet credentials).
-    includes = [ den.aspects.nixos-base ];
+    includes = [
+      den.aspects.nixos-base
+      den.aspects.router-secrets
+    ];
     nixos =
       { lib, ... }:
       {
