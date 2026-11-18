@@ -292,9 +292,12 @@ in
             netdataAllowConnectionsFrom = "${lanCidr} ${managementCidr}";
           };
           router-observability.enable = true;
+          # WHY: Pangolin/gerbil are the public tunnel edge and need WAN; on a
+          # standby gerbil restart-looped waiting for Pangolin's local API and
+          # hung switch-to-configuration (elitedesk's first role deploy).
           router-pangolin = {
-            enable = true;
-            openFirewall = true;
+            enable = primary;
+            openFirewall = primary;
           };
           traefik.enable = lib.mkForce false;
           router-network-security = {
@@ -352,6 +355,16 @@ in
 
         systemd.services.gerbil.serviceConfig.Upholds = lib.mkForce [ ];
         systemd.services.traefik.enable = false;
+        # UPSTREAM: router-dashboard bind-mounts /run/agenix unconditionally;
+        # clan machines have no agenix secrets, so the directory is absent and
+        # the unit failed with 226/NAMESPACE. "-" makes the path optional.
+        systemd.services.router-dashboard.serviceConfig.ReadOnlyPaths = lib.mkForce [
+          "/proc"
+          "/sys/class/net"
+          "/var/log/journal"
+          "-/run/agenix"
+          "/run/router-dashboard"
+        ];
 
         router.monitoring = {
           grafanaDomain = "grafana.${fleet.domain}";
