@@ -186,3 +186,39 @@ Observations:
   <host> -n <host>.deepwatercreature.com <host-key.pub>`, then
   `HostCertificate` in their sshd_config.
 - Certificates cover names, not IPs: connect by DNS name (or HostKeyAlias).
+
+### nch-sny.5: deploy and rollback (done)
+
+Test change: a firewall that closes port 22 to new connections. The
+deploy's own SSH session survives it (conntrack), the classic way to lock
+yourself out of a router.
+
+**`clan machines update`** (clan_lib/machines/update.py: sets the profile,
+runs `switch-to-configuration boot`, then `switch` under `systemd-run`):
+
+- Reported success (exit 0). New SSH connections timed out.
+- A reboot did not help: the broken generation is already the boot default.
+- Recovery needs the console (pick the previous generation in GRUB) or a
+  reinstall. On the spike, reinstall took a few minutes and kept the host
+  keys (vars).
+
+**deploy-rs** (`modules/deploy-rs.nix`: a node per clan machine, same
+closure, `nix run github:serokell/deploy-rs -- .#<m>`):
+
+- Works on clan-built systems; clan vars need no extra step because sops
+  secrets are in the store and the machine key is already on the host.
+  Run `clan-admin vars generate` before deploying new vars.
+- Magic rollback: activation, failed confirmation over a new SSH connection,
+  switch back to the previous profile and re-activate it. Access returned
+  without intervention (about 2.5 minutes including the confirm timeout).
+- GOTCHA: rollback only re-activates a generation deploy-rs itself
+  deployed. The first attempt rolled back onto clan's install generation,
+  which has no `deploy-rs-activate`; re-activation failed and the broken
+  system stayed the boot default. Make one known-good deploy-rs deploy right
+  after install, while the console is still at hand.
+- clan and deploy-rs can alternate on the same machine (clan deployed
+  cleanly after deploy-rs).
+
+**Decision for nch-sny.7:** routers (elitedesk, router) deploy with
+deploy-rs; everything else with `clan machines update`. Firewall,
+networking and sshd changes to any host should also go through deploy-rs.
