@@ -88,3 +88,38 @@ elitedesk, router. unified is archived last.
 - unified's `den/` is a local den-inspired framework, not upstream den.
   Porting aspects (`nch-sny` foundation bead) means rewriting them as
   `den.aspects.*`, not importing unified's files.
+
+### nch-sny.2: install with clan + nixos-facter (done)
+
+`clan-spike` is VM 100 on pve-rog (2 cores, 4 GB, 32 GB on local-lvm,
+vmbr0). Steps, all from emerald:
+
+1. `nix build .#installer-iso` (NixOS minimal ISO + clan's installer module;
+   root accepts the operator keys), copy to pve-rog `local:iso`.
+2. `qm create` with the ISO first in the boot order; find the DHCP address
+   with `ip neigh` on router (MAC from `qm config`).
+3. `clan machines install clan-spike --target-host root@<ip>
+   --update-hardware-config nixos-facter --phases disko,install
+   --host-key-check none --yes`.
+   - kexec skipped: the installer already runs NixOS.
+   - reboot skipped: the VM would boot the ISO again.
+   - `--host-key-check none` only because the installer's host key is
+     ephemeral.
+4. `qm set 100 --boot order=scsi0 --ide2 none,media=cdrom`, then `qm stop` /
+   `qm start` (the installer ignores ACPI shutdown, so `qm reboot` times out).
+
+Observations:
+
+- Clan collects facter.json first and builds with it, then commits three
+  things itself: `machines/<m>/facter.json`, `inventory.json` (install time)
+  and a non-secret `vars/per-machine/<m>/state-version`. The commits use the
+  local git identity and no trailers; review them before pushing.
+- No identity or rekey step was needed. That is the comparison point for
+  nch-sny.3, when the first secret var arrives.
+- `hardware.facter.reportPath` is set automatically when facter.json exists.
+- Compared with unified (`just gen-identity`, `just rekey`, `just install`,
+  hardware-configuration.nix by hand): one command plus VM plumbing. A host
+  already running Linux would need only step 3 with kexec.
+- Open for nch-sny.4/.5: root has no authorized keys (the clan `sshd` service
+  sets them), and the address is a dynamic lease; `clan machines update`
+  needs a target host.

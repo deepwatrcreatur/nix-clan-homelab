@@ -1,5 +1,4 @@
-# Single-disk layout for the spike VM. Device is the Proxmox virtio-scsi disk;
-# GOTCHA: replace with a /dev/disk/by-id path once facter has run (nch-sny.2).
+# Single-disk layout for the spike VM (Proxmox virtio-scsi disk; id from facter.json).
 {
   boot.loader.grub = {
     efiSupport = true;
@@ -7,7 +6,7 @@
   };
 
   disko.devices.disk.main = {
-    device = "/dev/sda";
+    device = "/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi0";
     type = "disk";
     content = {
       type = "gpt";
