@@ -28,8 +28,10 @@ beads-rust create "<title>" --parent nch-sny -l <labels> -d "<why + acceptance>"
 
 ## Layout and validation
 
+- `inventory/hosts.nix` holds host metadata and role assignments.
+  `modules/inventory.nix` defines the typed `homelab.hosts` option.
 - `modules/` is imported wholesale (import-tree; paths with a component
-  starting `_` are skipped): `den.nix` (hosts, users), `clan.nix` (den host ->
+  starting `_` are skipped): `den.nix` (migrated hosts, users), `clan.nix` (den host ->
   clan machine, `x86_64-linux` hosts only), `aspects/`, `hosts/`.
   `machines/<name>/` holds per-machine files (disko, facter.json).
 - Validate on an `x86_64-linux` machine (the flake exports nothing else):

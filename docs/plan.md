@@ -52,6 +52,21 @@ reports, SSH CA, deploy tooling), then hosts from least to most critical:
 vaglio, podman, homeserver, authentik-host, lattitude, phoenix, emerald,
 elitedesk, router. unified is archived last.
 
+## Inventory
+
+Edit `inventory/hosts.nix` for host addresses, SSH settings, and roles. The
+typed `homelab.hosts` option lives in `modules/inventory.nix`. Set `migrated`
+when a host is ready for den and Clan. Clan currently imports x86_64 NixOS
+hosts and uses their roles as inventory tags. Clan and deploy-rs share the
+SSH user and endpoint from inventory. For `clan-spike`, that endpoint is its
+DHCP-registered name, `clan-spike.deepwatercreature.com`.
+
+The `inventory-matches-unified` flake check imports the pinned unified data
+files and compares active hosts and role memberships. Archived `ruby` and
+`sapphire` records preserve unified's legacy builder client names.
+`attic-cache` is emerald's legacy cache alias. Until a host migrates, unified
+remains authoritative for operating it.
+
 ## Routers
 
 - Routers hold no outbound SSH keys and get only the vars they use (see
@@ -173,7 +188,7 @@ Observations:
   CA for `*.deepwatercreature.com`).
 - `meta.domain = "deepwatercreature.com"`, the zone Technitium serves; Kea
   DDNS already registers DHCP clients, so `clan-spike.deepwatercreature.com`
-  resolved with no extra work. Deploy targets are derived from it.
+  resolved with no extra work. The inventory records this name as the deploy endpoint.
 - Verified: with only `@cert-authority *.deepwatercreature.com <CA>` in
   known_hosts and `StrictHostKeyChecking=yes`, SSH to the new machine
   succeeds with no stored host key and no prompt. Host keys are vars, so the
