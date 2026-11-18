@@ -1,3 +1,9 @@
+# Router-service credentials as clan vars (nch-sny.11, router domain).
+# SECURITY: include only on router-class hosts; sops encrypts a shared var
+# only to machines that declare its generator, so no other host can read
+# these. Standby hosts declare only what they use.
+# TODO(nch-sny.27): with VRRP election a standby takes over without a
+# redeploy, so it will need the primary-only credentials installed too.
 {
   config,
   inputs,
