@@ -80,8 +80,7 @@
             "hyprland.cachix.org-1:a7pgxzMz7+chwVL3/pzj6jIBMioiJM7ypFP8PwtkuGc="
           ];
 
-          # TODO(nch-sny.11): netrc / bearer token for attic-cache authentication
-          # TODO(nch-sny.11): netrc authentication for nix-ci.com cache
+          # Cache credentials: the nix-cache-auth aspect, included per host.
           # TODO(nch-sny.11): declarative root / user passwords via agenix/clan vars
         };
 

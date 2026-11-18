@@ -2,7 +2,11 @@
 { den, inputs, ... }:
 {
   den.aspects.clan-spike = {
-    includes = [ den.aspects.nixos-base ];
+    includes = [
+      den.aspects.nixos-base
+      den.aspects.nix-cache-auth
+      den.aspects.remote-builder-client
+    ];
     nixos =
       { config, pkgs, ... }:
       let
