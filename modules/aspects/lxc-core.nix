@@ -26,14 +26,16 @@
 
         security.wrappers.sudo.setuid = true;
 
-        # OpenSSH settings for LXC
+        # WHY: unprivileged containers cannot create zram devices;
+        # nixos-base enables zram by default, so the setup unit would fail.
+        zramSwap.enable = false;
+
         services.openssh.settings = {
           PasswordAuthentication = lib.mkDefault true;
           PermitRootLogin = lib.mkDefault "yes";
           X11Forwarding = false;
         };
 
-        # Root interactive shell uses fish via bash wrapper
         custom.fishInteractiveShell.users = [ "root" ];
       };
   };
