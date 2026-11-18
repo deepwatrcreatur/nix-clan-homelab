@@ -5,18 +5,15 @@
   environment.systemPackages =
     with pkgs;
     [
-      # System and performance tools
       hyperfine
       lsof
       procs
       tailspin
 
-      # Archive tools
       gzip
       bzip2
       xz
 
-      # Network tools
       curl
       wget
       rsync
@@ -25,12 +22,10 @@
       openssl
       attic-client
 
-      # Nix helpers
       nix-prefetch-git
       nix-prefetch-github
       nix-index
 
-      # Secrets management tools
       sops
       age
       rage

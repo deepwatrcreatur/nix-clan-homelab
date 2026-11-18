@@ -23,12 +23,12 @@ in
   config = lib.mkIf (cfg.users != [ ]) {
     programs.fish.enable = true;
 
-    # Priority 90: beats plain definitions without clashing with mkForce users.
+    # WHY: priority 90 beats plain definitions without clashing with mkForce users.
     users.users = lib.genAttrs cfg.users (_: {
       shell = lib.mkOverride 90 pkgs.bashInteractive;
     });
 
-    # /etc/bashrc only runs this block for interactive shells. Skip it when
+    # GOTCHA: /etc/bashrc only runs this block for interactive shells. Skip it when
     # bash was started from fish (so `bash` inside fish still works) and when
     # bash is running a command string (`ssh host 'cmd'`).
     programs.bash.interactiveShellInit = ''
