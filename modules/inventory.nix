@@ -8,6 +8,46 @@ let
   inherit (lib) mkOption types;
   optionalString = types.nullOr types.str;
   stringList = types.listOf types.str;
+  routerType = types.submodule {
+    options = {
+      mode = mkOption {
+        type = types.enum [
+          "standby"
+          "primary"
+        ];
+        description = "Whether this node owns WAN and LAN services.";
+      };
+      devices = lib.genAttrs [ "wan" "lan" "management" ] (_: {
+        name = mkOption {
+          type = types.str;
+          description = "Stable interface name.";
+        };
+        mac = mkOption {
+          type = optionalString;
+          default = null;
+          description = "Hardware address used to pin the interface name.";
+        };
+      });
+      lanAddress = mkOption {
+        type = types.str;
+        description = "Node-local LAN IPv4 address in CIDR notation.";
+      };
+      managementAddress = mkOption {
+        type = types.str;
+        description = "Management IPv4 address in CIDR notation.";
+      };
+      wanBandwidth = mkOption {
+        type = types.str;
+        default = "1Gbit";
+        description = "WAN bandwidth for router diagnostics.";
+      };
+      vrrpPriority = mkOption {
+        type = types.ints.between 1 254;
+        default = 100;
+        description = "VRRP priority if the host participates in HA.";
+      };
+    };
+  };
   hostType = types.submodule (
     { config, ... }:
     {
@@ -80,6 +120,11 @@ let
           type = stringList;
           default = [ ];
           description = "Host roles used for grouping and Clan inventory tags.";
+        };
+        router = mkOption {
+          type = types.nullOr routerType;
+          default = null;
+          description = "Router role settings for hosts composed with the router aspect.";
         };
         includeDns = mkOption {
           type = types.bool;
