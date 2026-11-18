@@ -15,7 +15,6 @@
           ../_nixos/utility-packages.nix
         ];
 
-        # Time and Locale
         time.timeZone = lib.mkDefault "America/Toronto";
         i18n.defaultLocale = lib.mkDefault "en_US.UTF-8";
         i18n.extraLocales = [
@@ -23,13 +22,11 @@
           "en_CA.UTF-8/UTF-8"
         ];
 
-        # SSH & Sudo Policy
         services.openssh.enable = true;
         # WHY: operators log in with SSH keys only and have no password, so
         # wheel must not need one (same policy as unified's hosts).
         security.sudo.wheelNeedsPassword = false;
 
-        # Nix Settings
         nixpkgs.config.allowUnfree = true;
 
         nix.settings = {
@@ -41,7 +38,6 @@
             "pipe-operators"
           ];
 
-          # Performance and caching
           download-buffer-size = 1048576000;
           http-connections = 50;
           max-jobs = "auto";
@@ -50,7 +46,6 @@
           keep-outputs = true;
           keep-derivations = true;
 
-          # UX improvements
           show-trace = true;
           warn-dirty = false;
           flake-registry = "";
@@ -84,10 +79,8 @@
           # TODO(nch-sny.11): declarative root / user passwords via agenix/clan vars
         };
 
-        # Shell and environment
         programs.fish.enable = true;
 
-        # Git configuration
         environment.etc."gitconfig".text = ''
           [url "ssh://git@github.com/"]
             insteadOf = https://github.com/
@@ -95,7 +88,6 @@
             insteadOf = https://github.com/Homebrew/
         '';
 
-        # System maintenance
         programs.nh = {
           enable = true;
           clean.enable = true;
@@ -122,6 +114,6 @@
       };
   };
 
-  # Compatibility alias so existing references to den.aspects.base resolve
+  # WHY: hosts written against the spike's `base` aspect keep evaluating.
   den.aspects.base = den.aspects.nixos-base;
 }
