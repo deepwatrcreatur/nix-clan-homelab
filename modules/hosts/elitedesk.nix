@@ -20,6 +20,10 @@
         # WHY: rescue boot from USB; facter lists only present devices.
         boot.initrd.availableKernelModules = [ "usb_storage" ];
 
+        # GOTCHA: multi-homed: emerald reaches the management address via
+        # router, but replies to 10.10.0.0/16 leave by the LAN port, so strict
+        # reverse-path filtering dropped them (found on first boot).
+        networking.firewall.checkReversePath = "loose";
         networking.useDHCP = false;
         networking.useNetworkd = true;
         systemd.network = {
