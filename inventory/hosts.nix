@@ -99,7 +99,8 @@
       lanAddress = "10.10.10.4/16";
       managementAddress = "192.168.100.98/24";
       wanBandwidth = "2.5Gbit";
-      vrrpPriority = 100;
+      # WHY: preferred primary (docs/router-election.md); router gets 100.
+      vrrpPriority = 110;
     };
     roles = [
       "router"

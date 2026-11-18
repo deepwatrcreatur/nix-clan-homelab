@@ -46,6 +46,16 @@ let
         default = 100;
         description = "VRRP priority if the host participates in HA.";
       };
+      vrrpPreemptDelay = mkOption {
+        type = types.ints.between 0 1000;
+        default = 300;
+        description = ''
+          Seconds a recovered higher-priority router waits, as BACKUP, before
+          taking the role back (keepalived preempt_delay; max 1000). Avoids a
+          second failover when a flapping router returns. See
+          docs/router-election.md#preemption-and-stability.
+        '';
+      };
     };
   };
   hostType = types.submodule (

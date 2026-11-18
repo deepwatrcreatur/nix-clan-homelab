@@ -147,10 +147,23 @@ The election design supports multiple candidates through explicit numeric VRRP p
 
 ### 3.3 Preemption and Stability
 
-Keepalived is configured with preemption enabled, but tempered by `preempt_delay`:
-- When `elitedesk` boots up or recovers, its higher priority (110 vs 100) allows it to reclaim the active role.
-- A non-zero preemption delay (e.g. `preempt_delay 60`) prevents "flapping" during rapid reboots or transient interface initializations.
-- Both nodes broadcast VRRP advertisements every 1 second (`advert_int 1`) over the LAN interface using IP protocol 112 multicast (`224.0.0.18`).
+Decision (user, 2026-11-18): a recovered elitedesk waits before taking the
+router role back, so a flapping primary does not cause back-to-back
+failovers.
+
+- Every router starts as `BACKUP`; priority decides who becomes master
+  (elitedesk 110, router 100). keepalived ignores `preempt_delay` on an
+  instance that starts as `MASTER`, so the router role forces
+  `state = "BACKUP"` whenever `services.router-ha` is enabled.
+- `preempt_delay` comes from the inventory: `router.vrrpPreemptDelay`,
+  default 300 s (keepalived's maximum is 1000). When elitedesk returns it
+  stays BACKUP for that long, then preempts if it is still healthy.
+- Losing the master is not delayed: a BACKUP takes over within about three
+  advertisement intervals (`advert_int 1`, protocol 112 to `224.0.0.18` on
+  the LAN), so the delay only affects giving the role *back*.
+- Fail-back is a full single-active handover (WAN, Kea, DDNS, RA move), so
+  each one is a short outage; the delay trades a few extra minutes on the
+  standby for fewer of them.
 
 ---
 
