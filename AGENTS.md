@@ -42,6 +42,19 @@ beads-rust create "<title>" --parent nch-sny -l <labels> -d "<why + acceptance>"
 - Secrets: run clan through `clan-admin` (dev shell) for anything touching
   vars or secrets; it supplies the operator key to sops for that command.
 
+## Deploying a host
+
+From the repo root, run `nix develop -c deploy <host>`. The dispatcher
+rejects unknown hosts and hosts that have yet to migrate to Clan. It uses
+`clan machines update` through `clan-admin` for routine deploys and
+deploy-rs with magic rollback for hosts with the `router` inventory role.
+Preview the command without deploying with
+`nix develop -c deploy --dry-run <host>`.
+
+Magic rollback requires one successful deploy-rs deploy after installing a
+router. Do that first deploy with a known-good configuration and console
+access, before relying on rollback. See [the spike findings](docs/plan.md#spike-findings).
+
 ## Rules
 
 - Do not deploy to or change live hosts unless the bead is `live` and the user

@@ -15,6 +15,8 @@
     {
       hostname = host.sshTarget;
       inherit (host) sshUser;
+      autoRollback = true;
+      magicRollback = true;
       profiles.system.path = inputs.deploy-rs.lib.x86_64-linux.activate.nixos nixos;
     }
   ) config.flake.nixosConfigurations;
