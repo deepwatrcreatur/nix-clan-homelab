@@ -57,7 +57,7 @@ Detailed physical connections:
 - **Leg B (`elitedesk`)**: From the unmanaged switch, an RJ45 patch cable connects at 2.5 Gbps to a second switch acting as a media converter. From there, a 10G-SR multi-mode optical fibre run connects to `elitedesk`'s Intel X520-2 Dual-Port 10G SFP+ NIC port 0 (`enp1s0f0`).
 - **Effective WAN Bandwidth**: Because the inter-switch link operates at 2.5 Gbps RJ45, `elitedesk`'s effective WAN throughput is 2.5 Gbit/s, matching `router`'s 2.5 Gbit/s capability and the repository setting `wanBandwidth = "2.5Gbit"`.
 - **Infrastructure Consolidation**: The second switch (media converter) is a transitional convenience; one of the two switches will be retired when the final wiring is rationalized.
-- **Standby WAN Administrative Invariant**: `elitedesk`'s WAN link is physically cabled, but **must remain administratively down** (`systemd.network.networks."20-wan".linkConfig.ActivationPolicy = "down"` and `Unmanaged = true`) while in standby.
+- **Standby WAN Administrative Invariant**: `elitedesk`'s WAN link is physically cabled, but **must remain administratively down** (the router role renders it `ActivationPolicy = always-down` with DHCP off for `mode = "standby"`, and a flake check fails the build if any standby host could bring its WAN up) while in standby.
 
 ### 2.2 The Single WAN Lease Constraint
 
@@ -208,7 +208,7 @@ To ensure that candidate nodes can safely host non-routing workloads alongside t
 |---|---|---|---|
 | **Promotion-Aware (Single-Active)** | WAN interface, Kea DHCPv4, Kea DDNS, Inadyn DDNS updater, MiniUPnP, IPv6 RA Daemon | Started on promotion to `MASTER`; stopped immediately on `BACKUP` or `FAULT`. | `services.router-ha.singleActiveUnits` + Keepalived notification hooks. |
 | **Shared Continuity** | Chrony NTP (`services.router-ntp`), SSH (`sshd`), Passive Suricata IDS | Active on **both nodes continuously**, regardless of VRRP state. | Standard systemd units enabled on all nodes. NTP listens on local and VIP addresses; Suricata inspects LAN traffic passively. |
-| **Independent / Local** | Technitium DNS, Gatus monitoring, Netdata | Runs on both nodes; binds to localhost and local node IP (and VIP when present). | Authoritative DNS zones replicate via native Technitium clustering or secondary zone transfer. |
+| **Independent / Local** | Technitium DNS, Gatus monitoring, Netdata | Runs on both nodes; binds to localhost and local node IP (and VIP when present). | Authoritative DNS zones replicate via native Technitium clustering or secondary zone transfer. Not yet in place: today the standby answers none of the local zone (bead `nch-sny.28`); required before any failover. |
 
 ### 5.2 Lessons Learned from Past Incidents
 
