@@ -37,7 +37,7 @@ beads-rust create "<title>" --parent nch-sny -l <labels> -d "<why + acceptance>"
   `nix build .#nixosConfigurations.<name>.config.system.build.toplevel` and
   `nix develop -c clan machines list`.
 
-- Secrets: run clan through `clan-admin` (dev shell) for anything touching
+- Secrets: see [`docs/secrets.md`](docs/secrets.md). Run clan through `clan-admin` (dev shell) for anything touching
   vars or secrets; it supplies the operator key to sops for that command.
 
 ## Rules
