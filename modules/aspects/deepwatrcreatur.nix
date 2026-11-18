@@ -2,11 +2,13 @@
 { den, ... }:
 {
   den.aspects.deepwatrcreatur = {
-    includes = [ den.batteries.primary-user ];
+    includes = [
+      den.batteries.primary-user
+      den.aspects.user-server
+    ];
     nixos.users.users.deepwatrcreatur.openssh.authorizedKeys.keyFiles = [
       ../../keys/deepwatrcreatur-stable.pub
       ../../keys/deepwatrcreatur-phoenix.pub
     ];
-    homeManager = { pkgs, ... }: { home.packages = [ pkgs.htop ]; };
   };
 }
