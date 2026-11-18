@@ -111,25 +111,26 @@ vmbr0). Steps, all from emerald:
 
 1. `nix build .#installer-iso` (NixOS minimal ISO + clan's installer module;
    root accepts the operator keys), copy to pve-rog `local:iso`.
-2. `qm create` with the ISO first in the boot order; find the DHCP address
-   with `ip neigh` on router (MAC from `qm config`).
-3. `clan machines install clan-spike --target-host root@<ip>
-   --update-hardware-config nixos-facter --phases disko,install
+2. `qm create` with `--boot 'order=scsi0;ide2' --start 1`: the blank disk
+   falls through to the ISO now, and the installed system boots from disk
+   after clan's reboot. Find the DHCP address with `ip neigh` on router (MAC
+   from `qm config`).
+3. Check the installer's host key before trusting the address: on the VM
+   console run `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub` and compare
+   it with what `ssh-keyscan <ip> | ssh-keygen -lf -` prints from emerald.
+   The key is ephemeral (new on every ISO boot), so it is checked once here
+   rather than stored.
+4. `clan machines install clan-spike --target-host root@<ip>
+   --update-hardware-config nixos-facter --phases disko,install,reboot
    --host-key-check none --yes`.
    - kexec skipped: the installer already runs NixOS.
-   - reboot skipped: the VM would boot the ISO again.
-   - `--host-key-check none` only because the installer's host key is
-     ephemeral.
-4. `qm set 100 --boot order=scsi0 --ide2 none,media=cdrom`, then `qm stop` /
-   `qm start` (the installer ignores ACPI shutdown, so `qm reboot` times out).
-
-**Corrected procedure (use this):** skipping clan's `reboot` phase and then
-force-stopping the VM left the ESP's FAT filesystem corrupt; the next deploy
-failed in grub-install with a read-only /boot. Instead set the boot order to
-`order=scsi0;ide2` before installing: a blank disk falls through to the ISO,
-and clan's own reboot (which unmounts and syncs) lands on the installed
-system. Run `clan machines install` with the default phases minus kexec:
-`--phases disko,install,reboot`.
+   - Keep the reboot phase. Skipping it and force-stopping the VM left the
+     ESP's FAT filesystem corrupt (grub-install later failed on a read-only
+     /boot); clan's reboot unmounts and syncs first.
+   - A host already running another Linux uses the default phases
+     (`kexec,disko,install,reboot`): kexec boots the installer in memory and
+     the final reboot boots the installed system from its own disk, so no
+     boot-order change is needed.
 
 Observations:
 
@@ -142,7 +143,7 @@ Observations:
 - `hardware.facter.reportPath` is set automatically when facter.json exists.
 - Compared with unified (`just gen-identity`, `just rekey`, `just install`,
   hardware-configuration.nix by hand): one command plus VM plumbing. A host
-  already running Linux would need only step 3 with kexec.
+  already running Linux needs only steps 3-4, with kexec.
 - Open for nch-sny.4/.5: root has no authorized keys (the clan `sshd` service
   sets them), and the address is a dynamic lease; `clan machines update`
   needs a target host.
