@@ -153,8 +153,9 @@ failovers.
 
 - Every router starts as `BACKUP`; priority decides who becomes master
   (elitedesk 110, router 100). keepalived ignores `preempt_delay` on an
-  instance that starts as `MASTER`, so the router role forces
-  `state = "BACKUP"` whenever `services.router-ha` is enabled.
+  instance that starts as `MASTER`; nix-router-optimized's
+  `services.router-ha.preemptDelay` (upstream PR #144) handles both: with it
+  set, every node starts as BACKUP.
 - `preempt_delay` comes from the inventory: `router.vrrpPreemptDelay`,
   default 300 s (keepalived's maximum is 1000). When elitedesk returns it
   stays BACKUP for that long, then preempts if it is still healthy.

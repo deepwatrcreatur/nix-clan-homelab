@@ -155,6 +155,9 @@ in
           router-ha = {
             enable = false;
             priority = router.vrrpPriority;
+            # WHY: a recovered elitedesk waits before taking the role back
+            # (docs/router-election.md#33-preemption-and-stability).
+            preemptDelay = router.vrrpPreemptDelay;
           };
           router-dhcp.enable = false;
           router-kea = {
@@ -355,24 +358,6 @@ in
 
         systemd.services.gerbil.serviceConfig.Upholds = lib.mkForce [ ];
         systemd.services.traefik.enable = false;
-        # INVARIANT: every router starts as BACKUP and priority decides;
-        # keepalived ignores preempt_delay on an instance that starts MASTER.
-        # WHY: a recovered elitedesk waits before taking the role back, so a
-        # flapping primary does not cause back-to-back failovers.
-        services.keepalived.vrrpInstances.main = lib.mkIf config.services.router-ha.enable {
-          state = lib.mkForce "BACKUP";
-          extraConfig = "preempt_delay ${toString router.vrrpPreemptDelay}";
-        };
-        # UPSTREAM: router-dashboard bind-mounts /run/agenix unconditionally;
-        # clan machines have no agenix secrets, so the directory is absent and
-        # the unit failed with 226/NAMESPACE. "-" makes the path optional.
-        systemd.services.router-dashboard.serviceConfig.ReadOnlyPaths = lib.mkForce [
-          "/proc"
-          "/sys/class/net"
-          "/var/log/journal"
-          "-/run/agenix"
-          "/run/router-dashboard"
-        ];
 
         router.monitoring = {
           grafanaDomain = "grafana.${fleet.domain}";
