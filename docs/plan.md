@@ -108,6 +108,14 @@ vmbr0). Steps, all from emerald:
 4. `qm set 100 --boot order=scsi0 --ide2 none,media=cdrom`, then `qm stop` /
    `qm start` (the installer ignores ACPI shutdown, so `qm reboot` times out).
 
+**Corrected procedure (use this):** skipping clan's `reboot` phase and then
+force-stopping the VM left the ESP's FAT filesystem corrupt; the next deploy
+failed in grub-install with a read-only /boot. Instead set the boot order to
+`order=scsi0;ide2` before installing: a blank disk falls through to the ISO,
+and clan's own reboot (which unmounts and syncs) lands on the installed
+system. Run `clan machines install` with the default phases minus kexec:
+`--phases disko,install,reboot`.
+
 Observations:
 
 - Clan collects facter.json first and builds with it, then commits three
@@ -123,3 +131,58 @@ Observations:
 - Open for nch-sny.4/.5: root has no authorized keys (the clan `sshd` service
   sets them), and the address is a dynamic lease; `clan machines update`
   needs a target host.
+
+### nch-sny.3: clan vars beside agenix (done)
+
+- Admins: `clan secrets users add <name> --age-key <age1...>` with the age
+  key derived from the operator SSH public key (`ssh-to-age`). Two users,
+  `deepwatrcreatur` (emerald/phoenix key) and `deepwatrcreatur-stable`, both
+  in group `admins`.
+- Clan encrypts only to the admin running the command unless told otherwise;
+  `clan.core.sops.defaultGroups = [ "admins" ]` (modules/clan.nix) makes
+  every var readable by both operators. Existing vars were re-encrypted with
+  `clan vars fix`; the machine age key needed
+  `clan secrets groups add-secret admins <machine>-age.key`.
+- Clan's CLI reads admin keys only from `SOPS_AGE_KEY` / `SOPS_AGE_KEY_FILE`
+  (not sops's SSH-key or `SOPS_AGE_KEY_CMD` paths). The dev shell's
+  `clan-admin` wrapper derives `SOPS_AGE_KEY` from `~/.ssh/id_ed25519` per
+  invocation, so no age key file exists anywhere.
+- Recipients, verified per file: per-machine vars = admins + that machine;
+  shared CA private key = admins only (machines cannot read it).
+- Add a machine: declare the den host, `clan-admin vars generate <m>`
+  (creates the machine's age key and all its vars), `clan-admin machines
+  install`. No `secrets.nix` groups, no rekey of other machines' secrets.
+- Remove: `clan machines delete <m>` drops its inventory entry, sops key and
+  vars. Shared secrets stay encrypted to its key until a future
+  `clan vars prune`; re-generate shared vars after removing a machine that
+  had them.
+- agenix coexistence works with the clan-managed host key as agenix's
+  identity, but only after a fix: agenix decrypts before sops-nix's
+  `setupSecrets`, so on first boot it found no identity and failed silently
+  (no failed unit, only an activation-snippet error). Fix in
+  `modules/hosts/clan-spike.nix`: host key `neededFor = "users"` (installed by
+  `setupSecretsForUsers`) and `agenixInstall.deps = [ "setupSecretsForUsers" ]`.
+  Verified after a cold boot: both secrets decrypt, agenix logs no warnings.
+  This belongs in a shared aspect for every migrated host that still uses
+  agenix.
+
+### nch-sny.4: sshd service and host certificates (done)
+
+- `inventory.instances.sshd` (modules/clan.nix): server role on all machines
+  with root keys for both operators; client role on all machines (trusts the
+  CA for `*.deepwatercreature.com`).
+- `meta.domain = "deepwatercreature.com"`, the zone Technitium serves; Kea
+  DDNS already registers DHCP clients, so `clan-spike.deepwatercreature.com`
+  resolved with no extra work. Deploy targets are derived from it.
+- Verified: with only `@cert-authority *.deepwatercreature.com <CA>` in
+  known_hosts and `StrictHostKeyChecking=yes`, SSH to the new machine
+  succeeds with no stored host key and no prompt. Host keys are vars, so the
+  reinstall kept the same key (fingerprint matched the repo).
+- emerald trusts the CA through one line in `~/.ssh/known_hosts_dynamic`
+  until it is a clan machine (client role).
+- Certificates are issued "valid forever"; revocation would need
+  `@revoked` lines. Non-clan hosts (Proxmox nodes) can be signed by hand:
+  `clan-admin vars get` the CA key into memory, `ssh-keygen -s <ca> -h -I
+  <host> -n <host>.deepwatercreature.com <host-key.pub>`, then
+  `HostCertificate` in their sshd_config.
+- Certificates cover names, not IPs: connect by DNS name (or HostKeyAlias).

@@ -13,6 +13,10 @@
     den.url = "github:denful/den/latest";
     import-tree.url = "github:vic/import-tree";
 
+    # Migration only (nch-sny.3): agenix secrets keep working beside clan vars.
+    agenix.url = "github:ryantm/agenix";
+    agenix.inputs.nixpkgs.follows = "nixpkgs";
+
     home-manager.url = "github:nix-community/home-manager/release-26.05";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
   };
