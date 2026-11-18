@@ -28,10 +28,12 @@ beads-rust create "<title>" --parent nch-sny -l <labels> -d "<why + acceptance>"
 
 ## Layout and validation
 
-- `modules/` is imported wholesale (import-tree): `den.nix` (hosts, users),
-  `clan.nix` (den host -> clan machine), `aspects/`, `hosts/`.
+- `modules/` is imported wholesale (import-tree; paths with a component
+  starting `_` are skipped): `den.nix` (hosts, users), `clan.nix` (den host ->
+  clan machine, `x86_64-linux` hosts only), `aspects/`, `hosts/`.
   `machines/<name>/` holds per-machine files (disko, facter.json).
-- Validate: `nix flake check`, then
+- Validate on an `x86_64-linux` machine (the flake exports nothing else):
+  `nix flake check`, then
   `nix build .#nixosConfigurations.<name>.config.system.build.toplevel` and
   `nix develop -c clan machines list`.
 

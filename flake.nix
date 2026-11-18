@@ -21,7 +21,8 @@
     inputs:
     inputs.flake-parts.lib.mkFlake { inherit inputs; } {
       systems = [ "x86_64-linux" ];
-      # Every file under modules/ is a flake-parts module (dendritic layout).
+      # Every .nix file under modules/ is a flake-parts module (dendritic
+      # layout). GOTCHA: import-tree skips paths with a component starting "_".
       imports = [ (inputs.import-tree ./modules) ];
     };
 }

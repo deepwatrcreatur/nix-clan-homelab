@@ -1,5 +1,7 @@
 # Clan owns machine lifecycle (install, vars, deploy). Host composition comes
 # from den: each clan machine imports its den host's mainModule.
+# GOTCHA: only den.hosts.x86_64-linux is mapped; add other systems here when
+# a non-x86 machine joins.
 { inputs, config, lib, ... }:
 let
   denHosts = config.den.hosts.x86_64-linux;

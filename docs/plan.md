@@ -71,8 +71,8 @@ elitedesk, router. unified is archived last.
 ### nch-sny.1: skeleton (done)
 
 - Layout: flake-parts with import-tree over `modules/` (dendritic). `modules/den.nix`
-  declares hosts and users; `modules/clan.nix` turns every den host into a clan
-  machine; aspects live in `modules/aspects/` and `modules/hosts/`.
+  declares hosts and users; `modules/clan.nix` turns every `x86_64-linux` den
+  host into a clan machine; aspects live in `modules/aspects/` and `modules/hosts/`.
 - Join point: den hosts set `intoAttr = [ ]`, and each `clan.machines.<name>`
   imports `config.den.hosts.<system>.<name>.mainModule`. Clan is the only
   producer of `nixosConfigurations`; den produces none.
