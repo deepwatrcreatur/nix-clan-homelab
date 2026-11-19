@@ -306,3 +306,24 @@ promote both zones to Primary (Technitium `zones/convert`) before Kea DDNS can
 write to it, and demote them again on BACKUP. The sync unit never demotes a
 promoted zone on its own, so activation during a failover is safe.
 
+
+## Router NIC alerts
+
+elitedesk's X520 LAN port once dropped off the PCIe bus (bead `nch-sny.31`).
+Every router therefore loads the `router-nics` rule group. It is built by
+`nicRules` in `modules/aspects/router-role.nix` from the inventory's `lan` and
+`management` devices; WAN is excluded because a standby keeps it down.
+
+| Alert | Fires when |
+| --- | --- |
+| `RouterNicCarrierLost` | carrier is 0 for 1 minute |
+| `RouterNicFlapping` | carrier changed more than twice in an hour (`increase()`, so bursts between scrapes count) |
+| `RouterNicMissing` | the device has vanished from node exporter for 1 minute |
+
+The upstream `router.monitoring.alerting` group (conntrack, memory, interface
+errors, Kea) is enabled as well. The `router-nic-alerts` check runs
+`promtool test rules` against the generated rules.
+
+There is no Alertmanager or notification channel yet. To see what is firing,
+open Prometheus on the router (`http://<router>:9090/alerts`) or query
+`curl -s http://<router>:9090/api/v1/alerts`.
