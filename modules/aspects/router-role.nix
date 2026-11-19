@@ -137,6 +137,7 @@ in
             router-ha
             router-network-security
             router-pangolin
+            router-alerting
           ])
           ++ [ ../_nixos/router-snmp.nix ];
 
@@ -349,6 +350,18 @@ in
             netdataAllowConnectionsFrom = "${lanCidr} ${managementCidr}";
           };
           router-observability.enable = true;
+          # WHY: alerts reach the operator by phone (ntfy); the healthchecks
+          # watchdog reports a router that is down or cut off.
+          router-alerting = {
+            enable = true;
+            ntfy = {
+              enable = true;
+              urlFile = varPath "ntfy-url";
+            };
+            watchdog.pingUrlFile = varPath "healthchecks-ping-url";
+            # Kea runs only on the primary.
+            newDhcpDevices.enable = primary;
+          };
           # WHY: Pangolin/gerbil are the public tunnel edge and need WAN; on a
           # standby gerbil restart-looped waiting for Pangolin's local API and
           # hung switch-to-configuration (elitedesk's first role deploy).
@@ -384,7 +397,16 @@ in
                 {
                   secondary = {
                     zones = replicatedZones;
+                    # The VRRP virtual IP; today router holds it statically.
                     primaryAddresses = [ gateway ];
+                  };
+                  # WHY: the zones follow VRRP: the MASTER promotes its copy so
+                  # DDNS keeps working after a takeover (nch-sny.30).
+                  ha = {
+                    enable = true;
+                    # TODO(nch-sny.30): router's own address once it moves off
+                    # the VIP; until VRRP, router answers only on the VIP.
+                    peers = [ gateway ];
                   };
                 }
             );
