@@ -11,10 +11,25 @@ in
 
   clan = {
     meta.name = "deepwater";
-    # TODO(nch-sny.4): settle the internal domain used for SSH certificates.
-    meta.domain = "deepwater";
+    # WHY: the LAN zone Technitium serves and Kea registers hosts in; SSH host
+    # certificates are issued for <machine>.<domain>.
+    meta.domain = "deepwatercreature.com";
 
-    inventory.machines = lib.mapAttrs (_: _: { }) denHosts;
+    # Kea registers DHCP hosts in DNS, so every machine is reachable by name.
+    inventory.machines = lib.mapAttrs (name: _: {
+      deploy.targetHost = "root@${name}.deepwatercreature.com";
+    }) denHosts;
+
+    # Persistent host keys, CA-signed host certificates, root access for the
+    # operator keys; every machine also trusts the CA as a client.
+    inventory.instances.sshd = {
+      roles.server.tags.all = { };
+      roles.server.settings.authorizedKeys = {
+        deepwatrcreatur = lib.fileContents ../keys/deepwatrcreatur-phoenix.pub;
+        deepwatrcreatur-stable = lib.fileContents ../keys/deepwatrcreatur-stable.pub;
+      };
+      roles.client.tags.all = { };
+    };
 
     # INVARIANT: den hosts set intoAttr = [ ] (modules/den.nix), so clan is
     # the only producer of nixosConfigurations.
@@ -22,12 +37,30 @@ in
     machines = lib.mapAttrs (_: host: {
       imports = [ host.mainModule ];
       nixpkgs.hostPlatform = lib.mkDefault host.system;
+      # WHY: clan otherwise encrypts only to the admin running the command;
+      # the admins group (sops/groups/admins) holds both operator keys.
+      clan.core.sops.defaultGroups = [ "admins" ];
     }) denHosts;
   };
 
   perSystem =
     { inputs', pkgs, ... }:
     {
-      devShells.default = pkgs.mkShell { packages = [ inputs'.clan-core.packages.clan-cli ]; };
+      devShells.default = pkgs.mkShell {
+        packages = [
+          inputs'.clan-core.packages.clan-cli
+          # SECURITY: the sops admin identity is the operator SSH key, converted
+          # per invocation; no age key file is ever written. docs/plan.md#nch-sny3
+          (pkgs.writeShellApplication {
+            name = "clan-admin";
+            runtimeInputs = [ inputs'.clan-core.packages.clan-cli pkgs.ssh-to-age ];
+            text = ''
+              SOPS_AGE_KEY="$(ssh-to-age -private-key -i "''${CLAN_ADMIN_SSH_KEY:-$HOME/.ssh/id_ed25519}")"
+              export SOPS_AGE_KEY
+              exec clan "$@"
+            '';
+          })
+        ];
+      };
     };
 }
