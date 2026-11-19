@@ -47,6 +47,51 @@ let
       && !(network.networkConfig.DHCPPrefixDelegation or false)
       && !(network.networkConfig.DHCPServer or false)
     ) (lib.attrValues cfg.systemd.network.networks);
+  /**
+    Prometheus rule groups for router NICs: carrier loss, flapping and a NIC
+    that vanished from the kernel. Exact device matchers, one rule per device.
+  */
+  nicRules = devices: {
+    groups = [
+      {
+        name = "router-nics";
+        rules = lib.concatMap (device: [
+          {
+            alert = "RouterNicCarrierLost";
+            expr = ''node_network_carrier{device="${device}"} == 0'';
+            for = "1m";
+            labels = {
+              severity = "critical";
+              inherit device;
+            };
+            annotations.summary = "${device} on {{ $labels.instance }} has no carrier";
+          }
+          {
+            # GOTCHA: a counter; changes() would count several flaps between
+            # scrapes as one.
+            alert = "RouterNicFlapping";
+            expr = ''increase(node_network_carrier_changes_total{device="${device}"}[1h]) > 2'';
+            labels = {
+              severity = "warning";
+              inherit device;
+            };
+            # increase() extrapolates, so the value is approximate.
+            annotations.summary = "${device} carrier is flapping (about {{ $value | printf \"%.0f\" }} changes in an hour)";
+          }
+          {
+            alert = "RouterNicMissing";
+            expr = ''absent(node_network_info{device="${device}"})'';
+            for = "1m";
+            labels = {
+              severity = "critical";
+              inherit device;
+            };
+            annotations.summary = "${device} is gone from the kernel";
+          }
+        ]) devices;
+      }
+    ];
+  };
 in
 {
   den.aspects.router-role = {
@@ -389,51 +434,14 @@ in
         systemd.services.gerbil.serviceConfig.Upholds = lib.mkForce [ ];
         systemd.services.traefik.enable = false;
 
-        # WHY: elitedesk's X520 LAN port once fell off the PCIe bus (nch-sny.31);
-        # carrier loss or a vanished NIC must be visible during the soak.
+        # WHY: docs/router-election.md#router-nic-alerts (nch-sny.31).
         # GOTCHA: services.prometheus.rules joins every entry into one file, and
         # a second JSON document there is silently ignored; use a rule file.
         services.prometheus.ruleFiles = [
-          (pkgs.writeText "router-nics.rules.json" (builtins.toJSON {
-            groups = [
-              {
-                name = "router-nics";
-                rules =
-                  let
-                    devices = [
-                      lan.name
-                      management.name
-                    ];
-                    re = lib.concatStringsSep "|" devices;
-                  in
-                  [
-                    {
-                      alert = "RouterNicCarrierLost";
-                      expr = ''node_network_carrier{device=~"${re}"} == 0'';
-                      for = "1m";
-                      labels.severity = "critical";
-                      annotations.summary = "{{ $labels.device }} on {{ $labels.instance }} has no carrier";
-                    }
-                    {
-                      alert = "RouterNicFlapping";
-                      expr = ''changes(node_network_carrier_changes_total{device=~"${re}"}[1h]) > 2'';
-                      labels.severity = "warning";
-                      annotations.summary = "{{ $labels.device }} carrier changed {{ $value }} times in an hour";
-                    }
-                  ]
-                  ++ map (device: {
-                    alert = "RouterNicMissing";
-                    expr = ''absent(node_network_info{device="${device}"})'';
-                    for = "1m";
-                    labels = {
-                      severity = "critical";
-                      inherit device;
-                    };
-                    annotations.summary = "${device} is gone from the kernel";
-                  }) devices;
-              }
-            ];
-          }))
+          (pkgs.writeText "router-nics.rules.json" (builtins.toJSON (nicRules [
+            lan.name
+            management.name
+          ])))
         ];
 
         router.monitoring = {
@@ -453,6 +461,66 @@ in
   };
 
   perSystem = { pkgs, ... }: {
+    # WHY: proves the NIC alerts fire, including flap bursts between scrapes.
+    checks.router-nic-alerts =
+      let
+        rules = pkgs.writeText "router-nics.rules.json" (builtins.toJSON (nicRules [ "lan0" "mgmt0" ]));
+        tests = pkgs.writeText "router-nics.test.json" (builtins.toJSON {
+          rule_files = [ "${rules}" ];
+          evaluation_interval = "1m";
+          tests = [
+            {
+              interval = "1m";
+              input_series = [
+                { series = ''node_network_carrier{device="lan0",instance="r"}''; values = "1 1 0 0 0 0"; }
+                { series = ''node_network_carrier{device="mgmt0",instance="r"}''; values = "1x6"; }
+                { series = ''node_network_info{device="lan0",instance="r"}''; values = "1x6"; }
+                # Four transitions land between two scrapes.
+                { series = ''node_network_carrier_changes_total{device="lan0",instance="r"}''; values = "10 10 14 14 14 14"; }
+                { series = ''node_network_carrier_changes_total{device="mgmt0",instance="r"}''; values = "3x6"; }
+              ];
+              alert_rule_test = [
+                {
+                  eval_time = "5m";
+                  alertname = "RouterNicCarrierLost";
+                  exp_alerts = [
+                    {
+                      exp_labels = { severity = "critical"; device = "lan0"; instance = "r"; };
+                      exp_annotations.summary = "lan0 on r has no carrier";
+                    }
+                  ];
+                }
+                {
+                  eval_time = "5m";
+                  alertname = "RouterNicFlapping";
+                  exp_alerts = [
+                    {
+                      exp_labels = { severity = "warning"; device = "lan0"; instance = "r"; };
+                      exp_annotations.summary = "lan0 carrier is flapping (about 4 changes in an hour)";
+                    }
+                  ];
+                }
+                {
+                  eval_time = "5m";
+                  alertname = "RouterNicMissing";
+                  exp_alerts = [
+                    {
+                      exp_labels = { severity = "critical"; device = "mgmt0"; };
+                      exp_annotations.summary = "mgmt0 is gone from the kernel";
+                    }
+                  ];
+                }
+              ];
+            }
+          ];
+        });
+      in
+      pkgs.runCommand "router-nic-alerts" { nativeBuildInputs = [ pkgs.prometheus.cli ]; } ''
+        promtool check rules ${rules}
+        promtool test rules ${tests}
+        touch $out
+      '';
+
     checks.router-standby =
       assert lib.assertMsg (
         standbyHosts != { }
