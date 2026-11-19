@@ -28,8 +28,10 @@ beads-rust create "<title>" --parent nch-sny -l <labels> -d "<why + acceptance>"
 
 ## Layout and validation
 
+- `inventory/hosts.nix` holds host metadata and role assignments.
+  `modules/inventory.nix` defines the typed `homelab.hosts` option.
 - `modules/` is imported wholesale (import-tree; paths with a component
-  starting `_` are skipped): `den.nix` (hosts, users), `clan.nix` (den host ->
+  starting `_` are skipped): `den.nix` (migrated hosts, users), `clan.nix` (den host ->
   clan machine, `x86_64-linux` hosts only), `aspects/`, `hosts/`.
   `machines/<name>/` holds per-machine files (disko, facter.json).
 - Validate on an `x86_64-linux` machine (the flake exports nothing else):
@@ -39,6 +41,19 @@ beads-rust create "<title>" --parent nch-sny -l <labels> -d "<why + acceptance>"
 
 - Secrets: see [`docs/secrets.md`](docs/secrets.md). Run clan through `clan-admin` (dev shell) for anything touching
   vars or secrets; it supplies the operator key to sops for that command.
+
+## Deploying a host
+
+From the repo root, run `nix develop -c fleet-deploy <host>`. The dispatcher
+rejects unknown hosts and hosts that have yet to migrate to Clan. It uses
+`clan machines update` through `clan-admin` for routine deploys and
+deploy-rs with magic rollback for hosts with the `router` inventory role.
+Preview the command without deploying with
+`nix develop -c fleet-deploy --dry-run <host>`.
+
+Magic rollback requires one successful deploy-rs deploy after installing a
+router. Do that first deploy with a known-good configuration and console
+access, before relying on rollback. See [the spike findings](docs/plan.md#spike-findings).
 
 ## Rules
 

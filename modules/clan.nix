@@ -2,9 +2,14 @@
 # from den: each clan machine imports its den host's mainModule.
 # GOTCHA: only den.hosts.x86_64-linux is mapped; add other systems here when
 # a non-x86 machine joins.
-{ inputs, config, lib, ... }:
+{
+  inputs,
+  config,
+  lib,
+  ...
+}:
 let
-  denHosts = config.den.hosts.x86_64-linux;
+  denHosts = config.den.hosts.x86_64-linux or { };
 in
 {
   imports = [ inputs.clan-core.flakeModules.default ];
@@ -15,10 +20,16 @@ in
     # certificates are issued for <machine>.<domain>.
     meta.domain = "deepwatercreature.com";
 
-    # Kea registers DHCP hosts in DNS, so every machine is reachable by name.
-    inventory.machines = lib.mapAttrs (name: _: {
-      deploy.targetHost = "root@${name}.deepwatercreature.com";
-    }) denHosts;
+    inventory.machines = lib.mapAttrs (
+      name: _:
+      let
+        host = config.homelab.hosts.${name};
+      in
+      {
+        tags = host.roles;
+        deploy.targetHost = "${host.sshUser}@${host.sshTarget}";
+      }
+    ) denHosts;
 
     # Persistent host keys, CA-signed host certificates, root access for the
     # operator keys; every machine also trusts the CA as a client.
@@ -44,16 +55,20 @@ in
   };
 
   perSystem =
-    { inputs', pkgs, ... }:
+    { config, inputs', pkgs, ... }:
     {
       devShells.default = pkgs.mkShell {
         packages = [
+          config.packages.fleet-deploy
           inputs'.clan-core.packages.clan-cli
           # SECURITY: the sops admin identity is the operator SSH key, converted
           # per invocation; no age key file is ever written. docs/plan.md#nch-sny3
           (pkgs.writeShellApplication {
             name = "clan-admin";
-            runtimeInputs = [ inputs'.clan-core.packages.clan-cli pkgs.ssh-to-age ];
+            runtimeInputs = [
+              inputs'.clan-core.packages.clan-cli
+              pkgs.ssh-to-age
+            ];
             text = ''
               SOPS_AGE_KEY="$(ssh-to-age -private-key -i "''${CLAN_ADMIN_SSH_KEY:-$HOME/.ssh/id_ed25519}")"
               export SOPS_AGE_KEY
