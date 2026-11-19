@@ -262,3 +262,26 @@ networking and sshd changes to any host should also go through deploy-rs.
 - Recommendation: one repo for everything. NixOS and darwin machines go
   through clan; Proxmox node homes stay den-only and are deployed as today
   (`home-manager switch`, e.g. via the existing Ansible playbook).
+
+### nch-sny.25: secret-free workstation aspects
+
+The eval fixtures compose the Phoenix and Lattitude desktop selections through
+den. Both publish under `legacyPackages.x86_64-linux` for `nix flake check`
+and stay outside Clan inventory.
+
+| Sample from unified | Port checked by |
+| --- | --- |
+| Phoenix PipeWire 32-bit ALSA and CUPS printing | `workstation-niri-eval` |
+| Phoenix Niri HDMI-A-1 at 1.0 scale, solid Noctalia panel, COSMIC fallback and safe-mode without greetd | `workstation-niri-eval` |
+| Phoenix root Snapper hourly retention of six and the HP PageWide default CUPS queue | `workstation-niri-eval` |
+| Phoenix Orca enabled and T3 Code TCP 3773 with Tailscale Serve | `workstation-niri-eval` |
+| Lattitude Sway greetd autologin and Mod4 keybindings | `workstation-sway-eval` |
+| Both hosts default to mpv for MP4 | Both checks |
+
+T3 Code's daemon retains its separate Home Manager opt-in, as in Phoenix's
+developer home. Phoenix's Limine overrides, disk layout and other leaf-host
+settings belong to the host migration. The workstation port leaves attic
+authentication, remote-builder and SSH identities, password wiring, and the
+share and VPN aspects to the vars work. Unified-specific activation scripts,
+Nixbit's reference to the old repo, the WezTerm/Zellij launcher, and Phoenix's
+inline systemd SSH proxy workaround are outside the port.
