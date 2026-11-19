@@ -10,6 +10,12 @@
     flake-parts.url = "github:hercules-ci/flake-parts";
     flake-parts.inputs.nixpkgs-lib.follows = "nixpkgs";
 
+    # WHY: compare inventory with unified during migration by importing its data files.
+    unified = {
+      url = "github:deepwatrcreatur/unified-nix-configuration";
+      flake = false;
+    };
+
     den.url = "github:denful/den/latest";
     import-tree.url = "github:vic/import-tree";
 
