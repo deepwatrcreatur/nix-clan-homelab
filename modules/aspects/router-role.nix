@@ -389,7 +389,55 @@ in
         systemd.services.gerbil.serviceConfig.Upholds = lib.mkForce [ ];
         systemd.services.traefik.enable = false;
 
+        # WHY: elitedesk's X520 LAN port once fell off the PCIe bus (nch-sny.31);
+        # carrier loss or a vanished NIC must be visible during the soak.
+        # GOTCHA: services.prometheus.rules joins every entry into one file, and
+        # a second JSON document there is silently ignored; use a rule file.
+        services.prometheus.ruleFiles = [
+          (pkgs.writeText "router-nics.rules.json" (builtins.toJSON {
+            groups = [
+              {
+                name = "router-nics";
+                rules =
+                  let
+                    devices = [
+                      lan.name
+                      management.name
+                    ];
+                    re = lib.concatStringsSep "|" devices;
+                  in
+                  [
+                    {
+                      alert = "RouterNicCarrierLost";
+                      expr = ''node_network_carrier{device=~"${re}"} == 0'';
+                      for = "1m";
+                      labels.severity = "critical";
+                      annotations.summary = "{{ $labels.device }} on {{ $labels.instance }} has no carrier";
+                    }
+                    {
+                      alert = "RouterNicFlapping";
+                      expr = ''changes(node_network_carrier_changes_total{device=~"${re}"}[1h]) > 2'';
+                      labels.severity = "warning";
+                      annotations.summary = "{{ $labels.device }} carrier changed {{ $value }} times in an hour";
+                    }
+                  ]
+                  ++ map (device: {
+                    alert = "RouterNicMissing";
+                    expr = ''absent(node_network_info{device="${device}"})'';
+                    for = "1m";
+                    labels = {
+                      severity = "critical";
+                      inherit device;
+                    };
+                    annotations.summary = "${device} is gone from the kernel";
+                  }) devices;
+              }
+            ];
+          }))
+        ];
+
         router.monitoring = {
+          alerting.enable = true;
           grafanaDomain = "grafana.${fleet.domain}";
           grafanaDataDir = "/var/log/router/grafana";
           listenAddress = "0.0.0.0";
