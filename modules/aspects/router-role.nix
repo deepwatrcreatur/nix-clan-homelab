@@ -36,8 +36,11 @@ let
     && !services.router-tailscale.enable
     && !services.tailscale.enable
     && !services.router-ha.enable
-    # INVARIANT: a standby must hold the replicated zones to answer local names.
-    && services.router-technitium.zoneReplication.secondary.zones != [ ]
+    # INVARIANT: a standby must hold both replicated zones to answer local names.
+    && lib.all (zone: lib.elem zone (map (z: z.name) services.router-technitium.zoneReplication.secondary.zones)) [
+      fleet.domain
+      "10.10.in-addr.arpa"
+    ]
     && lib.all (
       network:
       !(network.networkConfig.IPv6SendRA or false)
