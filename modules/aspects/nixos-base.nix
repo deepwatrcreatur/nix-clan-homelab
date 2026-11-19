@@ -82,11 +82,13 @@
 
         programs.fish.enable = true;
 
+        # WHY: only pushes go over SSH. Hosts without outbound keys (routers)
+        # must still clone public repos over HTTPS.
         environment.etc."gitconfig".text = ''
           [url "ssh://git@github.com/"]
-            insteadOf = https://github.com/
+            pushInsteadOf = https://github.com/
           [url "https://github.com/Homebrew/"]
-            insteadOf = https://github.com/Homebrew/
+            pushInsteadOf = https://github.com/Homebrew/
         '';
 
         programs.nh = {
