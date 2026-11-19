@@ -1,0 +1,126 @@
+{
+  config,
+  inputs,
+  lib,
+  ...
+}:
+let
+  inherit (lib) mkOption types;
+  optionalString = types.nullOr types.str;
+  stringList = types.listOf types.str;
+  hostType = types.submodule (
+    { config, ... }:
+    {
+      options = {
+        system = mkOption {
+          type = optionalString;
+          default = null;
+          description = "Nix system for hosts with a known platform.";
+        };
+        kind = mkOption {
+          type = types.enum [
+            "nixos"
+            "darwin"
+            "proxmox"
+            "appliance"
+            "other"
+          ];
+          description = "Operating system or device class.";
+        };
+        addresses = {
+          ip = mkOption {
+            type = optionalString;
+            default = null;
+            description = "Static or reserved IP address.";
+          };
+          hostname = mkOption {
+            type = optionalString;
+            default = null;
+            description = "DNS name when the primary address is a name.";
+          };
+          sshHostname = mkOption {
+            type = optionalString;
+            default = null;
+            description = "Explicit SSH endpoint, including management addresses.";
+          };
+        };
+        sshTarget = mkOption {
+          type = optionalString;
+          readOnly = true;
+          default =
+            if config.addresses.sshHostname != null then
+              config.addresses.sshHostname
+            else if config.addresses.hostname != null then
+              config.addresses.hostname
+            else
+              config.addresses.ip;
+          description = "SSH endpoint derived from the inventory addresses.";
+        };
+        sshUser = mkOption {
+          type = types.str;
+          default = "deepwatrcreatur";
+          description = "Default SSH login.";
+        };
+        aliases = mkOption {
+          type = stringList;
+          default = [ ];
+          description = "Additional names for this host.";
+        };
+        cacheAliases = mkOption {
+          type = stringList;
+          default = [ ];
+          description = "Host aliases that unified recognizes as legacy cache server names.";
+        };
+        description = mkOption {
+          type = types.str;
+          default = "";
+          description = "Human-readable host description.";
+        };
+        roles = mkOption {
+          type = stringList;
+          default = [ ];
+          description = "Host roles used for grouping and Clan inventory tags.";
+        };
+        includeDns = mkOption {
+          type = types.bool;
+          default = true;
+          description = "Include this host in generated DNS records.";
+        };
+        includeSsh = mkOption {
+          type = types.bool;
+          default = true;
+          description = "Include this host in generated SSH configuration.";
+        };
+        archived = mkOption {
+          type = types.bool;
+          default = false;
+          description = "Keep this record for historical or compatibility purposes.";
+        };
+        migrated = mkOption {
+          type = types.bool;
+          default = false;
+          description = "Enable host composition and deployment in this flake.";
+        };
+      };
+    }
+  );
+in
+{
+  options.homelab.hosts = mkOption {
+    type = types.attrsOf hostType;
+    description = "Homelab inventory keyed by canonical host name.";
+  };
+
+  config = {
+    homelab.hosts = import ../inventory/hosts.nix;
+    perSystem =
+      { pkgs, ... }:
+      {
+        checks.inventory-matches-unified = import ../inventory/check.nix {
+          inherit lib pkgs;
+          inherit (config.homelab) hosts;
+          unified = inputs.unified.outPath;
+        };
+      };
+  };
+}
