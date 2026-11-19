@@ -71,7 +71,15 @@ in
           && cfg.modules.desktop.apps.orca-ide.enable
           && builtins.elem 3773 cfg.networking.firewall.allowedTCPPorts
           && home.services.t3code.tailscale
-          && lib.any (lib.hasInfix "--tailscale-serve") home.systemd.user.services.t3code.Service.ExecStart;
+          && lib.any (lib.hasInfix "--tailscale-serve") (lib.toList home.systemd.user.services.t3code.Service.ExecStart)
+          # Review fixes: Ghostty is installed for its binds, and Noctalia's
+          # notification layer is hidden from screencasts.
+          && lib.any (p: (p.pname or "") == "ghostty") home.home.packages
+          && lib.any (
+            rule:
+            rule.block-out-from or null == "screencast"
+            && lib.any (m: builtins.match (m.namespace or "$^") "noctalia-notification" != null) rule.matches
+          ) home.programs.niri.settings.layer-rules;
         sway =
           cfg.programs.sway.enable
           && cfg.services.greetd.settings.initial_session.user == "deepwatrcreatur"

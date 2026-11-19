@@ -89,7 +89,9 @@ in
           "T3CODE_HOST=${cfg.host}"
           "T3CODE_PORT=${toString cfg.port}"
         ];
-        ExecStart = lib.concatStringsSep " " (
+        # WHY: systemd splits ExecStart on spaces; quoting keeps paths and
+        # extraArgs with spaces as single arguments.
+        ExecStart = lib.escapeShellArgs (
           [
             "${cfg.package}/bin/t3"
             "serve"

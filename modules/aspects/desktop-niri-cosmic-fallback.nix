@@ -104,14 +104,16 @@
       };
 
       home-manager.users.deepwatrcreatur = {
+        # WHY: this host's terminal binds use Ghostty; nothing else installs it.
+        home.packages = [ pkgs.ghostty ];
         programs.niri.settings = {
           outputs."HDMI-A-1".scale = 1.0;
           animations.slowdown = lib.mkForce 0.6;
           layout.shadow.enable = lib.mkForce false;
 
           binds = {
-            "Mod+Return".action = lib.mkForce { spawn = [ "ghostty" ]; };
-            "Mod+E".action = lib.mkForce { spawn = [ "ghostty" ]; };
+            "Mod+Return".action = lib.mkForce { spawn = [ "${pkgs.ghostty}/bin/ghostty" ]; };
+            "Mod+E".action = lib.mkForce { spawn = [ "${pkgs.ghostty}/bin/ghostty" ]; };
             # Vicinae alongside Noctalia's launcher (Mod+Space); same key as on
             # the Plasma hosts.
             "Alt+Space".action.spawn = [

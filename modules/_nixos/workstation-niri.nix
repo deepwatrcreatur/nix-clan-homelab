@@ -141,7 +141,8 @@ in
             layer-rules = [
               {
                 # Mask notifications from screen recording / screenshare
-                matches = [ { namespace = "^notification$"; } ];
+                # GOTCHA: Noctalia names its layer "noctalia-notification".
+                matches = [ { namespace = "^(noctalia-)?notification"; } ];
                 block-out-from = "screencast";
               }
               {

@@ -83,20 +83,24 @@ stdenv.mkDerivation (finalAttrs: {
     fi
 
     # Fallback for non-Hyprland Wayland sessions (GNOME, COSMIC, Sway, etc.)
-    tmp_file="$(mktemp --suffix=.png /tmp/omasnap-XXXXXX)"
+    # WHY: screenshots may hold secrets; keep them in the private runtime dir
+    # and delete them when the editor exits (no exec, so the trap runs).
+    tmp_file="$(mktemp --suffix=.png --tmpdir="''${XDG_RUNTIME_DIR:-/tmp}" omasnap-XXXXXX)"
+    trap 'rm -f "$tmp_file" "$tmp_file.region"' EXIT
 
     if ${slurp}/bin/slurp -b "#00000080" -c "#ffffff" > "$tmp_file.region" 2>/dev/null; then
       region="$(cat "$tmp_file.region")"
       rm -f "$tmp_file.region"
       if [ -n "$region" ]; then
-        ${grim}/bin/grim -g "$region" "$tmp_file" && exec @out@/bin/.omasnap-binary --file "$tmp_file"
+        ${grim}/bin/grim -g "$region" "$tmp_file" && @out@/bin/.omasnap-binary --file "$tmp_file"
         exit 0
       fi
     fi
 
     # Fullscreen fallback if region selection was skipped or cancelled
     if ${grim}/bin/grim "$tmp_file" 2>/dev/null; then
-      exec @out@/bin/.omasnap-binary --file "$tmp_file"
+      @out@/bin/.omasnap-binary --file "$tmp_file"
+      exit $?
     fi
     EOF
 
