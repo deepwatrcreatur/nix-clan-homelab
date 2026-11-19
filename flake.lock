@@ -286,7 +286,8 @@
         "nixpkgs": [
           "clan-core",
           "nixpkgs"
-        ]
+        ],
+        "unified": "unified"
       }
     },
     "sops-nix": {
@@ -359,6 +360,22 @@
       "original": {
         "owner": "numtide",
         "repo": "treefmt-nix",
+        "type": "github"
+      }
+    },
+    "unified": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1795005260,
+        "narHash": "sha256-l5TJTGMKX8rRVz9qsROuAT4a+WHodYwwVAZhlcKtk08=",
+        "owner": "deepwatrcreatur",
+        "repo": "unified-nix-configuration",
+        "rev": "dc759e8dc76a3095d6a13c994271a68124b23dc5",
+        "type": "github"
+      },
+      "original": {
+        "owner": "deepwatrcreatur",
+        "repo": "unified-nix-configuration",
         "type": "github"
       }
     },
