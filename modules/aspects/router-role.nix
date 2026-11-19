@@ -37,6 +37,9 @@ let
     && !services.tailscale.enable
     && !services.router-ha.enable
     # INVARIANT: a standby must hold both replicated zones to answer local names.
+    # INVARIANT: standbys take part in VRRP-driven zone ownership.
+    && services.router-technitium.zoneReplication.ha.enable
+    && lib.elem "technitium-zone-ha-owner.service" services.router-ha.singleActiveUnits
     && lib.all (zone: lib.elem zone (map (z: z.name) services.router-technitium.zoneReplication.secondary.zones)) [
       fleet.domain
       "10.10.in-addr.arpa"
@@ -137,6 +140,7 @@ in
             router-ha
             router-network-security
             router-pangolin
+            router-alerting
           ])
           ++ [ ../_nixos/router-snmp.nix ];
 
@@ -349,6 +353,18 @@ in
             netdataAllowConnectionsFrom = "${lanCidr} ${managementCidr}";
           };
           router-observability.enable = true;
+          # WHY: alerts reach the operator by phone (ntfy); the healthchecks
+          # watchdog reports a router that is down or cut off.
+          router-alerting = {
+            enable = true;
+            ntfy = {
+              enable = true;
+              urlFile = varPath "ntfy-url";
+            };
+            watchdog.pingUrlFile = varPath "healthchecks-ping-url";
+            # Kea runs only on the primary.
+            newDhcpDevices.enable = primary;
+          };
           # WHY: Pangolin/gerbil are the public tunnel edge and need WAN; on a
           # standby gerbil restart-looped waiting for Pangolin's local API and
           # hung switch-to-configuration (elitedesk's first role deploy).
@@ -384,7 +400,16 @@ in
                 {
                   secondary = {
                     zones = replicatedZones;
+                    # The VRRP virtual IP; today router holds it statically.
                     primaryAddresses = [ gateway ];
+                  };
+                  # WHY: the zones follow VRRP: the MASTER promotes its copy so
+                  # DDNS keeps working after a takeover (nch-sny.30).
+                  ha = {
+                    enable = true;
+                    # TODO(nch-sny.30): router's own address once it moves off
+                    # the VIP; until VRRP, router answers only on the VIP.
+                    peers = [ gateway ];
                   };
                 }
             );
@@ -461,6 +486,23 @@ in
   };
 
   perSystem = { pkgs, ... }: {
+    # WHY: every router must deliver alerts (ntfy) and feed its own
+    # dead-man watchdog; docs/router-election.md#alert-delivery.
+    checks.router-alerting =
+      let
+        routers = lib.filterAttrs (_: host: host.migrated && !host.archived && host.router != null) fleet.hosts;
+        ok =
+          name:
+          let
+            cfg = config.flake.nixosConfigurations.${name}.config;
+            alerting = cfg.services.router-alerting;
+            hc = cfg.clan.core.vars.generators.router-healthchecks-ping-url;
+          in
+          alerting.enable && alerting.ntfy.enable && alerting.watchdog.pingUrlFile != null && !hc.share;
+      in
+      assert lib.all (name: lib.assertMsg (ok name) "${name}: router alerting (ntfy + per-router watchdog) is not wired.") (lib.attrNames routers);
+      pkgs.runCommand "router-alerting" { } "touch $out";
+
     # WHY: proves the NIC alerts fire, including flap bursts between scrapes.
     checks.router-nic-alerts =
       let
