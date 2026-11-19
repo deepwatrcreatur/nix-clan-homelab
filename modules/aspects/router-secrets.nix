@@ -42,6 +42,10 @@ in
       clan.core.vars.generators = {
         router-technitium-admin-password = single "Technitium admin password" { mode = "0400"; };
         router-snmp-community = single "SNMP community string" { mode = "0400"; };
+        # WHY: primary and standby sign zone transfers with the same key.
+        router-technitium-zone-transfer-tsig = single "TSIG key for Technitium zone transfers (base64)" {
+          mode = "0400";
+        };
       }
       // lib.optionalAttrs primary {
         router-cloudflare-api-token = single "Cloudflare API token for DDNS" {

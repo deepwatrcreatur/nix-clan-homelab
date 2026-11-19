@@ -222,7 +222,7 @@ To ensure that candidate nodes can safely host non-routing workloads alongside t
 |---|---|---|---|
 | **Promotion-Aware (Single-Active)** | WAN interface, Kea DHCPv4, Kea DDNS, Inadyn DDNS updater, MiniUPnP, IPv6 RA Daemon | Started on promotion to `MASTER`; stopped immediately on `BACKUP` or `FAULT`. | `services.router-ha.singleActiveUnits` + Keepalived notification hooks. |
 | **Shared Continuity** | Chrony NTP (`services.router-ntp`), SSH (`sshd`), Passive Suricata IDS | Active on **both nodes continuously**, regardless of VRRP state. | Standard systemd units enabled on all nodes. NTP listens on local and VIP addresses; Suricata inspects LAN traffic passively. |
-| **Independent / Local** | Technitium DNS, Gatus monitoring, Netdata | Runs on both nodes; binds to localhost and local node IP (and VIP when present). | Authoritative DNS zones replicate via native Technitium clustering or secondary zone transfer. Not yet in place: today the standby answers none of the local zone (bead `nch-sny.28`); required before any failover. |
+| **Independent / Local** | Technitium DNS, Gatus monitoring, Netdata | Runs on both nodes; binds to localhost and local node IP (and VIP when present). | Local zones replicate by TSIG-signed zone transfer; see [Local DNS zone replication](#local-dns-zone-replication). |
 
 ### 5.2 Lessons Learned from Past Incidents
 
@@ -284,3 +284,25 @@ The migration of router functionality to Clan proceeds through discrete stages:
 2. **Bead `nch-sny.27` (This Work)**: Document election architecture (`docs/router-election.md`) and failover rehearsal runbook (`docs/router-failover.md`).
 3. **Bead `nch-sny.26` (Next)**: Port `role.nix` into `den.aspects.router-role` with typed `homelab.hosts.<name>.router` submodule and build assertions.
 4. **Bead `nch-sny.22` (Final)**: Live failover rehearsal; migration of `router` VM definition into Clan; promotion of `elitedesk` to primary router.
+
+## Local DNS zone replication
+
+Kea DDNS writes `deepwatercreature.com` and `10.10.in-addr.arpa` into the
+primary's Technitium runtime state; no configuration declares those records.
+A standby therefore keeps copies by zone transfer
+(`services.router-technitium.zoneReplication` in nix-router-optimized):
+
+- **Primary.** Allows AXFR/IXFR of both zones only from the standby LAN
+  addresses (derived from inventory standby hosts), only when signed with the
+  TSIG key `zone-transfer`. It sends NOTIFY to those standbys on every change.
+- **Standby.** Holds both zones as Secondary zones of `10.10.10.1`. The
+  `router-standby` check fails if a standby lacks them.
+- **Key.** The shared clan var `router-technitium-zone-transfer-tsig`.
+  unified's `router` reads the same value from
+  `secrets-agenix/technitium-zone-transfer-tsig.age` until it migrates.
+
+Open for VRRP (`nch-sny.30`): a secondary is read-only, so the new MASTER must
+promote both zones to Primary (Technitium `zones/convert`) before Kea DDNS can
+write to it, and demote them again on BACKUP. The sync unit never demotes a
+promoted zone on its own, so activation during a failover is safe.
+

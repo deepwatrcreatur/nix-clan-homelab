@@ -36,6 +36,8 @@ let
     && !services.router-tailscale.enable
     && !services.tailscale.enable
     && !services.router-ha.enable
+    # INVARIANT: a standby must hold the replicated zones to answer local names.
+    && services.router-technitium.zoneReplication.secondary.zones != [ ]
     && lib.all (
       network:
       !(network.networkConfig.IPv6SendRA or false)
@@ -60,6 +62,10 @@ in
         gateway = fleet.hosts.router.addresses.ip;
         ip = address: builtins.head (lib.splitString "/" address);
         varPath = name: config.clan.core.vars.generators."router-${name}".files.value.path;
+        replicatedZones = map (name: { inherit name; }) [
+          fleet.domain
+          "10.10.in-addr.arpa"
+        ];
       in
       {
         # UPSTREAM: the aggregate default imports router-tunnels twice.
@@ -313,6 +319,27 @@ in
           };
           router-technitium = {
             bootstrapPasswordSecretName = "technitium-admin-password";
+            # WHY: local names live in the primary's runtime zone (Kea DDNS);
+            # standbys hold TSIG-transferred copies so failover keeps them.
+            zoneReplication = {
+              tsigKeyFile = varPath "technitium-zone-transfer-tsig";
+            }
+            // (
+              if primary then
+                {
+                  primary = {
+                    zones = replicatedZones;
+                    secondaries = map (host: ip host.router.lanAddress) (lib.attrValues standbyHosts);
+                  };
+                }
+              else
+                {
+                  secondary = {
+                    zones = replicatedZones;
+                    primaryAddresses = [ gateway ];
+                  };
+                }
+            );
           }
           // lib.optionalAttrs (!primary) {
             scopes = lib.mkForce { };
@@ -383,7 +410,7 @@ in
         name:
         lib.assertMsg (standbySafe name
           standbyHosts.${name}
-        ) "${name}: standby WAN or an exclusive router service can activate."
+        ) "${name}: standby WAN or an exclusive router service can activate, or zone replication is missing."
       ) (lib.attrNames standbyHosts);
       pkgs.runCommand "router-standby" { } "touch $out";
   };
