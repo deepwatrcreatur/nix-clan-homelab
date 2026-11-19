@@ -17,7 +17,7 @@
     };
 
     nix-router-optimized = {
-      url = "github:deepwatrcreatur/nix-router-optimized/aa29efbfa9da84d9151ccfdee8f2ebba09beba67";
+      url = "github:deepwatrcreatur/nix-router-optimized/6795ddca02f3cfe4adf08f200057ba98b8a6052b";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -31,6 +31,44 @@
     # nch-sny.5: magic rollback for deploys that cut off their own access.
     deploy-rs.url = "github:serokell/deploy-rs";
     deploy-rs.inputs.nixpkgs.follows = "nixpkgs";
+
+    niri = {
+      url = "github:sodiboo/niri-flake";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    noctalia = {
+      url = "github:noctalia-dev/noctalia";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    zen-browser = {
+      url = "github:youwen5/zen-browser-flake";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    nix-snapd = {
+      url = "github:nix-community/nix-snapd";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    nix-linuxbrew = {
+      url = "github:deepwatrcreatur/nix-linuxbrew/main";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    openlogi = {
+      url = "github:AprilNEA/OpenLogi";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    flake-utils.url = "github:numtide/flake-utils";
+
+    strata = {
+      url = "github:deepwatrcreatur/nix-strata-filemanager";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-utils.follows = "flake-utils";
+    };
 
     home-manager.url = "github:nix-community/home-manager/release-26.05";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";

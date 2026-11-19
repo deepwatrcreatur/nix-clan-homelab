@@ -36,6 +36,11 @@ let
     && !services.router-tailscale.enable
     && !services.tailscale.enable
     && !services.router-ha.enable
+    # INVARIANT: a standby must hold both replicated zones to answer local names.
+    && lib.all (zone: lib.elem zone (map (z: z.name) services.router-technitium.zoneReplication.secondary.zones)) [
+      fleet.domain
+      "10.10.in-addr.arpa"
+    ]
     && lib.all (
       network:
       !(network.networkConfig.IPv6SendRA or false)
@@ -60,6 +65,10 @@ in
         gateway = fleet.hosts.router.addresses.ip;
         ip = address: builtins.head (lib.splitString "/" address);
         varPath = name: config.clan.core.vars.generators."router-${name}".files.value.path;
+        replicatedZones = map (name: { inherit name; }) [
+          fleet.domain
+          "10.10.in-addr.arpa"
+        ];
       in
       {
         # UPSTREAM: the aggregate default imports router-tunnels twice.
@@ -155,6 +164,9 @@ in
           router-ha = {
             enable = false;
             priority = router.vrrpPriority;
+            # WHY: a recovered elitedesk waits before taking the role back
+            # (docs/router-election.md#33-preemption-and-stability).
+            preemptDelay = router.vrrpPreemptDelay;
           };
           router-dhcp.enable = false;
           router-kea = {
@@ -310,6 +322,27 @@ in
           };
           router-technitium = {
             bootstrapPasswordSecretName = "technitium-admin-password";
+            # WHY: local names live in the primary's runtime zone (Kea DDNS);
+            # standbys hold TSIG-transferred copies so failover keeps them.
+            zoneReplication = {
+              tsigKeyFile = varPath "technitium-zone-transfer-tsig";
+            }
+            // (
+              if primary then
+                {
+                  primary = {
+                    zones = replicatedZones;
+                    secondaries = map (host: ip host.router.lanAddress) (lib.attrValues standbyHosts);
+                  };
+                }
+              else
+                {
+                  secondary = {
+                    zones = replicatedZones;
+                    primaryAddresses = [ gateway ];
+                  };
+                }
+            );
           }
           // lib.optionalAttrs (!primary) {
             scopes = lib.mkForce { };
@@ -355,16 +388,6 @@ in
 
         systemd.services.gerbil.serviceConfig.Upholds = lib.mkForce [ ];
         systemd.services.traefik.enable = false;
-        # UPSTREAM: router-dashboard bind-mounts /run/agenix unconditionally;
-        # clan machines have no agenix secrets, so the directory is absent and
-        # the unit failed with 226/NAMESPACE. "-" makes the path optional.
-        systemd.services.router-dashboard.serviceConfig.ReadOnlyPaths = lib.mkForce [
-          "/proc"
-          "/sys/class/net"
-          "/var/log/journal"
-          "-/run/agenix"
-          "/run/router-dashboard"
-        ];
 
         router.monitoring = {
           grafanaDomain = "grafana.${fleet.domain}";
@@ -390,7 +413,7 @@ in
         name:
         lib.assertMsg (standbySafe name
           standbyHosts.${name}
-        ) "${name}: standby WAN or an exclusive router service can activate."
+        ) "${name}: standby WAN or an exclusive router service can activate, or zone replication is missing."
       ) (lib.attrNames standbyHosts);
       pkgs.runCommand "router-standby" { } "touch $out";
   };
