@@ -55,10 +55,11 @@ in
   };
 
   perSystem =
-    { inputs', pkgs, ... }:
+    { config, inputs', pkgs, ... }:
     {
       devShells.default = pkgs.mkShell {
         packages = [
+          config.packages.fleet-deploy
           inputs'.clan-core.packages.clan-cli
           # SECURITY: the sops admin identity is the operator SSH key, converted
           # per invocation; no age key file is ever written. docs/plan.md#nch-sny3
