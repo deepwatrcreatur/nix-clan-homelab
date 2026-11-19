@@ -324,6 +324,34 @@ The upstream `router.monitoring.alerting` group (conntrack, memory, interface
 errors, Kea) is enabled as well. The `router-nic-alerts` check runs
 `promtool test rules` against the generated rules.
 
-There is no Alertmanager or notification channel yet. To see what is firing,
-open Prometheus on the router (`http://<router>:9090/alerts`) or query
-`curl -s http://<router>:9090/api/v1/alerts`.
+Firing alerts reach the operator through ntfy; see
+[Alert delivery](#alert-delivery). Prometheus still shows them at
+`http://<router>:9090/alerts`.
+
+## Alert delivery
+
+Every router runs nix-router-optimized's `router-alerting`
+(`modules/aspects/router-role.nix`), and the `router-alerting` check enforces
+it:
+
+- **ntfy**: Alertmanager (127.0.0.1:9093) sends notifications to the topic in
+  the shared clan var `router-ntfy-url`. Priority follows severity: 5 for
+  critical, 4 for warning, 3 for info, 2 for resolved.
+- **Watchdog**: an always-firing alert pings this router's own healthchecks.io
+  check every 5 minutes. The URL is the per-machine clan var
+  `router-healthchecks-ping-url`. healthchecks.io emails the operator when the
+  pings stop: router down, uplink down, or the alert path broken. Each router
+  needs its own check; a shared one would stay green while either router is
+  alive.
+- **New DHCP devices**: the primary (the node running Kea) announces the first
+  lease of each new MAC address.
+
+Set or rotate a value with
+`nix develop -c clan-admin vars set <router> router-ntfy-url/value` (or
+`router-healthchecks-ping-url/value`), then redeploy. To test end to end, post
+an alert on the router:
+
+```sh
+curl -s -H 'Content-Type: application/json' http://127.0.0.1:9093/api/v2/alerts \
+  -d '[{"labels":{"alertname":"RouterAlertingTest","severity":"warning"},"annotations":{"summary":"test"}}]'
+```

@@ -44,7 +44,9 @@ in
         router-snmp-community = single "SNMP community string" { mode = "0400"; };
         # WHY: every router node sends alerts, so all of them hold these.
         router-ntfy-url = single "ntfy topic URL for router alerts (https://ntfy.sh/<topic>)" { mode = "0400"; };
-        router-healthchecks-ping-url = single "healthchecks.io ping URL for the router alert watchdog" { mode = "0400"; };
+        # WHY: per router, not shared: with one check a dead router hides
+        # behind the other router's pings.
+        router-healthchecks-ping-url = single "healthchecks.io ping URL for this router's alert watchdog" { mode = "0400"; } // { share = false; };
         # WHY: primary and standby sign zone transfers with the same key.
         router-technitium-zone-transfer-tsig = single "TSIG key for Technitium zone transfers (base64)" {
           mode = "0400";
