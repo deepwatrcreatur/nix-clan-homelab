@@ -16,6 +16,7 @@
         ];
         system.stateVersion = "26.05";
 
+
         # nch-sny.3: one clan var and one agenix secret on the same machine.
         clan.core.vars.generators.spike-test = {
           files.token = { };
