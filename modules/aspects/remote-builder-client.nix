@@ -13,7 +13,9 @@
           type = "multiline-hidden";
         };
         files.key = { };
-        script = ''cp "$prompts/key" "$out/key"'';
+        # GOTCHA: clan's multiline prompt drops the final newline, and
+        # OpenSSH rejects a private key without one; add it only if missing.
+        script = ''sed -e '$a\' "$prompts/key" > "$out/key"'';
       };
 
       nix.distributedBuilds = true;

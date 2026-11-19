@@ -34,9 +34,10 @@ reads the secret from vars.
 
 ### cache/builder notes
 
-- `netrc` contains the nix-ci entry plus one attic entry per substituter
-  host. Nix sends the netrc password as the credential.
-- attic's `cache-local` answers unauthenticated reads on the LAN, so the
-  token only gates pushes (the post-build push hook has not been ported yet).
+- `netrc` contains only the cache.nix-ci.com entry (HTTPS).
+- attic's `cache-local` answers unauthenticated reads on the LAN, so pulls
+  need no credential. The token only gates pushes (the post-build push hook
+  has not been ported yet). Never put it in netrc: the attic substituters are
+  plain HTTP, and Nix would send it in clear.
 - emerald has no clan host certificate yet, so builder trust pins its host
   key (`keys/emerald-host-ed25519.pub`).

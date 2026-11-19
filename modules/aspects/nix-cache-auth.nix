@@ -22,17 +22,13 @@
         };
         files.attic-token = { };
         files.netrc = { };
-        # INVARIANT: netrc = nix-ci entry + one attic entry per substituter
-        # host name. Attic accepts the token as the netrc password.
+        # SECURITY: netrc holds only the HTTPS nix-ci entry. The attic
+        # substituters are plain HTTP and readable anonymously, so a netrc
+        # entry would send the push-capable token in clear for no benefit.
+        # attic-token is kept for the (unported) post-build push hook.
         script = ''
           cp "$prompts/attic-token" "$out/attic-token"
-          {
-            cat "$prompts/nix-ci-netrc"
-            echo
-            for host in attic-cache 10.10.11.55; do
-              echo "machine $host password $(cat "$prompts/attic-token")"
-            done
-          } > "$out/netrc"
+          cp "$prompts/nix-ci-netrc" "$out/netrc"
         '';
       };
 
