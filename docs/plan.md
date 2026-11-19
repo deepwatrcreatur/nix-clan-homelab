@@ -88,3 +88,47 @@ elitedesk, router. unified is archived last.
 - unified's `den/` is a local den-inspired framework, not upstream den.
   Porting aspects (`nch-sny` foundation bead) means rewriting them as
   `den.aspects.*`, not importing unified's files.
+
+### nch-sny.2: install with clan + nixos-facter (done)
+
+`clan-spike` is VM 100 on pve-rog (2 cores, 4 GB, 32 GB on local-lvm,
+vmbr0). Steps, all from emerald:
+
+1. `nix build .#installer-iso` (NixOS minimal ISO + clan's installer module;
+   root accepts the operator keys), copy to pve-rog `local:iso`.
+2. `qm create` with `--boot 'order=scsi0;ide2' --start 1`: the blank disk
+   falls through to the ISO now, and the installed system boots from disk
+   after clan's reboot. Find the DHCP address with `ip neigh` on router (MAC
+   from `qm config`).
+3. Check the installer's host key before trusting the address: on the VM
+   console run `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub` and compare
+   it with what `ssh-keyscan <ip> | ssh-keygen -lf -` prints from emerald.
+   The key is ephemeral (new on every ISO boot), so it is checked once here
+   rather than stored.
+4. `clan machines install clan-spike --target-host root@<ip>
+   --update-hardware-config nixos-facter --phases disko,install,reboot
+   --host-key-check none --yes`.
+   - kexec skipped: the installer already runs NixOS.
+   - Keep the reboot phase. Skipping it and force-stopping the VM left the
+     ESP's FAT filesystem corrupt (grub-install later failed on a read-only
+     /boot); clan's reboot unmounts and syncs first.
+   - A host already running another Linux uses the default phases
+     (`kexec,disko,install,reboot`): kexec boots the installer in memory and
+     the final reboot boots the installed system from its own disk, so no
+     boot-order change is needed.
+
+Observations:
+
+- Clan collects facter.json first and builds with it, then commits three
+  things itself: `machines/<m>/facter.json`, `inventory.json` (install time)
+  and a non-secret `vars/per-machine/<m>/state-version`. The commits use the
+  local git identity and no trailers; review them before pushing.
+- No identity or rekey step was needed. That is the comparison point for
+  nch-sny.3, when the first secret var arrives.
+- `hardware.facter.reportPath` is set automatically when facter.json exists.
+- Compared with unified (`just gen-identity`, `just rekey`, `just install`,
+  hardware-configuration.nix by hand): one command plus VM plumbing. A host
+  already running Linux needs only steps 3-4, with kexec.
+- Open for nch-sny.4/.5: root has no authorized keys (the clan `sshd` service
+  sets them), and the address is a dynamic lease; `clan machines update`
+  needs a target host.
