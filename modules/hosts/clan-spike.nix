@@ -2,7 +2,7 @@
 { den, inputs, ... }:
 {
   den.aspects.clan-spike = {
-    includes = [ den.aspects.base ];
+    includes = [ den.aspects.nixos-base ];
     nixos =
       { config, pkgs, ... }:
       let
