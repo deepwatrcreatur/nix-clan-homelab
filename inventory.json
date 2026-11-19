@@ -2,6 +2,9 @@
   "machines": {
     "clan-spike": {
       "installedAt": 1795029516
+    },
+    "elitedesk": {
+      "installedAt": 1795031216
     }
   }
 }

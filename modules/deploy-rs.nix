@@ -15,6 +15,8 @@
     {
       hostname = host.sshTarget;
       inherit (host) sshUser;
+      # WHY: same certificate check as clan's targetHost (modules/clan.nix).
+      sshOpts = [ "-o" "HostKeyAlias=${name}.${config.homelab.domain}" ];
       # GOTCHA: deploy-rs activates as the SSH user unless told otherwise;
       # a non-root sshUser then fails to switch the system and rolls back.
       user = "root";

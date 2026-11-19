@@ -24,7 +24,7 @@ in
     _: names:
     lib.genAttrs names (name: {
       intoAttr = [ ];
-      users = lib.optionalAttrs (name == "clan-spike") { deepwatrcreatur = { }; };
+      users.deepwatrcreatur = { };
     })
   ) bySystem;
 }

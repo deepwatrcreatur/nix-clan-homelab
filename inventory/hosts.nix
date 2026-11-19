@@ -79,6 +79,9 @@
     sshUser = "deepwatrcreatur";
     description = "Bare-metal router host (HP EliteDesk), standby to router";
     includeDns = false;
+    # WHY: first bare-metal clan machine (nch-sny.21); runs no router services
+    # until the router aspects are ported.
+    migrated = true;
     roles = [
       "router"
       "router-standby"
