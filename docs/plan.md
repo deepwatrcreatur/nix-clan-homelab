@@ -74,6 +74,45 @@ remains authoritative for operating it.
 - Migrate elitedesk (standby) before router, with console access ready.
 - Never deploy a router change without the user available.
 
+### Router role and elitedesk standby (nch-sny.26)
+
+The den router aspect reads the mode, interface names and MACs, addresses,
+WAN bandwidth and VRRP priority from inventory. Elitedesk is a manual spare.
+The WAN is cabled to the ISP modem through a WAN-only unmanaged switch and a
+second switch acting as a media converter. Its X520 port 0 uses 10G-SR fibre,
+with a 2.5 Gbit RJ45 inter-switch link limiting the end-to-end rate. Leave WAN
+administratively down until the user approves failover testing.
+
+Clan configures the LAN default route through the live router and keeps SSH
+reachable on the management interface with loose IPv4 reverse-path filtering.
+The router aspect uses Clan vars for the Technitium password and SNMP
+community. Primary mode also declares the Kea TSIG, Cloudflare, and Tailscale
+credentials. The primary router migration and VRRP operation are separate
+work. User passwords remain tracked in nch-sny.11.
+
+Evaluated both flakes' `nixosConfigurations.elitedesk.config` (unified at
+`dc759e8dc76a3095d6a13c994271a68124b23dc5`). Firewall lists below are
+deduplicated and sorted.
+
+| Evaluated option | Unified | Clan |
+| --- | --- | --- |
+| Router networking, firewall, homelab, observability, Pangolin, SNMP, Technitium and SSH | Enabled | Enabled |
+| Kea, DDNS, UPnP, mDNS reflection and Tailscale | Disabled | Disabled |
+| WAN device, activation policy, DHCP | `enp1s0f0`, `down`, `yes` | `enp1s0f0`, `always-down`, `no` |
+| LAN and management device/address | `enp1s0f1` / `10.10.10.4/16`, `eno1` / `192.168.100.98/24` | Same |
+| LAN and management IPv6 RA | Disabled | Disabled |
+| `router-firewall.trustedTcpPorts` | 80, 443, 3000, 3001, 3002, 5380, 8888, 9090, 16000, 19999, 26000, 53443 | Same |
+| `router-firewall.trustedUdpPorts` | 69, 123, 161, 4011 | Same |
+| `networking.firewall.checkReversePath` | `true` | `loose`, with matching kernel settings under the router nftables firewall |
+| Technitium scopes, reservations, NTP servers, forced blocklist refresh | `{}`, `{}`, `[]`, `false` | Same |
+| Technitium bootstrap password secret and API key secret name | `technitium-admin-password`, `null` | Same names, using a Clan var for the password |
+| Router VPN | Enabled with placeholder WireGuard peers | Disabled |
+
+The `router-standby` flake check evaluates WAN activation, DHCP and the
+exclusive service settings for migrated standby hosts. Use
+`nix develop -c fleet-deploy --dry-run elitedesk` to verify dispatcher routing
+through deploy-rs.
+
 ## Who does what
 
 - `owner:any`: any agent (Claude, Codex, agy) may claim it.

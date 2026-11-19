@@ -16,6 +16,11 @@
       flake = false;
     };
 
+    nix-router-optimized = {
+      url = "github:deepwatrcreatur/nix-router-optimized/6795ddca02f3cfe4adf08f200057ba98b8a6052b";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     den.url = "github:denful/den/latest";
     import-tree.url = "github:vic/import-tree";
 

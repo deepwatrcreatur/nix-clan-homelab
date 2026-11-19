@@ -79,9 +79,29 @@
     sshUser = "deepwatrcreatur";
     description = "Bare-metal router host (HP EliteDesk), standby to router";
     includeDns = false;
-    # WHY: first bare-metal clan machine (nch-sny.21); runs no router services
-    # until the router aspects are ported.
     migrated = true;
+    router = {
+      mode = "standby";
+      devices = {
+        wan = {
+          name = "enp1s0f0";
+          mac = "90:e2:ba:7f:e0:3c";
+        };
+        lan = {
+          name = "enp1s0f1";
+          mac = "90:e2:ba:7f:e0:3d";
+        };
+        management = {
+          name = "eno1";
+          mac = "24:be:05:06:9b:09";
+        };
+      };
+      lanAddress = "10.10.10.4/16";
+      managementAddress = "192.168.100.98/24";
+      wanBandwidth = "2.5Gbit";
+      # WHY: preferred primary (docs/router-election.md); router gets 100.
+      vrrpPriority = 110;
+    };
     roles = [
       "router"
       "router-standby"

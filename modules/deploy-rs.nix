@@ -20,6 +20,11 @@
       # GOTCHA: deploy-rs activates as the SSH user unless told otherwise;
       # a non-root sshUser then fails to switch the system and rolls back.
       user = "root";
+      # WHY: router activations retune NICs (router-offload-negotiate) and
+      # bounce the deploy link for seconds; the 30 s default timed out on
+      # elitedesk's first router-role deploy and left the profile rolled back
+      # while the new system kept running.
+      confirmTimeout = 120;
       autoRollback = true;
       magicRollback = true;
       profiles.system.path = inputs.deploy-rs.lib.x86_64-linux.activate.nixos nixos;
