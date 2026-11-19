@@ -1,5 +1,16 @@
 # den: hosts, users and aspects. Hosts are instantiated by clan, not den.
-{ inputs, den, lib, ... }:
+{
+  config,
+  inputs,
+  den,
+  lib,
+  ...
+}:
+let
+  hosts = config.homelab.hosts;
+  migrated = lib.filterAttrs (_: host: host.migrated && !host.archived) hosts;
+  bySystem = lib.groupBy (name: migrated.${name}.system) (builtins.attrNames migrated);
+in
 {
   imports = [ inputs.den.flakeModule ];
 
@@ -9,8 +20,11 @@
   den.schema.host.includes = [ den.batteries.user-aspects ];
   den.default.homeManager.home.stateVersion = lib.mkDefault "26.05";
 
-  den.hosts.x86_64-linux.clan-spike = {
-    intoAttr = [ ];
-    users.deepwatrcreatur = { };
-  };
+  den.hosts = lib.mapAttrs (
+    _: names:
+    lib.genAttrs names (name: {
+      intoAttr = [ ];
+      users = lib.optionalAttrs (name == "clan-spike") { deepwatrcreatur = { }; };
+    })
+  ) bySystem;
 }

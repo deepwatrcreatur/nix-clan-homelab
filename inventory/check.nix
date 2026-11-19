@@ -1,0 +1,95 @@
+{
+  lib,
+  pkgs,
+  hosts,
+  unified,
+}:
+let
+  legacyNetwork = (import (unified + "/lib/hosts.nix")).hosts;
+  legacyComposition = lib.filterAttrs (_: host: !(host.archived or false)) (
+    (import (unified + "/den/inventory/hosts.nix")) // (import (unified + "/den/inventory/darwin.nix"))
+  );
+  legacyBuilder = import (unified + "/lib/remote-builder.nix") { };
+
+  active = lib.filterAttrs (name: host: !(host.archived || name == "clan-spike")) hosts;
+  legacyNames = lib.unique (builtins.attrNames legacyNetwork ++ builtins.attrNames legacyComposition);
+  withRole = role: lib.filterAttrs (_: host: builtins.elem role host.roles);
+  builderClients = withRole "remoteBuilderClient" hosts;
+  cacheServers = withRole "cacheServer" hosts;
+
+  sort = lib.sort builtins.lessThan;
+  sameNames = actual: expected: sort actual == sort expected;
+
+  networkMatches = lib.mapAttrsToList (
+    name: legacy:
+    let
+      host = hosts.${name} or null;
+    in
+    lib.optional (
+      host == null
+      ||
+        host.addresses != {
+          ip = legacy.ip or null;
+          hostname = legacy.hostname or null;
+          sshHostname = legacy.sshHostname or null;
+        }
+      || host.sshUser != (legacy.sshUser or "deepwatrcreatur")
+      || host.aliases != (legacy.aliases or [ ])
+      || host.description != (legacy.description or "")
+      || host.includeDns != (legacy.includeDns or true)
+      || host.includeSsh != (legacy.includeSsh or true)
+    ) "Network inventory differs for ${name}"
+  ) legacyNetwork;
+
+  compositionMatches = lib.mapAttrsToList (
+    name: legacy:
+    let
+      host = hosts.${name} or null;
+    in
+    lib.optional (
+      host == null
+      || host.kind != legacy.kind
+      || host.system != legacy.system
+      || host.sshUser != (legacy.username or (legacyNetwork.${name}.sshUser or "deepwatrcreatur"))
+    ) "System inventory differs for ${name}"
+  ) legacyComposition;
+
+  errors =
+    lib.optional (!sameNames (builtins.attrNames active) legacyNames) "Active host names differ"
+    ++ lib.concatLists networkMatches
+    ++ lib.concatLists compositionMatches
+    ++ lib.optional (
+      !sameNames (builtins.attrNames (
+        lib.filterAttrs (_: host: host.kind == "nixos") builderClients
+      )) legacyBuilder.nixosHosts
+    ) "NixOS builder clients differ"
+    ++ lib.optional (
+      !sameNames (builtins.attrNames (
+        lib.filterAttrs (_: host: host.kind != "nixos") builderClients
+      )) legacyBuilder.nonNixosHosts
+    ) "Non-NixOS builder clients differ"
+    ++ lib.optional (
+      !sameNames (lib.concatLists (
+        lib.mapAttrsToList (name: host: [ name ] ++ host.cacheAliases) cacheServers
+      )) legacyBuilder.cacheHosts
+    ) "Cache servers differ"
+    ++ lib.optional (
+      !(lib.all (host: lib.all (alias: builtins.elem alias host.aliases) host.cacheAliases) (
+        builtins.attrValues cacheServers
+      ))
+    ) "Legacy cache names must be host aliases"
+    ++ lib.optional (
+      !sameNames (builtins.attrNames (withRole "router" active)) (
+        builtins.attrNames (
+          lib.filterAttrs (_: host: builtins.elem "router-router" (host.aspectsList or [ ])) legacyComposition
+        )
+      )
+    ) "Router-class hosts differ"
+    ++ lib.optional (
+      !sameNames (builtins.attrNames (withRole "desktop" active)) (
+        builtins.attrNames (lib.filterAttrs (_: host: host.isDesktop or false) legacyComposition)
+      )
+    ) "Desktops differ";
+in
+assert lib.assertMsg (errors == [ ]) (lib.concatStringsSep "\n" errors);
+pkgs.runCommand "inventory-matches-unified" { } "touch $out"
