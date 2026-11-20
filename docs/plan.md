@@ -113,6 +113,13 @@ exclusive service settings for migrated standby hosts. Use
 `nix develop -c fleet-deploy --dry-run elitedesk` to verify dispatcher routing
 through deploy-rs.
 
+## Self-hosted CI
+
+Separate from the migration: buildbot-nix on emerald, building flake checks
+for GitHub PRs and pushing to Attic (garnix's open-sourced code was a poor fit). Handoff:
+[`self-hosted-ci.md`](./self-hosted-ci.md), epic `nch-ktp`. Deploying it waits
+for emerald's migration (`nch-sny.20`).
+
 ## Who does what
 
 - `owner:any`: any agent (Claude, Codex, agy) may claim it.
