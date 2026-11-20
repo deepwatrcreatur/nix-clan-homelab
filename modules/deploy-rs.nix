@@ -25,6 +25,11 @@
       # elitedesk's first router-role deploy and left the profile rolled back
       # while the new system kept running.
       confirmTimeout = 120;
+      # WHY: push every path from the deployer. Without it the target
+      # substitutes on its own, and elitedesk's management-only network has
+      # no internet: the substituters timed out and the copy aborted
+      # (2026-11-20). Routers shouldn't depend on caches mid-deploy anyway.
+      fastConnection = true;
       autoRollback = true;
       magicRollback = true;
       profiles.system.path = inputs.deploy-rs.lib.x86_64-linux.activate.nixos nixos;
