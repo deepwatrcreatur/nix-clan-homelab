@@ -471,6 +471,9 @@ in
 
         router.monitoring = {
           alerting.enable = true;
+          # NIC chip and SFP temperatures/optics for the "Router Hardware"
+          # dashboard; docs/router-hardware.md.
+          hardwareSensors.enable = true;
           grafanaDomain = "grafana.${fleet.domain}";
           grafanaDataDir = "/var/log/router/grafana";
           listenAddress = "0.0.0.0";
@@ -502,6 +505,27 @@ in
       in
       assert lib.all (name: lib.assertMsg (ok name) "${name}: router alerting (ntfy + per-router watchdog) is not wired.") (lib.attrNames routers);
       pkgs.runCommand "router-alerting" { } "touch $out";
+
+    # WHY: every router graphs its NIC chip and SFP temperatures
+    # (docs/router-hardware.md): the collector runs on a timer and
+    # node_exporter reads its textfile directory.
+    checks.router-hw-sensors =
+      let
+        routers = lib.filterAttrs (_: host: host.migrated && !host.archived && host.router != null) fleet.hosts;
+        ok =
+          name:
+          let
+            cfg = config.flake.nixosConfigurations.${name}.config;
+            node = cfg.services.prometheus.exporters.node;
+          in
+          cfg.router.monitoring.hardwareSensors.enable
+          && cfg.systemd.timers ? router-hw-sensors
+          && lib.elem "textfile" node.enabledCollectors
+          && lib.elem "--collector.textfile.directory=/run/router-hw-sensors" node.extraFlags
+          && cfg.environment.etc ? "grafana-dashboards/router-hardware.json";
+      in
+      assert lib.all (name: lib.assertMsg (ok name) "${name}: router hardware sensors (timer, textfile collector, dashboard) are not wired.") (lib.attrNames routers);
+      pkgs.runCommand "router-hw-sensors" { } "touch $out";
 
     # WHY: proves the NIC alerts fire, including flap bursts between scrapes.
     checks.router-nic-alerts =
