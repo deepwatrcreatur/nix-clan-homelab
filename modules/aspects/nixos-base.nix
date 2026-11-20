@@ -76,7 +76,8 @@
           ];
 
           # Cache credentials: the nix-cache-auth aspect, included per host.
-          # TODO(nch-sny.11): declarative root / user passwords via agenix/clan vars
+          # Console passwords: the console-password aspect, included per
+          # clan host (it declares clan vars, so not here).
         };
 
         programs.fish.enable = true;

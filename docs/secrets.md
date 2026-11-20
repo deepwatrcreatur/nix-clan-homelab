@@ -25,7 +25,7 @@ commit before pushing.
 | Domain | Aspects | Vars | Status |
 | --- | --- | --- | --- |
 | cache/builder | `nix-cache-auth`, `remote-builder-client` | `nix-cache-auth/{attic-token,netrc}`, `nix-remote-builder/key` | imported; verified on clan-spike |
-| user/operator | | user passwords, github-token, API keys | todo |
+| user/operator | `console-password` (per clan host) | `console-password/{root,deepwatrcreatur}` (yescrypt hashes); github-token, API keys still todo | console passwords declared; generate with `clan-admin vars generate <machine> --generator console-password` |
 | homeserver services | | | todo |
 | router services | | | todo |
 
