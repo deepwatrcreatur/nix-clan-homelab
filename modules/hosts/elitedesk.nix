@@ -6,16 +6,16 @@
     # (routers hold no outbound keys or fleet credentials).
     includes = [
       den.aspects.nixos-base
+      den.aspects.console-password
       den.aspects.router-role
     ];
     nixos = {
       imports = [ ../../machines/elitedesk/disko.nix ];
       system.stateVersion = "26.05";
 
-      # GOTCHA: the X520-2 is Oracle-branded (subsystem 108e:7b11); ixgbe
-      # refuses its third-party SFP+ modules without this, and the LAN port
-      # shows no carrier.
-      boot.extraModprobeConfig = "options ixgbe allow_unsupported_sfp=1";
+      # The Oracle X520 (and its ixgbe allow_unsupported_sfp option) was
+      # replaced by a ConnectX-4 Lx on 2026-11-20 (nch-sny.31); mlx5 accepts
+      # the DAC and SR modules without options.
       # WHY: rescue boot from USB; facter lists only present devices.
       boot.initrd.availableKernelModules = [ "usb_storage" ];
 

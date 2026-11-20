@@ -4,6 +4,7 @@
   den.aspects.clan-spike = {
     includes = [
       den.aspects.nixos-base
+      den.aspects.console-password
       den.aspects.nix-cache-auth
       den.aspects.remote-builder-client
     ];

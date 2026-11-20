@@ -82,14 +82,17 @@
     migrated = true;
     router = {
       mode = "standby";
+      # ConnectX-4 Lx (mlx5) since 2026-11-20, replacing the X520 that
+      # dropped off PCIe twice (nch-sny.31). Port 0 has the LAN DAC, port 1
+      # the WAN 10G-SR optic: the reverse of the X520 layout.
       devices = {
         wan = {
-          name = "enp1s0f0";
-          mac = "90:e2:ba:7f:e0:3c";
+          name = "enp1s0f1np1";
+          mac = "ec:0d:9a:49:a8:1f";
         };
         lan = {
-          name = "enp1s0f1";
-          mac = "90:e2:ba:7f:e0:3d";
+          name = "enp1s0f0np0";
+          mac = "ec:0d:9a:49:a8:1e";
         };
         management = {
           name = "eno1";
