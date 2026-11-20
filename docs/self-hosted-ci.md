@@ -14,15 +14,29 @@ cache, so deploys and other machines reuse them. The maintainer asked for
 
 ## Why not garnix
 
-garnix is a hosted service: it builds on garnix's machines, and its docs
-describe no self-hosted runner. Self-hosting is at most mentioned as an
-enterprise arrangement. It cannot run on emerald. The repos already use a
-hosted service of the same kind, NixCI (the `NixCI` check on PRs).
+garnix shut down its hosted service on 2026-07-15 (the team joined Shopify)
+and released its code as `garnix-io/garnix-ci` (BSD-3-Clause). So it *can*
+be self-hosted, but it is a poor fit here:
 
-The self-hosted equivalents considered:
+- **No upkeep upstream:** the code was dumped without history on
+  2026-05-27, and nothing has changed since June. Active maintenance happens
+  in forks; the most active is `OSSystems/garnix-ci`, with commits in
+  November 2026.
+- **Many moving parts:** it was garnix's own multi-tenant SaaS. A Haskell
+  backend, a frontend, PostgreSQL, OpenSearch, DNS, a hosting gateway,
+  monitoring and sops-managed secrets run as several machines. The README
+  documents a development deployment in local VMs (nixos-compose), not a
+  production install.
+- **Webhooks:** the backend is driven by GitHub App webhooks, which
+  conflicts with ADR 0002's choice of polling and no inbound access.
+- **No migration benefit:** the repos use NixCI, not `garnix.yaml`.
+
+Revisit if a fork turns it into a maintained, single-host NixOS module.
+The repos already use a hosted service (NixCI, the `NixCI` check on PRs).
 
 | Option | What it is | Verdict |
 | --- | --- | --- |
+| garnix-ci (open-sourced garnix) | garnix's SaaS stack, BSD-3, maintained in forks | Rejected for now (above). |
 | **buildbot-nix** (nix-community) | NixOS module: Buildbot master and worker that evaluate a flake's `checks` with nix-eval-jobs, build them in the Nix sandbox, and post GitHub commit statuses. Login with GitHub, Gitea or OIDC. | **Recommended.** Closest to garnix/NixCI behaviour, packaged as a NixOS module, widely used (nix-community's own CI). |
 | nixbot (Mic92) | Single-service rewrite of buildbot-nix by its author | Watch, don't adopt yet: newer, smaller user base. Re-check if buildbot-nix stalls. |
 | Self-hosted NixCI | The vendor says NixCI can be self-hosted | Check licence and price before considering; it would keep the current check names. |
@@ -171,7 +185,9 @@ required check passes and bot findings are answered.
 
 ## Sources
 
-- garnix docs (hosted service): https://garnix.io/docs/getting-started/
+- garnix shutdown and open-source release: https://garnix.io/blog/shutting-down/
+- garnix-ci source: https://github.com/garnix-io/garnix-ci
+  (active fork: https://github.com/OSSystems/garnix-ci)
 - NixCI comparison page (vendor claims about self-hosting):
   https://nix-ci.com/comparison/garnix
 - buildbot-nix: https://github.com/nix-community/buildbot-nix

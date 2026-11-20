@@ -116,7 +116,7 @@ through deploy-rs.
 ## Self-hosted CI
 
 Separate from the migration: buildbot-nix on emerald, building flake checks
-for GitHub PRs and pushing to Attic (garnix is hosted-only). Handoff:
+for GitHub PRs and pushing to Attic (garnix's open-sourced code was a poor fit). Handoff:
 [`self-hosted-ci.md`](./self-hosted-ci.md), epic `nch-ktp`. Deploying it waits
 for emerald's migration (`nch-sny.20`).
 

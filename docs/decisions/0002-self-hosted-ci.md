@@ -6,7 +6,9 @@ Design: [`docs/self-hosted-ci.md`](../self-hosted-ci.md).
 ## Decision
 
 - Run buildbot-nix directly on emerald (not an Incus or pve-rog VM). garnix
-  was the starting request, but it is hosted-only.
+  was the starting request. Its open-sourced code (garnix-ci) is
+  unmaintained upstream, a multi-service SaaS stack, and webhook-driven,
+  so it was not chosen (design doc, "Why not garnix").
 - Build it as a den aspect in this repo with clan vars, deployed with or
   after emerald's migration (`nch-sny.20`). Nothing is added to unified.
 - Poll GitHub; no webhook route and no public exposure. The UI is for LAN
