@@ -471,6 +471,9 @@ in
 
         router.monitoring = {
           alerting.enable = true;
+          # NIC chip and SFP temperatures/optics for the "Router Hardware"
+          # dashboard (docs/router-hardware-monitoring.md upstream).
+          hardwareSensors.enable = true;
           grafanaDomain = "grafana.${fleet.domain}";
           grafanaDataDir = "/var/log/router/grafana";
           listenAddress = "0.0.0.0";
