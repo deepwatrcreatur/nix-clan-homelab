@@ -1,6 +1,7 @@
 # Self-hosted Nix CI on emerald (handoff)
 
-Status: **proposed** (2026-11-20). Beads: epic `nch-ktp` (`beads-rust show nch-ktp`).
+Status: **accepted** (2026-11-20; decisions in
+[ADR 0002](./decisions/0002-self-hosted-ci.md)). Beads: epic `nch-ktp` (`beads-rust show nch-ktp`).
 Audience: the agent implementing it (Codex) and the maintainer. Read this
 whole page and `docs/plan.md` first.
 
@@ -62,16 +63,15 @@ reasons (see "Untrusted pull requests"), not for performance.
 ## Where the configuration lives
 
 emerald is not migrated yet (`nch-sny.20`). Until a host migrates, unified
-stays authoritative for operating it (`docs/plan.md#inventory`). Two paths:
+stays authoritative for operating it (`docs/plan.md#inventory`). The
+maintainer chose path 1 (ADR 0002).
 
-1. **Recommended:** write the CI as a den aspect in this repo
+1. **Chosen:** write the CI as a den aspect in this repo
    (`ci-buildbot-nix`), with secrets as clan vars, and deploy it with or
    after emerald's migration. No throwaway agenix work.
 2. If CI is wanted before emerald migrates: put the same aspect in unified
-   with agenix secrets, then port it during `nch-sny.20`. Ask the maintainer
-   before choosing this; it doubles the secret work.
-
-The beads assume path 1.
+   with agenix secrets, then port it during `nch-sny.20`. Not chosen: it
+   doubles the secret work.
 
 ## Design
 
@@ -93,46 +93,39 @@ The beads assume path 1.
 ### Secrets (clan vars, generators on emerald only)
 
 - GitHub App ID and private key (prompted)
-- GitHub webhook secret (generated)
 - OAuth or OIDC client secret (prompted from GitHub, or from Authentik)
 - Worker password shared by master and worker (generated)
 - Attic CI push token (prompted, created with `atticadm`)
 
 None of these go into the Nix store. Follow `docs/secrets.md`.
 
-### Reaching emerald from GitHub
+### Polling, no inbound access (decided)
 
-GitHub must deliver webhooks. emerald is on the LAN (10.10.11.55) with no
-public port. Options, in order of preference:
+The CI serves only the homelab, so nothing is exposed: no webhook route, no
+tunnel, no router change. emerald polls GitHub for new commits, and the
+GitHub App is used outbound only, to read repos and post commit statuses.
+The web UI is reachable only from the LAN and Tailscale (the maintainer
+reaches `*.deepwatercreature.com` remotely through Tailscale split DNS to
+Technitium). The firewall on emerald limits the UI port to those ranges.
 
-1. **Route through the router's Caddy** as `ci.deepwatercreature.com`:
-   - The webhook path (`/change_hook/github`) is public and checked by its
-     secret.
-   - Everything else is behind Authentik forward-auth or the trusted-CIDR
-     matcher that `caddy.nix` in unified already uses (LAN and Tailscale
-     ranges).
-   - This is a router change (`hosts/nixos/router/caddy.nix` in unified),
-     so the maintainer must be present to deploy it.
-2. **Pangolin tunnel** if Caddy routing is unwanted.
-3. **Polling** instead of webhooks, if buildbot-nix's pull-based mode suits
-   GitHub repos at the pinned version. No exposure, but status arrives
-   later.
+Verify at the pinned buildbot-nix version how polling works for GitHub
+repos (its pull-based mode, or a polling change source):
+- does it build every branch, or only the default branch?
+- does it still post commit statuses through the GitHub App?
 
-The web UI is used over the LAN or Tailscale. The maintainer already reaches
-`*.deepwatercreature.com` remotely through Tailscale split DNS to Technitium.
+The maintainer's PRs come from branches in the same repo, so polling all
+branches covers them. If statuses cannot be posted without webhooks, stop
+and ask the maintainer: they may accept build results in the UI only, or
+reconsider a webhook route.
 
 ### Untrusted pull requests
 
-nix-router-optimized is public. A pull request from a fork runs its own Nix
-code on emerald: the sandbox contains builds, but VM tests get KVM and
-eval runs on the host.
-
-- Configure buildbot-nix to build pull requests only from the repo owner,
-  or only after a maintainer approves them. Check what the pinned version
-  offers, and document the setting in the aspect with a `# SECURITY:`
-  comment.
-- If no such control exists, keep fork PRs on hosted NixCI only and build
-  just the default branch and the owner's branches on emerald.
+nix-router-optimized is public, and a fork's pull request would run its own
+Nix code on emerald (VM tests get KVM). Polling only the maintainer's own
+repos and branches never fetches fork PRs. Keep it that way, and note it in
+the aspect with a `# SECURITY:` comment. Fork PRs, if any, stay on hosted
+NixCI while it exists, or are reviewed before a maintainer pushes the
+branch themselves.
 
 ### Repos to onboard
 
@@ -148,8 +141,9 @@ Run both for two weeks on nix-router-optimized and compare:
 - flaky failures, especially VM tests;
 - cache hits on later local builds.
 
-Then the maintainer decides whether NixCI stays as a second opinion
-(different hardware catches load-dependent flakes) or is removed.
+Decision (ADR 0002): if emerald meets the acceptance criteria during the
+trial, the maintainer reduces or ends the nix-ci.com plan and relies on
+emerald. Record the measured numbers in ADR 0002 before changing the plan.
 The PR rule from `AGENTS.md` still applies: a PR merges when every
 required check passes and bot findings are answered.
 
@@ -162,17 +156,18 @@ required check passes and bot findings are answered.
   host fetches from Attic instead of building.
 - With CI running a full nix-router-optimized build, emerald's desktop stays
   responsive. CPU weight and memory limits hold; check with `systemd-cgtop`.
-- The web UI requires Authentik (or GitHub) login from outside the trusted
-  ranges. Only the webhook path is reachable without login, and it rejects
-  unsigned requests.
+- Nothing is reachable from the internet: no public DNS record or router
+  route for the CI, and the UI port answers only LAN and Tailscale clients.
+- New commits on the maintainer's branches start builds within the polling
+  interval, and fork PRs are never built.
 - No secret appears in the Nix store (`nix-store --query --references` on
   the system closure plus a grep for the App ID file contents).
 
-## Open questions for the maintainer
+## Decisions (ADR 0002)
 
-1. Path 1 (wait for emerald's clan migration) or path 2 (unified now)?
-2. Webhooks through the router's Caddy, or polling to avoid any exposure?
-3. Keep NixCI after the comparison?
+1. Deploy with emerald's clan migration (path 1); no work in unified.
+2. Polling and homelab-only access; no inbound route.
+3. If the trial goes well, reduce or end the nix-ci.com plan.
 
 ## Sources
 
