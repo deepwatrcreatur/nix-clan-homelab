@@ -39,6 +39,8 @@ reads the secret from vars.
   alongside that netrc. Router-class hosts use the public cache and
   anonymous Attic reads. Separately scoped NixCI downloads for those hosts
   are tracked in `nch-sny.38`.
+- The `nix-cache-auth` flake check verifies the NixCI endpoint, key and netrc
+  on the exported NixOS configurations and checks the public-cache fallback.
 - attic's `cache-local` answers unauthenticated reads on the LAN, so pulls
   need no credential. The token only gates pushes (the post-build push hook
   has not been ported yet). Never put it in netrc: the attic substituters are

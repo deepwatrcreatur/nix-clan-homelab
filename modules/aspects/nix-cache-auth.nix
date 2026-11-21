@@ -1,5 +1,5 @@
 # NixCI pull authentication and the reserved Attic push credential.
-{ ... }:
+{ config, lib, ... }:
 {
   den.aspects.nix-cache-auth.nixos =
     { config, lib, ... }:
@@ -37,5 +37,31 @@
         trusted-public-keys = [ "nix-ci:g3xV5BDTLtIBZr/A00IU1x0EtKKlb7YLgBN2SgYgM6A=" ];
         netrc-file = gen.files.netrc.path;
       };
+    };
+
+  perSystem =
+    { pkgs, ... }:
+    let
+      invalid = lib.filterAttrs (
+        _: host:
+        let
+          settings = host.config.nix.settings;
+          generator = host.config.clan.core.vars.generators.nix-cache-auth or null;
+          advertisesNixCI = lib.elem "https://cache.nix-ci.com" settings.substituters;
+          trustsNixCI = lib.any (lib.hasPrefix "nix-ci:") settings.trusted-public-keys;
+          netrc = settings.netrc-file or null;
+        in
+        !lib.elem "https://cache.nixos.org" settings.substituters
+        || advertisesNixCI != trustsNixCI
+        || (advertisesNixCI && (netrc == null || netrc == ""))
+        || (generator != null && (!advertisesNixCI || netrc != generator.files.netrc.path))
+      ) config.flake.nixosConfigurations;
+    in
+    {
+      checks.nix-cache-auth =
+        if invalid == { } then
+          pkgs.runCommand "nix-cache-auth" { } "touch $out"
+        else
+          throw "Inconsistent Nix cache settings on ${lib.concatStringsSep ", " (builtins.attrNames invalid)}";
     };
 }
