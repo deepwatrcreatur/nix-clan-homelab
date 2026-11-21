@@ -23,6 +23,7 @@ in
       nixos-base
       home-manager-users
     ];
+    provides.deepwatrcreatur.includes = [ den.aspects.user-workstation-shell ];
     nixos = {
       fileSystems."/" = {
         device = "/dev/vda";

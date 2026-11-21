@@ -117,6 +117,12 @@ definitions. WhiteSur is wired into Phoenix, and Iodyne is absent from
 Emerald's evaluated home inventory. Each of those choices follows the
 audited Emerald configuration at the reference revision.
 
+The shell port begins with the `user-workstation-shell` aspect. The
+`emerald-home-eval` fixture delivers it to the operator through den and
+checks the Starship prompt, Jujutsu tools, bat, eza, fzf, rename, and zoxide
+in the evaluated home inventory. The rest of the shell and CLI port is
+tracked in `nch-sny.37.3`.
+
 ## Part 2: emerald system port (children of `nch-sny.20`)
 
 Mapped from unified main on 2026-11-20.
