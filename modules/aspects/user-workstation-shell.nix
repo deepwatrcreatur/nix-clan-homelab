@@ -7,7 +7,15 @@
       jjStarshipExe = lib.getExe jjStarship;
     in
     {
-      imports = [ ../_hm/emerald-shell/starship.nix ];
+      imports = [
+        ../_hm/emerald-shell/atuin.nix
+        ../_hm/emerald-shell/fd-enhanced.nix
+        ../_hm/emerald-shell/grc.nix
+        ../_hm/emerald-shell/motd.nix
+        ../_hm/emerald-shell/ripgrep-enhanced.nix
+        ../_hm/emerald-shell/starship.nix
+        ../_hm/emerald-shell/tmux-enhanced.nix
+      ];
 
       options.programs.jj.enable = lib.mkEnableOption "Jujutsu prompt integration and terminal tooling";
 

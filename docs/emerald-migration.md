@@ -117,11 +117,12 @@ definitions. WhiteSur is wired into Phoenix, and Iodyne is absent from
 Emerald's evaluated home inventory. Each of those choices follows the
 audited Emerald configuration at the reference revision.
 
-The shell port begins with the `user-workstation-shell` aspect. The
-`emerald-home-eval` fixture delivers it to the operator through den and
-checks the Starship prompt, Jujutsu tools, bat, eza, fzf, rename, and zoxide
-in the evaluated home inventory. The rest of the shell and CLI port is
-tracked in `nch-sny.37.3`.
+The `emerald-home-eval` fixture delivers the `user-workstation-shell`
+aspect to the operator through den. The inventory covers Starship, Jujutsu,
+bat, eza, fzf, rename, zoxide, Atuin, the enhanced fd and ripgrep
+configurations, grc, tmux, and the SSH login banner. The banner points at a
+Clan build. Atuin key migration is tracked in `nch-sny.37.6`; the rest of
+the shell and CLI port is tracked in `nch-sny.37.3`.
 
 ## Part 2: emerald system port (children of `nch-sny.20`)
 
