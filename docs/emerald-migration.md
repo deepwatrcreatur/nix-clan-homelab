@@ -147,7 +147,10 @@ workflow in [secrets.md](./secrets.md).
 
 The fixture also includes the `user-workstation-developer` aspect. Its first
 group covers npm, Cargo, nix-index and comma, Worktrunk, TuiOS, Hunk, and QMD.
-The remaining developer tools are tracked in `nch-sny.37.4`.
+It also includes the pinned dmux, cmux-tui, FrankenTerm, and Herdr packages
+and the local session search command. The fixture enables Herdr's desktop
+app and captures the resulting user unit. Remaining developer tools are
+tracked in `nch-sny.37.4`.
 
 ## Part 2: emerald system port (children of `nch-sny.20`)
 

@@ -27,6 +27,7 @@ in
       user-workstation-shell
       user-workstation-developer
     ];
+    provides.deepwatrcreatur.homeManager.programs.herdr.desktopApp.enable = true;
     nixos = {
       fileSystems."/" = {
         device = "/dev/vda";
