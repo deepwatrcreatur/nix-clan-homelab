@@ -128,6 +128,13 @@ main worktree. Git uses `gh` until the `gh-fnox` wrapper is ported under
 `nch-sny.37.4`. Atuin key migration is tracked in `nch-sny.37.6`. The
 rest of the shell and CLI port is tracked in `nch-sny.37.3`.
 
+The workstation SSH config generates aliases from Clan inventory and keeps
+the operator's dynamic known-hosts file. The managed file contains pinned
+public keys for legacy hosts. Migrated hosts use their canonical DNS name
+for verification against the Clan SSH CA. The generated file replaces the
+unified `ssh-known-hosts-manager` module, so its enable flag remains an
+expected difference.
+
 ## Part 2: emerald system port (children of `nch-sny.20`)
 
 Mapped from unified main on 2026-11-20.

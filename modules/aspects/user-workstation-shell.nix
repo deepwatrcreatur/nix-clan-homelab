@@ -1,4 +1,7 @@
-{ inputs, ... }:
+{ config, inputs, ... }:
+let
+  inherit (config) homelab;
+in
 {
   den.aspects.user-workstation-shell.homeManager =
     { config, lib, pkgs, ... }:
@@ -19,6 +22,7 @@
         (import ../_hm/emerald-shell/packages.nix { inherit inputs; })
         ../_hm/emerald-shell/ripgrep-enhanced.nix
         ../_hm/emerald-shell/shell-aliases.nix
+        (import ../_hm/emerald-shell/ssh.nix { inherit (homelab) domain hosts; })
         ../_hm/emerald-shell/starship.nix
         ../_hm/emerald-shell/tmux-enhanced.nix
       ];

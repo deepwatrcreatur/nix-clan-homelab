@@ -42,9 +42,7 @@
       ".local/bin/zed",
       ".local/share/dbus-1/services",
       ".mozilla/native-messaging-hosts",
-      ".npmrc",
-      ".ssh/config",
-      ".ssh/known_hosts_managed"
+      ".npmrc"
     ]
   },
   "packages": {
@@ -123,7 +121,6 @@
       "repo-updater",
       "rtk",
       "sops",
-      "ssh-bash",
       "stow",
       "t3code",
       "t3code-url-handler.desktop",
@@ -169,7 +166,6 @@
       "rclone-scripts",
       "repo-updater",
       "rtk-hooks",
-      "ssh",
       "ssh-known-hosts-manager",
       "t3code",
       "vicinae",
