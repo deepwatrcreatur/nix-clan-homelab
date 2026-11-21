@@ -120,9 +120,11 @@ audited Emerald configuration at the reference revision.
 The `emerald-home-eval` fixture delivers the `user-workstation-shell`
 aspect to the operator through den. The inventory covers Starship, Jujutsu,
 bat, eza, fzf, rename, zoxide, Atuin, the enhanced fd and ripgrep
-configurations, grc, tmux, and the SSH login banner. The banner points at a
-Clan build. Atuin key migration is tracked in `nch-sny.37.6`; the rest of
-the shell and CLI port is tracked in `nch-sny.37.3`.
+configurations, grc, tmux, the SSH login banner, Fish plugins, Nushell, Zsh,
+and terminal definitions for Ghostty and Kitty. The banner points at a Clan
+build, and the shared shell environment sets `NH_FLAKE` to the Clan main
+worktree. Atuin key migration is tracked in `nch-sny.37.6`. The rest of the
+shell and CLI port is tracked in `nch-sny.37.3`.
 
 ## Part 2: emerald system port (children of `nch-sny.20`)
 

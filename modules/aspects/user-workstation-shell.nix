@@ -9,9 +9,12 @@
     {
       imports = [
         ../_hm/emerald-shell/atuin.nix
+        ../_hm/emerald-shell/environment.nix
         ../_hm/emerald-shell/fd-enhanced.nix
+        ../_hm/emerald-shell/fish.nix
         ../_hm/emerald-shell/grc.nix
         ../_hm/emerald-shell/motd.nix
+        ../_hm/emerald-shell/nushell.nix
         ../_hm/emerald-shell/ripgrep-enhanced.nix
         ../_hm/emerald-shell/starship.nix
         ../_hm/emerald-shell/tmux-enhanced.nix

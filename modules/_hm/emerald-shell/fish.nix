@@ -1,0 +1,150 @@
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
+
+{
+  programs.fish = {
+    enable = true;
+    shellAliases = {
+      rename = "rename -n";
+      rename-apply = "rename";
+    };
+    plugins = [
+      {
+        name = "fzf";
+        src = pkgs.fishPlugins.fzf;
+      }
+      {
+        name = "z";
+        src = pkgs.fishPlugins.z;
+      }
+      {
+        name = "puffer";
+        src = pkgs.fishPlugins.puffer;
+      }
+      {
+        name = "autopair";
+        src = pkgs.fishPlugins.autopair;
+      }
+      {
+        name = "grc";
+        src = pkgs.fishPlugins.grc;
+      }
+    ];
+
+    # shellInit runs for ALL shells (login and non-login) - critical for SSH
+    shellInit = lib.mkAfter ''
+      # Set TERMINFO_DIRS early for SSH sessions with custom terminals (ghostty, kitty)
+      # This must be set before tmux or other programs try to use terminfo
+      set -gx TERMINFO_DIRS "${config.home.homeDirectory}/.terminfo:/usr/share/terminfo"
+
+      # CRITICAL: Set TERM to safe default if empty (happens in non-interactive SSH)
+      # This prevents TUI applications like opencode from failing with "invalid input message type" errors
+      if test -z "$TERM"
+        set -gx TERM xterm-256color
+        set -gx COLORTERM truecolor
+      end
+
+      # Override TERM for ghostty to ensure compatibility with apps that don't
+      # have ghostty terminfo (like kilocode, some ncurses apps)
+      # On macOS: ncurses doesn't respect TERMINFO_DIRS at all
+      # On Linux: some apps still have issues with xterm-ghostty
+      # Setting COLORTERM=truecolor preserves true color support
+      if string match -q "xterm-ghostty" "$TERM"; or string match -q "ghostty" "$TERM"
+        set -gx TERM xterm-256color
+        set -gx COLORTERM truecolor
+      end
+
+      # Keep truecolor enabled in normal SSH/tmux-compatible terminals too.
+      if string match -q "xterm-256color" "$TERM"; or string match -q "screen-256color*" "$TERM"; or string match -q "tmux-256color" "$TERM"
+        set -gx COLORTERM truecolor
+      end
+
+      # Container awareness (distrobox/podman/docker)
+      set -l in_container 0
+      if test -f /.dockerenv; or test -n "$DISTROBOX_ENTER_PATH"; or test -n "$container"
+        set in_container 1
+      end
+
+      if test $in_container -eq 1
+        if test -d "${config.home.homeDirectory}/.local/bin"
+          fish_add_path --append --move "${config.home.homeDirectory}/.local/bin"
+        end
+      end
+
+      # Ensure Nix paths are in PATH early for ALL sessions (especially SSH)
+      # In containers: prioritize Nix/host tools for consistency
+      if test $in_container -eq 1
+        if test -d "${config.home.homeDirectory}/.nix-profile/bin"
+          fish_add_path --prepend --move "${config.home.homeDirectory}/.nix-profile/bin"
+        end
+        if test -d /nix/var/nix/profiles/default/bin
+          fish_add_path --prepend --move /nix/var/nix/profiles/default/bin
+        end
+        if test -d /nix/var/nix/profiles/system/sw/bin
+          fish_add_path --prepend --move /nix/var/nix/profiles/system/sw/bin
+        end
+        if test -d /etc/profiles/per-user/$USER/bin
+          fish_add_path --prepend --move /etc/profiles/per-user/$USER/bin
+        end
+      else
+        if test -d "${config.home.homeDirectory}/.nix-profile/bin"
+          fish_add_path --prepend --move "${config.home.homeDirectory}/.nix-profile/bin"
+        end
+        if test -d /nix/var/nix/profiles/default/bin
+          fish_add_path --prepend --move /nix/var/nix/profiles/default/bin
+        end
+        if test -d /run/current-system/sw/bin
+          fish_add_path --prepend --move /run/current-system/sw/bin
+        end
+        if test -d /run/wrappers/bin
+          fish_add_path --prepend --move /run/wrappers/bin
+        end
+      end
+    '';
+
+    interactiveShellInit = lib.mkAfter ''
+      # MOTD already provides the login banner; suppress fish's stock greeting.
+      set -g fish_greeting
+
+
+      # Reduce escape key delay for better zellij responsiveness
+      set -g fish_escape_delay_ms 10
+
+      # Ensure /run/wrappers/bin is at the front of PATH for NixOS security wrappers
+      if test -d /run/wrappers/bin
+        set -gx PATH /run/wrappers/bin $PATH
+      end
+
+      # Container-only interactive aliases + defaults
+      if test -f /.dockerenv; or test -n "$DISTROBOX_ENTER_PATH"; or test -n "$container"
+        alias ll 'ls -lah'
+
+        if type -q vim
+          set -gx EDITOR vim
+          set -gx VISUAL vim
+        else
+          set -gx EDITOR vi
+          set -gx VISUAL vi
+        end
+      end
+    '';
+
+    functions = {
+      kilocode = {
+        description = "Launch KiloCode with a Ghostty-compatible TERM";
+        # No `wraps` needed: completions for `kilocode` already apply by name.
+        # -lx scopes the TERM override to this invocation instead of
+        # clobbering the interactive shell's TERM for the rest of the session.
+        body = ''
+          set -lx TERM xterm-256color
+          set -lx COLORTERM truecolor
+          command kilocode $argv
+        '';
+      };
+    };
+  };
+}

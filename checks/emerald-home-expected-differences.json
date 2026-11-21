@@ -2,19 +2,11 @@
   "files": {
     "extra": [],
     "missing": [
-      "./.zshenv",
-      "./.zshrc",
       ".cache/nix-index/files",
       ".claude/.keep",
       ".config/bat/syntaxes/ghostty.sublime-syntax",
       ".config/distrobox/fedora.conf",
       ".config/fastfetch/config.jsonc",
-      ".config/fish/conf.d/plugin-autopair.fish",
-      ".config/fish/conf.d/plugin-fzf.fish",
-      ".config/fish/conf.d/plugin-grc.fish",
-      ".config/fish/conf.d/plugin-puffer.fish",
-      ".config/fish/conf.d/plugin-z.fish",
-      ".config/fish/functions/kilocode.fish",
       ".config/fish/functions/yy.fish",
       ".config/fnox/config.toml",
       ".config/ghostty/config",
@@ -27,8 +19,6 @@
       ".config/konveyor/config.kdl",
       ".config/mpv/mpv.conf",
       ".config/nix/nix.conf",
-      ".config/nushell/config.nu",
-      ".config/nushell/env.nu",
       ".config/rbw/config.json",
       ".config/rclone/filter.txt",
       ".config/ru/config",
@@ -60,8 +50,7 @@
       ".mozilla/native-messaging-hosts",
       ".npmrc",
       ".ssh/config",
-      ".ssh/known_hosts_managed",
-      ".terminfo"
+      ".ssh/known_hosts_managed"
     ]
   },
   "packages": {
@@ -164,10 +153,8 @@
       "nh",
       "nh-update-system",
       "nix-index-with-full-db",
-      "nix-zsh-completions",
       "nmap",
       "nodejs",
-      "nushell",
       "omasnap",
       "onedrive-sync",
       "opencode",
@@ -206,8 +193,7 @@
       "yazi",
       "yq",
       "zed-editor",
-      "zellij",
-      "zsh"
+      "zellij"
     ]
   },
   "programs": {
@@ -234,7 +220,6 @@
       "hunk-custom",
       "nh",
       "nix-index",
-      "nushell",
       "orca-ide",
       "plasma",
       "qmd",
@@ -252,8 +237,7 @@
       "yazi",
       "zed-editor",
       "zellij",
-      "zellij-vivid-rounded",
-      "zsh"
+      "zellij-vivid-rounded"
     ]
   }
 }
