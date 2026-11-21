@@ -17,6 +17,7 @@ in
         ../_hm/emerald-shell/fish.nix
         ../_hm/emerald-shell/git.nix
         ../_hm/emerald-shell/helix
+        ../_hm/emerald-shell/just.nix
         ../_hm/emerald-shell/motd.nix
         ../_hm/emerald-shell/nushell.nix
         (import ../_hm/emerald-shell/packages.nix { inherit inputs; })

@@ -135,6 +135,12 @@ for verification against the Clan SSH CA. The generated file replaces the
 unified `ssh-known-hosts-manager` module, so its enable flag remains an
 expected difference.
 
+The workstation Just recipes use the Clan checkout in `NH_FLAKE`.
+`build-nixos` builds a system closure and `test-nixos` previews that build.
+`update`, `nh-update`, and `remote-switch` dispatch through `fleet-deploy`.
+`remote-test` previews that dispatch. Secret operations follow the Clan vars
+workflow in [secrets.md](./secrets.md).
+
 ## Part 2: emerald system port (children of `nch-sny.20`)
 
 Mapped from unified main on 2026-11-20.

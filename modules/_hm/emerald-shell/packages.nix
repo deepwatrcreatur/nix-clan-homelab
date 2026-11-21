@@ -14,7 +14,6 @@ in
     btop
     glances
     bun
-    just
     cloc
     curl
     difftastic
