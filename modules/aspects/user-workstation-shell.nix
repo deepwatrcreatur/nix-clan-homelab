@@ -26,12 +26,22 @@ in
         (import ../_hm/emerald-shell/ssh.nix { inherit (homelab) domain hosts; })
         ../_hm/emerald-shell/starship.nix
         ../_hm/emerald-shell/tmux-enhanced.nix
+        (import ../_hm/emerald-shell/yazelix.nix { inherit (inputs) zellij-vivid-rounded; })
+        inputs.zellij-vivid-rounded.homeManagerModules.default
       ];
 
       options.programs.jj.enable = lib.mkEnableOption "Jujutsu prompt integration and terminal tooling";
 
       config = {
         programs = {
+          home-manager.enable = true;
+          zellij-vivid-rounded.enable = true;
+          nh = {
+            enable = true;
+            clean.enable = true;
+            clean.extraArgs = "--keep-since 4d --keep 3";
+          };
+
           bat = {
             enable = true;
             config = {

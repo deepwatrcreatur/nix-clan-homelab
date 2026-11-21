@@ -14,6 +14,11 @@ let
         )
       )
     );
+  renamedPrograms = [
+    "exa" # programs.eza
+    "gemini-cli" # programs.antigravity-cli
+    "wpaperd" # services.wpaperd
+  ];
 in
 {
   packages = names (map (pkg: pkg.pname or (builtins.parseDrvName pkg.name).name) home.home.packages);
@@ -28,5 +33,5 @@ in
       enabled = builtins.tryEval (home.programs.${name}.enable or false);
     in
     enabled.success && enabled.value == true
-  ) (builtins.attrNames home.programs);
+  ) (builtins.filter (name: !builtins.elem name renamedPrograms) (builtins.attrNames home.programs));
 }

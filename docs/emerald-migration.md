@@ -80,6 +80,9 @@ hyprland, rofi) and other hosts' files.
 From the homelab worktree, evaluate unified at the pinned reference revision.
 This uses unified's own lockfile and extracts package names, enabled file
 targets, and enabled programs for the operator on Emerald.
+The inventory skips deprecated program aliases such as `programs.exa`.
+It records `programs.eza` once, and options moved to `services` are outside
+the enabled-program comparison.
 
 ```bash
 set -o pipefail
@@ -126,7 +129,8 @@ aliases and settings, and the SSH signing agent. The banner points at a
 Clan build, and the shared shell environment sets `NH_FLAKE` to the Clan
 main worktree. Git uses `gh` until the `gh-fnox` wrapper is ported under
 `nch-sny.37.4`. Atuin key migration is tracked in `nch-sny.37.6`. The
-rest of the shell and CLI port is tracked in `nch-sny.37.3`.
+shell aspect also enables the Zellij theme and Yazelix layout, Yazi, and
+the existing `nh` cleanup schedule.
 
 The workstation SSH config generates aliases from Clan inventory and keeps
 the operator's dynamic known-hosts file. The managed file contains pinned
