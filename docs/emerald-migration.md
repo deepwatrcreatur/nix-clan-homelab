@@ -102,6 +102,21 @@ parity check and update `checks/emerald-home-expected-differences.json`.
 Run `nix build --no-link .#checks.x86_64-linux.emerald-home-parity` and
 `nix flake check --no-build` to validate the result.
 
+### Linux Home Manager input pins
+
+The input port reuses unified's locked revisions for the Emerald baseline.
+The shell and CLI port uses `jj-starship` and `zellij-vivid-rounded`.
+Developer tooling uses `dmux-flake`, `fnox`, `herdr`, `hunk`,
+`llm-agents`, `llm-agents-herdr-app`, `nix-cmux-tui`,
+`nix-deepseek-harness`, `nix-frankenterm`, `nix-index-database`,
+`nix-markit`, `nix-rtk`, `qmd` and `leaf`. Desktop integration uses
+`plasma-manager` and the existing `nix-linuxbrew` and `zen-browser` pins.
+
+Worktrunk and beads-rust come from unified's release-binary package
+definitions. WhiteSur is wired into Phoenix, and Iodyne is absent from
+Emerald's evaluated home inventory. Each of those choices follows the
+audited Emerald configuration at the reference revision.
+
 ## Part 2: emerald system port (children of `nch-sny.20`)
 
 Mapped from unified main on 2026-11-20.
