@@ -10,20 +10,38 @@ migration bead is closed. Plan: [`docs/plan.md`](docs/plan.md).
 ## Work queue (beads)
 
 The queue is `.beads/` (beads_rust). On these hosts the CLI is `beads-rust`
-(`br` can be a different Homebrew tool).
+(`br` can be a different Homebrew tool). Reasoning, upstream practice and the
+planned shared queue branch:
+[nix-agent-guides `guides/beads.md`](https://github.com/deepwatrcreatur/nix-agent-guides/blob/main/guides/beads.md).
 
 ```sh
-beads-rust ready                 # unblocked work
-beads-rust show <id>             # description and acceptance criteria
-beads-rust update <id> --status in_progress --assignee <you>
-beads-rust close <id> --reason "<what was done, PR link>"
+git pull --rebase && beads-rust sync --import-only   # first, every session
+beads-rust ready --json                               # unblocked work
+beads-rust show <id>                                  # description and acceptance
+beads-rust update <id> --claim --actor <you>          # atomic claim
+beads-rust close <id> --reason "<what was done, PR link>" --actor <you>
 beads-rust create "<title>" --parent nch-sny -l <labels> -d "<why + acceptance>"
+beads-rust sync --flush-only && git add .beads/       # before every commit
 ```
 
-- Claim before starting, so parallel agents (Claude, Codex, agy) do not
-  collide. Take only `owner:any` beads unless you are Claude working with the
-  user; `owner:claude` beads touch decrypted secrets or live hosts.
+- Claim before starting, so parallel agents (Claude, Codex, agy) on emerald
+  and phoenix do not collide. `CLAIM_CONFLICT` means someone else holds it:
+  pick other work. Take only `owner:any` beads unless you are Claude working
+  with the user; `owner:claude` beads touch decrypted secrets or live hosts.
+- **Don't keep bead changes on a long-lived branch.** Put claims and new beads
+  in their own small commit and PR, and land it quickly. Unpushed bead state is
+  invisible to other agents and other machines.
+- Before creating child beads under a parent, fetch and check open PRs:
+  `<parent>.N` comes from each clone's own counter, so parallel branches mint
+  the same ID.
 - Commit `.beads/issues.jsonl` with the change that closes a bead.
+- A conflict in `.beads/issues.jsonl`: resolve it line by line (one issue per
+  line), then `beads-rust sync --import-only`. A clean git merge while the
+  database also changed: `beads-rust sync --merge`.
+- If acceptance needs a deployed host, put those checks in the deployment or
+  verification bead, not in a bead that bead depends on.
+- Never share `.beads/` through Syncthing, `/storage` or another network mount:
+  `beads.db` is SQLite and machine-local. Git carries the JSONL.
 - Found new work? Create a bead with a dependency rather than widening scope.
 
 ## Layout and validation
