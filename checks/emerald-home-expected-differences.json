@@ -2,24 +2,15 @@
   "files": {
     "extra": [],
     "missing": [
-      ".config/bat/syntaxes/ghostty.sublime-syntax",
-      ".config/fastfetch/config.jsonc",
-      ".config/ghostty/config",
-      ".config/ghostty/themes/Sugarplum",
       ".config/konveyor/config.kdl",
       ".config/mpv/mpv.conf",
       ".config/rbw/config.json",
       ".config/rclone/filter.txt",
-      ".config/systemd/user/app-com.mitchellh.ghostty.service",
-      ".config/systemd/user/app-com.mitchellh.ghostty.service.d/overrides.conf",
       ".config/systemd/user/birdtray.service",
       ".config/systemd/user/graphical-session.target.wants/birdtray.service",
       ".config/systemd/user/graphical-session.target.wants/vicinae.service",
       ".config/systemd/user/vicinae.service",
-      ".gnupg/public-key.asc",
-      ".local/bin/zed",
-      ".local/share/dbus-1/services",
-      ".mozilla/native-messaging-hosts"
+      ".gnupg/public-key.asc"
     ]
   },
   "packages": {
@@ -27,12 +18,7 @@
     "missing": [
       "birdtray",
       "brew",
-      "firefox",
-      "flameshot",
-      "ghostty",
-      "ghostty.desktop",
       "gnupg",
-      "google-chrome",
       "konveyor",
       "krunner",
       "mega-rclone",
@@ -43,26 +29,19 @@
       "rbw",
       "rclone",
       "sops",
-      "vicinae",
-      "vivaldi",
-      "zed-editor"
+      "vicinae"
     ]
   },
   "programs": {
     "extra": [],
     "missing": [
       "bitwarden-cli",
-      "fastfetch-custom",
-      "firefox",
-      "ghostty",
-      "google-chrome",
       "plasma",
       "rbw",
       "rclone",
       "rclone-scripts",
       "ssh-known-hosts-manager",
-      "vicinae",
-      "zed-editor"
+      "vicinae"
     ]
   }
 }

@@ -164,6 +164,11 @@ any existing writable fnox config belong to `nch-sny.37.6`. The Home
 Manager Nix config enables flakes and Nix commands, while system cache
 settings and credentials use the Clan NixOS aspects.
 
+The `user-workstation-desktop` aspect starts with Ghostty and its user unit,
+Zed, Fastfetch, Firefox, Chrome, Vivaldi, and Flameshot. Firefox keeps
+`~/.mozilla/firefox` as its profile path. The remaining desktop work is
+tracked in `nch-sny.37.5`.
+
 ## Part 2: emerald system port (children of `nch-sny.20`)
 
 Mapped from unified main on 2026-11-20.

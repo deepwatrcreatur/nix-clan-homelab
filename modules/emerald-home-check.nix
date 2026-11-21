@@ -26,6 +26,7 @@ in
     provides.deepwatrcreatur.includes = with den.aspects; [
       user-workstation-shell
       user-workstation-developer
+      user-workstation-desktop
     ];
     provides.deepwatrcreatur.homeManager.programs.herdr.desktopApp.enable = true;
     nixos = {
