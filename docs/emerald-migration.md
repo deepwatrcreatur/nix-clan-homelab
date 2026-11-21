@@ -127,8 +127,8 @@ configurations, grc, tmux, the SSH login banner, Fish plugins, Nushell, Zsh,
 terminal definitions for Ghostty and Kitty, Helix, shared CLI packages, Git
 aliases and settings, and the SSH signing agent. The banner points at a
 Clan build, and the shared shell environment sets `NH_FLAKE` to the Clan
-main worktree. Git uses `gh` until the `gh-fnox` wrapper is ported under
-`nch-sny.37.4`. Atuin key migration is tracked in `nch-sny.37.6`. The
+main worktree. Git uses `gh-fnox` in the developer aspect. Atuin key
+migration is tracked in `nch-sny.37.6`. The
 shell aspect also enables the Zellij theme and Yazelix layout, Yazi, and
 the existing `nh` cleanup schedule.
 
@@ -157,7 +157,12 @@ Orca IDE, and repo-updater. T3 Code uses Home Manager's program module and
 the existing Clan daemon module for its user service and URL handler.
 Coding-agent packages use the pinned llm-agents overlay with the Clan
 nixpkgs package set. The developer aspect also wires RTK hooks and the
-command guard into Home Manager activation.
+command guard into Home Manager activation. Fnox provides the GitHub CLI,
+Bitwarden CLI, Claude, and Gemini wrappers. The generated config declares
+public recipients and secret names. Credential seeding and preservation of
+any existing writable fnox config belong to `nch-sny.37.6`. The Home
+Manager Nix config enables flakes and Nix commands, while system cache
+settings and credentials use the Clan NixOS aspects.
 
 ## Part 2: emerald system port (children of `nch-sny.20`)
 

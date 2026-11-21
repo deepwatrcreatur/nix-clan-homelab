@@ -59,11 +59,11 @@
       [
         delta
         mergiraf
-        (if pkgs ? gh-fnox then gh-fnox else gh)
         lazygit
         difftastic # Add difftastic to the list of packages
       ]
-      ++ [ meld ];
+      ++ [ meld ]
+      ++ lib.optional (!(config.programs.fnox.enable or false)) pkgs.gh;
 
     programs.git = {
       enable = true;

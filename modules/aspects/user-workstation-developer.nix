@@ -13,6 +13,7 @@
         (import ../_hm/workstation-developer/hunk.nix { inherit (inputs) hunk; })
         (import ../_hm/workstation-developer/herdr.nix { inherit (inputs) herdr llm-agents-herdr-app; })
         (import ../_hm/workstation-developer/coding-agents.nix { inherit inputs; })
+        (import ../_hm/workstation-developer/fnox.nix { inherit (inputs) fnox llm-agents; })
         ../_hm/workstation-developer/cass-session-search.nix
         ../_hm/workstation-developer/repo-updater.nix
         ../_hm/workstation-developer/worktrunk.nix
@@ -53,7 +54,11 @@
         home.packages = with pkgs; [
           cargo
           cargo-binstall
+          chezmoi
+          go
+          mix2nix
           nodejs
+          stow
           tuios
         ]
         ++ lib.optional config.programs.cmux-tui.enable inputs.nix-cmux-tui.packages.${system}.default
@@ -69,6 +74,19 @@
           init-license=MIT
         '';
         home.sessionPath = [ "${home}/.npm-global/bin" ];
+        programs.bash.shellAliases.cdflake = ''cd "$NH_FLAKE"'';
+        programs.fish.shellAliases.cdflake = ''cd "$NH_FLAKE"'';
+        programs.zsh.shellAliases.cdflake = ''cd "$NH_FLAKE"'';
+        programs.nushell.shellAliases.cdflake = "cd $env.NH_FLAKE";
+        xdg.configFile."distrobox/fedora.conf".text = ''
+          [distrobox]
+          additional_flags="--volume /nix:/nix:ro"
+          additional_flags="--volume /etc/profiles/per-user:/etc/profiles/per-user:ro"
+          additional_flags="--volume /etc/static/profiles/per-user:/etc/static/profiles/per-user:ro"
+          additional_paths="/etc/profiles/per-user/\$USER/bin"
+          additional_paths="/nix/var/nix/profiles/system/sw/bin"
+          additional_paths="/nix/var/nix/profiles/default/bin"
+        '';
         home.activation.createNpmDirectories = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
           run mkdir -p ${lib.escapeShellArg "${home}/.npm-global"} ${lib.escapeShellArg "${home}/.npm-cache"}
         '';
