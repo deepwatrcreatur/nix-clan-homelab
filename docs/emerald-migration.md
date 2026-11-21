@@ -75,6 +75,33 @@ Leave out darwin-only modules (`common-darwin.nix`, `attic-client-darwin`,
 `xbar`, `env-darwin`), unused desktops (gnome, cinnamon, mate, xfce, lxde,
 hyprland, rofi) and other hosts' files.
 
+### Regenerate the Home Manager reference snapshot
+
+From the homelab worktree, evaluate unified at the pinned reference revision.
+This uses unified's own lockfile and extracts package names, enabled file
+targets, and enabled programs for the operator on Emerald.
+
+```bash
+set -o pipefail
+snapshot=$(mktemp)
+nix eval --impure --json --expr '
+  let
+    unified = builtins.getFlake "git+file://${builtins.getEnv "HOME"}/flakes/unified-nix-configuration?rev=95d9b0ac1eaa2d0897ba399b3cafa0ae62bece4e";
+    inventory = import ./checks/emerald-home-inventory.nix;
+  in inventory unified.nixosConfigurations.emerald.config.home-manager.users.deepwatrcreatur
+' | jq -S . > "$snapshot" &&
+  cp "$snapshot" checks/emerald-home-reference.json
+rm "$snapshot"
+```
+
+Update the pinned revision here if the baseline changes. To inspect the Clan
+fixture's inventory, run
+`nix eval --json .#legacyPackages.x86_64-linux.emeraldHomeInventory | jq -S .`.
+As each group is ported, review the observed differences printed by the
+parity check and update `checks/emerald-home-expected-differences.json`.
+Run `nix build --no-link .#checks.x86_64-linux.emerald-home-parity` and
+`nix flake check --no-build` to validate the result.
+
 ## Part 2: emerald system port (children of `nch-sny.20`)
 
 Mapped from unified main on 2026-11-20.
