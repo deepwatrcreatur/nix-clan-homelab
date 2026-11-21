@@ -4,8 +4,6 @@
     "missing": [
       ".config/konveyor/config.kdl",
       ".config/mpv/mpv.conf",
-      ".config/rbw/config.json",
-      ".config/rclone/filter.txt",
       ".config/systemd/user/birdtray.service",
       ".config/systemd/user/graphical-session.target.wants/birdtray.service",
       ".config/systemd/user/graphical-session.target.wants/vicinae.service",
@@ -21,13 +19,9 @@
       "gnupg",
       "konveyor",
       "krunner",
-      "mega-rclone",
       "neohtop",
       "omasnap",
-      "onedrive-sync",
       "plasma-manager-commands.desktop",
-      "rbw",
-      "rclone",
       "sops",
       "vicinae"
     ]
@@ -35,11 +29,7 @@
   "programs": {
     "extra": [],
     "missing": [
-      "bitwarden-cli",
       "plasma",
-      "rbw",
-      "rclone",
-      "rclone-scripts",
       "ssh-known-hosts-manager",
       "vicinae"
     ]

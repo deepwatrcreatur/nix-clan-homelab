@@ -168,6 +168,9 @@ The `user-workstation-desktop` aspect starts with Ghostty and its user unit,
 Zed, Fastfetch, Firefox, Chrome, Vivaldi, and Flameshot. Firefox keeps
 `~/.mozilla/firefox` as its profile path. The remaining desktop work is
 tracked in `nch-sny.37.5`.
+The desktop aspect also configures rbw and installs the rclone filter and
+sync commands. The existing user rclone credentials are handled by the
+secrets bead.
 
 ## Part 2: emerald system port (children of `nch-sny.20`)
 
