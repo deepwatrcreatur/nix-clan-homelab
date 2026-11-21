@@ -145,6 +145,10 @@ The workstation Just recipes use the Clan checkout in `NH_FLAKE`.
 `remote-test` previews that dispatch. Secret operations follow the Clan vars
 workflow in [secrets.md](./secrets.md).
 
+The fixture also includes the `user-workstation-developer` aspect. Its first
+group covers npm, Cargo, nix-index and comma, Worktrunk, TuiOS, Hunk, and QMD.
+The remaining developer tools are tracked in `nch-sny.37.4`.
+
 ## Part 2: emerald system port (children of `nch-sny.20`)
 
 Mapped from unified main on 2026-11-20.

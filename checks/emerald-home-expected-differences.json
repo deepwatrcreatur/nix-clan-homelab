@@ -2,7 +2,6 @@
   "files": {
     "extra": [],
     "missing": [
-      ".cache/nix-index/files",
       ".claude/.keep",
       ".config/bat/syntaxes/ghostty.sublime-syntax",
       ".config/distrobox/fedora.conf",
@@ -10,7 +9,6 @@
       ".config/fnox/config.toml",
       ".config/ghostty/config",
       ".config/ghostty/themes/Sugarplum",
-      ".config/hunk/config.toml",
       ".config/konveyor/config.kdl",
       ".config/mpv/mpv.conf",
       ".config/nix/nix.conf",
@@ -30,8 +28,7 @@
       ".gnupg/public-key.asc",
       ".local/bin/zed",
       ".local/share/dbus-1/services",
-      ".mozilla/native-messaging-hosts",
-      ".npmrc"
+      ".mozilla/native-messaging-hosts"
     ]
   },
   "packages": {
@@ -48,8 +45,6 @@
       "brew",
       "bubblewrap",
       "bw-fnox",
-      "cargo",
-      "cargo-binstall",
       "cass-session-search",
       "ccstatusline",
       "ccusage",
@@ -58,7 +53,6 @@
       "claude-fnox",
       "cmux-tui",
       "codex",
-      "comma-with-db",
       "copilot-cli",
       "crush",
       "cursor-agent",
@@ -82,22 +76,18 @@
       "herdr-app",
       "herdr-core",
       "herdr-preflight",
-      "hunkdiff",
       "kilocode-cli",
       "konveyor",
       "krunner",
       "mega-rclone",
       "mix2nix",
       "neohtop",
-      "nix-index-with-full-db",
-      "nodejs",
       "omasnap",
       "onedrive-sync",
       "opencode",
       "orca-ide",
       "pi",
       "plasma-manager-commands.desktop",
-      "qmd",
       "rbw",
       "rclone",
       "repo-updater",
@@ -106,11 +96,9 @@
       "stow",
       "t3code",
       "t3code-url-handler.desktop",
-      "tuios",
       "vicinae",
       "vivaldi",
       "workmux",
-      "worktrunk",
       "zed-editor"
     ]
   },
@@ -131,12 +119,8 @@
       "ghostty",
       "google-chrome",
       "herdr",
-      "hunk",
-      "hunk-custom",
-      "nix-index",
       "orca-ide",
       "plasma",
-      "qmd",
       "rbw",
       "rclone",
       "rclone-scripts",
@@ -145,7 +129,6 @@
       "ssh-known-hosts-manager",
       "t3code",
       "vicinae",
-      "worktrunk",
       "zed-editor"
     ]
   }
