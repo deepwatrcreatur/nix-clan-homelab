@@ -12,10 +12,13 @@
         ../_hm/emerald-shell/environment.nix
         ../_hm/emerald-shell/fd-enhanced.nix
         ../_hm/emerald-shell/fish.nix
-        ../_hm/emerald-shell/grc.nix
+        ../_hm/emerald-shell/git.nix
+        ../_hm/emerald-shell/helix
         ../_hm/emerald-shell/motd.nix
         ../_hm/emerald-shell/nushell.nix
+        (import ../_hm/emerald-shell/packages.nix { inherit inputs; })
         ../_hm/emerald-shell/ripgrep-enhanced.nix
+        ../_hm/emerald-shell/shell-aliases.nix
         ../_hm/emerald-shell/starship.nix
         ../_hm/emerald-shell/tmux-enhanced.nix
       ];
@@ -80,7 +83,6 @@
           MANPAGER = "bat --plain";
           PAGER = "bat --plain";
         };
-        home.shellAliases.less = "bat --plain";
       };
     };
 }
