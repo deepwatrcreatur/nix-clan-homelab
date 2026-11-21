@@ -35,10 +35,10 @@ stdenv.mkDerivation (finalAttrs: {
     substituteInPlace CMakeLists.txt \
       --replace-fail "/usr/share/wayland-protocols" \
         "${wayland-protocols}/share/wayland-protocols"
-    if [ -f tests/transform-smoke.cpp ]; then
-      substituteInPlace tests/transform-smoke.cpp \
-        --replace-fail "/usr/bin/env bash" "${coreutils}/bin/env bash" || true
-    fi
+    # WHY: the smoke tests generate executable clipboard and capture helpers
+    # at runtime, after patchShebangs has run.
+    substituteInPlace tests/{clipboard,editor,transform}-smoke.cpp \
+      --replace-fail "/usr/bin/env bash" "${coreutils}/bin/env bash"
   '';
 
   nativeBuildInputs = [
@@ -111,6 +111,8 @@ stdenv.mkDerivation (finalAttrs: {
   doCheck = true;
   checkPhase = ''
     runHook preCheck
+    export XDG_RUNTIME_DIR="$TMPDIR/omasnap-runtime"
+    mkdir -m 700 "$XDG_RUNTIME_DIR"
     QT_QPA_PLATFORM=offscreen ./omasnap-smoke "$TMPDIR/omasnap-smoke"
     runHook postCheck
   '';

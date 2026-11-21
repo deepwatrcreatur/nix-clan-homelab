@@ -2,36 +2,20 @@
   "files": {
     "extra": [],
     "missing": [
-      ".config/konveyor/config.kdl",
-      ".config/mpv/mpv.conf",
-      ".config/systemd/user/birdtray.service",
-      ".config/systemd/user/graphical-session.target.wants/birdtray.service",
-      ".config/systemd/user/graphical-session.target.wants/vicinae.service",
-      ".config/systemd/user/vicinae.service",
       ".gnupg/public-key.asc"
     ]
   },
   "packages": {
     "extra": [],
     "missing": [
-      "birdtray",
-      "brew",
       "gnupg",
-      "konveyor",
-      "krunner",
-      "neohtop",
-      "omasnap",
-      "plasma-manager-commands.desktop",
-      "sops",
-      "vicinae"
+      "sops"
     ]
   },
   "programs": {
     "extra": [],
     "missing": [
-      "plasma",
-      "ssh-known-hosts-manager",
-      "vicinae"
+      "ssh-known-hosts-manager"
     ]
   }
 }

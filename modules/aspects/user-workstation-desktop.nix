@@ -1,5 +1,10 @@
-{ ... }:
+{ inputs, ... }:
 {
+  den.aspects.user-workstation-plasma.homeManager.imports = [
+    inputs.plasma-manager.homeModules.plasma-manager
+    ../_hm/workstation-desktop/plasma.nix
+  ];
+
   den.aspects.user-workstation-desktop.homeManager = { config, lib, pkgs, ... }: {
     imports = [
       ../_hm/workstation-desktop/fastfetch.nix
@@ -25,9 +30,15 @@
         configPath = ".mozilla/firefox";
       };
       programs.google-chrome.enable = true;
+      programs.bash.shellAliases.neohtop = "NeoHtop";
+      programs.fish.shellAliases.neohtop = "NeoHtop";
+      programs.zsh.shellAliases.neohtop = "NeoHtop";
       home.packages = with pkgs; [
         flameshot
+        neohtop
         vivaldi
+        (callPackage ../_packages/omasnap.nix { })
+        inputs.nix-linuxbrew.packages.${stdenv.hostPlatform.system}.brew-wrapper
       ] ++ lib.optional (config.programs.bitwarden-cli.enable && !(config.programs.fnox.enable or false)) pkgs.bitwarden-cli;
     };
   };

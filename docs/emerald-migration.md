@@ -166,11 +166,20 @@ settings and credentials use the Clan NixOS aspects.
 
 The `user-workstation-desktop` aspect starts with Ghostty and its user unit,
 Zed, Fastfetch, Firefox, Chrome, Vivaldi, and Flameshot. Firefox keeps
-`~/.mozilla/firefox` as its profile path. The remaining desktop work is
-tracked in `nch-sny.37.5`.
+`~/.mozilla/firefox` as its profile path. The Emerald reference has no
+enabled Zen configuration. The Home Manager side carries the existing
+Linuxbrew command wrapper. System Linuxbrew setup belongs to the host port.
 The desktop aspect also configures rbw and installs the rclone filter and
 sync commands. The existing user rclone credentials are handled by the
 secrets bead.
+
+The Plasma-specific aspect adds Konveyor, Birdtray, Vicinae, and the Plasma
+shortcuts. The fixture also includes the existing mpv configuration aspect
+and checks the NeoHtop and Omasnap packages. The remaining inventory gaps
+are the GPG public-key file and secret-management packages tracked under
+`nch-sny.37.6`, and the retired SSH manager flag documented above.
+The fixture retains unified Emerald's evaluated Home Manager state version
+of `25.11`. Carry it over when wiring the operator into the real host.
 
 ## Part 2: emerald system port (children of `nch-sny.20`)
 

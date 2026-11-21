@@ -22,13 +22,18 @@ in
     includes = with den.aspects; [
       nixos-base
       home-manager-users
+      desktop-media-players
     ];
     provides.deepwatrcreatur.includes = with den.aspects; [
       user-workstation-shell
       user-workstation-developer
       user-workstation-desktop
+      user-workstation-plasma
     ];
-    provides.deepwatrcreatur.homeManager.programs.herdr.desktopApp.enable = true;
+    provides.deepwatrcreatur.homeManager = {
+      home.stateVersion = "25.11";
+      programs.herdr.desktopApp.enable = true;
+    };
     nixos = {
       fileSystems."/" = {
         device = "/dev/vda";
