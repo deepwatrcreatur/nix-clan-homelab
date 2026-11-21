@@ -13,13 +13,17 @@
         (import ../_hm/workstation-developer/hunk.nix { inherit (inputs) hunk; })
         (import ../_hm/workstation-developer/herdr.nix { inherit (inputs) herdr llm-agents-herdr-app; })
         ../_hm/workstation-developer/cass-session-search.nix
+        ../_hm/workstation-developer/repo-updater.nix
         ../_hm/workstation-developer/worktrunk.nix
+        ../_hm/t3code-daemon.nix
       ];
 
       options.programs = {
+        beads.enable = lib.mkEnableOption "Beads issue tracking";
         cmux-tui.enable = lib.mkEnableOption "cmux-tui";
         dmux.enable = lib.mkEnableOption "dmux";
         frankenterm.enable = lib.mkEnableOption "FrankenTerm";
+        orca-ide.enable = lib.mkEnableOption "Orca IDE";
       };
 
       config = {
@@ -28,6 +32,14 @@
         programs.worktrunk.enable = true;
         programs.hunk-custom.enable = true;
         programs.cass-session-search.enable = true;
+        programs.beads.enable = true;
+        programs.repo-updater.enable = true;
+        programs.orca-ide.enable = true;
+        programs.t3code = {
+          enable = true;
+          package = pkgs.callPackage ../_packages/t3code.nix { };
+        };
+        services.t3code.enable = true;
         programs.herdr.enable = true;
         programs.cmux-tui.enable = true;
         programs.dmux.enable = true;
@@ -44,6 +56,8 @@
           tuios
         ]
         ++ lib.optional config.programs.cmux-tui.enable inputs.nix-cmux-tui.packages.${system}.default
+        ++ lib.optional config.programs.beads.enable (pkgs.callPackage ../_packages/beads-rust.nix { })
+        ++ lib.optional config.programs.orca-ide.enable (pkgs.callPackage ../_packages/orca-ide.nix { })
         ++ lib.optional config.programs.dmux.enable inputs.dmux-flake.packages.${system}.default
         ++ lib.optional config.programs.frankenterm.enable inputs.nix-frankenterm.packages.${system}.default;
         home.file.".npmrc".text = ''
