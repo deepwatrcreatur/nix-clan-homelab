@@ -113,6 +113,14 @@ exclusive service settings for migrated standby hosts. Use
 `nix develop -c fleet-deploy --dry-run elitedesk` to verify dispatcher routing
 through deploy-rs.
 
+## Emerald and the home environment
+
+Emerald, the desktop that also serves the Attic cache and runs inference,
+waits for the operator's home-manager environment to be ported (epic
+`nch-sny.37`). Phoenix needs the same port. Handoff with decisions, the
+mapped system port and the secrets plan:
+[`emerald-migration.md`](./emerald-migration.md).
+
 ## Self-hosted CI
 
 Separate from the migration: buildbot-nix on emerald, building flake checks
