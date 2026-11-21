@@ -1,9 +1,8 @@
-# Authenticated pulls from the private caches: attic on emerald and
-# cache.nix-ci.com. Include per host; routers do not take it.
+# NixCI pull authentication and the reserved Attic push credential.
 { ... }:
 {
   den.aspects.nix-cache-auth.nixos =
-    { config, ... }:
+    { config, lib, ... }:
     let
       gen = config.clan.core.vars.generators.nix-cache-auth;
     in
@@ -32,8 +31,11 @@
         '';
       };
 
-      # WHY: replaces unified's access-tokens entry, which passed a file
-      # path where Nix expects the token itself.
-      nix.settings.netrc-file = gen.files.netrc.path;
+      # WHY: the endpoint and its credential must be enabled together to avoid 401s.
+      nix.settings = {
+        substituters = lib.mkBefore [ "https://cache.nix-ci.com" ];
+        trusted-public-keys = [ "nix-ci:g3xV5BDTLtIBZr/A00IU1x0EtKKlb7YLgBN2SgYgM6A=" ];
+        netrc-file = gen.files.netrc.path;
+      };
     };
 }

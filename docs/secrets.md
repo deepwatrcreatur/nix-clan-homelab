@@ -35,6 +35,10 @@ reads the secret from vars.
 ### cache/builder notes
 
 - `netrc` contains only the cache.nix-ci.com entry (HTTPS).
+- The `nix-cache-auth` aspect enables the NixCI substituter and signing key
+  alongside that netrc. Router-class hosts use the public cache and
+  anonymous Attic reads. Separately scoped NixCI downloads for those hosts
+  are tracked in `nch-sny.38`.
 - attic's `cache-local` answers unauthenticated reads on the LAN, so pulls
   need no credential. The token only gates pushes (the post-build push hook
   has not been ported yet). Never put it in netrc: the attic substituters are
