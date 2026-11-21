@@ -12,6 +12,7 @@
         inputs.qmd.homeModules.default
         (import ../_hm/workstation-developer/hunk.nix { inherit (inputs) hunk; })
         (import ../_hm/workstation-developer/herdr.nix { inherit (inputs) herdr llm-agents-herdr-app; })
+        (import ../_hm/workstation-developer/coding-agents.nix { inherit inputs; })
         ../_hm/workstation-developer/cass-session-search.nix
         ../_hm/workstation-developer/repo-updater.nix
         ../_hm/workstation-developer/worktrunk.nix

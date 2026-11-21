@@ -155,6 +155,9 @@ tracked in `nch-sny.37.4`.
 The developer aspect also adds the Beads release CLI as `beads-rust`,
 Orca IDE, and repo-updater. T3 Code uses Home Manager's program module and
 the existing Clan daemon module for its user service and URL handler.
+Coding-agent packages use the pinned llm-agents overlay with the Clan
+nixpkgs package set. The developer aspect also wires RTK hooks and the
+command guard into Home Manager activation.
 
 ## Part 2: emerald system port (children of `nch-sny.20`)
 
