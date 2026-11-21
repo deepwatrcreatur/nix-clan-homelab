@@ -88,6 +88,12 @@ in
       assert common && (if name == "workstation-niri-eval" then niri else sway);
       # WHY: force the NixOS and Home Manager closures to evaluate without building them.
       builtins.seq cfg.system.build.toplevel.drvPath (pkgs.runCommand name { } "touch $out")
-    ) fixtures;
+    ) fixtures
+    // {
+      # WHY: the fixtures above only evaluate drvPaths, so a package that fails
+      # to build (omasnap's sandboxed checkPhase, nch-sny.32) slips through.
+      # Build in-repo packages for real.
+      omasnap = pkgs.callPackage ./_packages/omasnap.nix { };
+    };
   };
 }
