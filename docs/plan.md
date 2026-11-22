@@ -71,15 +71,14 @@ The fixture reuses the workstation shell and Worktrunk. Unified also
 includes the common coding-agent packages, fnox, Bitwarden, rclone sync
 helpers, and Fastfetch configuration. The fixture adds the shared Git SSH
 doctor and Jujutsu. Qutebrowser is excluded because this nixpkgs pin marks it
-insecure. The real host still needs a decision on those home differences,
-the system Nightscout and Strata integrations, and enrollment for the
-existing remote builder identity. Lattitude and Emerald share the Synology
-CIFS mount layout for `/cloud` and `/storage`. The fixture evaluates both
-automounts with a placeholder path. Production uses
-`synology-shares/credentials`, now staged in Clan vars for admins only. Add
-Lattitude's machine recipient after its real Clan machine declares the mount
-aspect; do the same for Emerald during its migration. The fixture is outside
-Clan inventory, and unified remains authoritative for the actual host.
+insecure. The Lattitude Clan candidate now composes the workstation shell,
+developer, and desktop aspects, carries over the Nightscout and Strata system
+integrations, and retains Lattitude's kiosk settings. It evaluates both
+Synology automounts using `synology-shares/credentials`. Its Clan machine key
+and recipients for declared shared vars are staged for review; no generation
+has been activated on Lattitude. Emerald remains admin-only. The comparison
+fixture stays outside Clan inventory; unified remains authoritative for host
+operation until the candidate is approved and deployed.
 
 ## Inventory
 

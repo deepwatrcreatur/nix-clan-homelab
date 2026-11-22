@@ -1241,6 +1241,7 @@
         "leaf": "leaf",
         "llm-agents": "llm-agents",
         "llm-agents-herdr-app": "llm-agents-herdr-app",
+        "nightscout-tui": "nightscout-tui",
         "niri": "niri",
         "nix-cmux-tui": "nix-cmux-tui",
         "nix-deepseek-harness": "nix-deepseek-harness",
@@ -1708,6 +1709,29 @@
       "original": {
         "owner": "youwen5",
         "repo": "zen-browser-flake",
+        "type": "github"
+      }
+    },
+    "nightscout-tui": {
+      "inputs": {
+        "flake-utils": [
+          "flake-utils"
+        ],
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1791028518,
+        "narHash": "sha256-lv4ImHCAiTF3GnLYr7Tc10uxeznRZu9EH8Zrem3Bfrg=",
+        "owner": "deepwatrcreatur",
+        "repo": "nightscout-tui",
+        "rev": "87775cf329f3c25a0ac6298c2b9061bd8e452452",
+        "type": "github"
+      },
+      "original": {
+        "owner": "deepwatrcreatur",
+        "repo": "nightscout-tui",
         "type": "github"
       }
     }

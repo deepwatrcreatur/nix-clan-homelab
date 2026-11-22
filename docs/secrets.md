@@ -24,9 +24,9 @@ commit before pushing.
 
 | Domain | Aspects | Vars | Status |
 | --- | --- | --- | --- |
-| cache/builder | `nix-cache-auth`, `remote-builder-client` | `nix-cache-auth/{attic-token,netrc}`, `nix-remote-builder/key` | imported; verified on clan-spike |
-| Synology CIFS | `synology-shares` | `synology-shares/credentials` | imported from unified and staged for admins only; add machine recipients when migrated hosts declare the aspect |
-| user/operator | `console-password` (per clan host) | `console-password/{root,deepwatrcreatur}` (yescrypt hashes); github-token, API keys still todo | console passwords declared; generate with `clan-admin vars generate <machine> --generator console-password` |
+| cache/builder | `nix-cache-auth`, `remote-builder-client` | `nix-cache-auth/{attic-token,netrc}`, `nix-remote-builder/key` | imported; verified on clan-spike; Lattitude recipient added for candidate |
+| Synology CIFS | `synology-shares` | `synology-shares/credentials` | imported from unified; Lattitude recipient added for candidate; Emerald remains admin-only |
+| user/operator | `console-password` (per clan host) | `console-password/{root,deepwatrcreatur}` (yescrypt hashes); github-token, API keys still todo | Lattitude recipient added for candidate; other hosts still need vars generation |
 | homeserver services | | | todo |
 | router services | | | todo |
 
@@ -41,12 +41,12 @@ owned by `deepwatrcreatur` and mode `0400`. It also exposes the GitHub token
 at the path expected by `gh-fnox`. Enable the aspect only on a workstation
 selected for the migration or its coordinated verification.
 
-Imported values are staged under `vars/shared/workstation-user-secrets`
-with admin recipients only. No live machine was granted access during the
-import. When the maintainer coordinates verification, explicitly enable the
-aspect on the chosen machine and update recipients for that machine before
-deployment. Live verification covers credential delivery and the preservation
-of existing application state.
+Imported values are stored under `vars/shared/workstation-user-secrets`.
+Lattitude now declares this aspect, and its machine key is a recipient for
+these encrypted vars. No live machine has read them. Emerald remains
+admin-only. Live verification on each host still needs the maintainer's
+coordination and covers credential delivery and preservation of existing
+application state.
 
 The GPG private key remains in the operator's cloud backup for optional
 recovery. Technitium router automation creates its own API token from the
