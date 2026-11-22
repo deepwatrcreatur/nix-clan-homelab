@@ -25,6 +25,7 @@ commit before pushing.
 | Domain | Aspects | Vars | Status |
 | --- | --- | --- | --- |
 | cache/builder | `nix-cache-auth`, `remote-builder-client` | `nix-cache-auth/{attic-token,netrc}`, `nix-remote-builder/key` | imported; verified on clan-spike |
+| Synology CIFS | `synology-shares` | `synology-shares/credentials` | declared; import from unified's encrypted SMB credential before deployment |
 | user/operator | `console-password` (per clan host) | `console-password/{root,deepwatrcreatur}` (yescrypt hashes); github-token, API keys still todo | console passwords declared; generate with `clan-admin vars generate <machine> --generator console-password` |
 | homeserver services | | | todo |
 | router services | | | todo |

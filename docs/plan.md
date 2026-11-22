@@ -72,8 +72,12 @@ includes the common coding-agent packages, fnox, Bitwarden, rclone sync
 helpers, and Fastfetch configuration. The fixture adds the shared Git SSH
 doctor and Jujutsu. Qutebrowser is excluded because this nixpkgs pin marks it
 insecure. The real host still needs a decision on those home differences,
-the system Nightscout and Strata integrations, and delivery of the CIFS
-credential for `/cloud` and `/storage` and the remote builder identity.
+the system Nightscout and Strata integrations, and enrollment for the
+existing remote builder identity. Lattitude and Emerald share the Synology
+CIFS mount layout for `/cloud` and `/storage`. The fixture evaluates both
+automounts with a placeholder path. Production uses
+`synology-shares/credentials`, which still needs to be imported and granted
+to the selected hosts.
 The fixture is outside Clan inventory, and unified remains authoritative
 for the actual host.
 

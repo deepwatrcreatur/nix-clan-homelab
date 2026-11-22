@@ -37,6 +37,9 @@ in
         ../checks/lattitude/disko.nix
         ../checks/lattitude/hardware-configuration.nix
         ../checks/lattitude/networking.nix
+        (import ./_nixos/synology-share-mounts.nix {
+          credentialsPath = "/run/secrets/synology-shares/credentials";
+        })
       ];
       boot.loader.systemd-boot.enable = true;
       boot.loader.efi.canTouchEfiVariables = true;
@@ -73,6 +76,13 @@ in
         assert lib.all (target: candidate.fileSystems.${target}.fsType == "btrfs")
           [ "/" "/home" "/nix" "/.snapshots" ];
         assert candidate.boot.loader.systemd-boot.enable;
+        assert lib.all (share:
+          let mount = candidate.fileSystems."/${share}"; in
+          mount.device == "//10.10.11.88/${share}"
+          && mount.fsType == "cifs"
+          && lib.elem "x-systemd.automount" mount.options
+          && lib.elem "credentials=/run/secrets/synology-shares/credentials" mount.options
+        ) [ "cloud" "storage" ];
         assert candidate.services.greetd.settings.initial_session.user == "deepwatrcreatur";
         assert candidate.programs.sway.enable;
         assert !candidate.systemd.targets.suspend.enable && candidate.zramSwap.enable;
