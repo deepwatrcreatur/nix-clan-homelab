@@ -44,11 +44,21 @@ Imported values are staged under `vars/shared/workstation-user-secrets`
 with admin recipients only. No live machine was granted access during the
 import. When the maintainer coordinates verification, explicitly enable the
 aspect on the chosen machine and update recipients for that machine before
-deployment. Keep the remaining Home Manager consumer wiring and preservation
-of existing application state in scope for user-secret verification.
+deployment. Live verification covers credential delivery and the preservation
+of existing application state.
 
-The legacy SOPS identity is still needed for the GPG private key, the
-Technitium API key, and the Bitwarden session file. See `nch-sny.37.6`.
+The GPG private key remains in the operator's cloud backup for optional
+recovery. Technitium router automation creates its own API token from the
+separate bootstrap password. Bitwarden establishes a fresh unlock session.
+These three legacy files are outside the required import.
+
+On activation, the workstation aspect seeds missing Atuin, Bitwarden,
+Gemini OAuth and rclone state as owner-only files. Existing application
+state takes precedence, including changes made after the first activation.
+The Claude and Gemini wrappers read Clan files for their API keys when the
+aspect is enabled. The remaining API keys are available as user-owned
+files under `WORKSTATION_CREDENTIALS_DIRECTORY`. The generated fnox
+defaults use a separate file so an existing writable config stays in place.
 
 ### cache/builder notes
 

@@ -68,7 +68,7 @@ Port into den aspects with `homeManager` classes, grouped as in unified:
 | Shell and CLI | `modules/home-manager/common/{fish,starship,atuin,bat,eza,fd-enhanced,fzf,ripgrep-enhanced,tmux-enhanced,helix,nushell,jj,just,grc,*-aliases,motd,platform,packages,env}.nix`, `modules/home-manager/{git,git-ssh-signing,ssh-agent}.nix`, `common/ssh-*.nix` | Largest group; split into two PRs if needed. |
 | Developer and agents | `users/deepwatrcreatur/aspects/developer.nix`, `common/{coding-agents,agent-guards,beads,herdr,dmux,worktrunk,cass-session-search,orca-ide,npm,cargo-binstall,comma,repo-updater,nix-user-config,fnox,iodyne,frankenterm,cmux-tui}.nix` | `t3code-daemon` is already in `modules/_hm`. |
 | Desktop user apps | `ghostty/`, `zen.nix`, browsers (Firefox, Chrome, Vivaldi), `bitwarden-cli.nix`, `rbw.nix`, `fastfetch.nix`, `linuxbrew.nix`, `rclone-scripts.nix`, `kde-plasma.nix` (plasma-manager) | `kde-plasma.nix` is imported by unified's `plasma-session-base`. |
-| User secrets | `users/deepwatrcreatur/{sops.nix,secrets/}`, `modules/home-manager/user-secrets.nix` | github-token, atuin key, GPG private key, API keys (grok, openrouter, z-ai, opencode-zen, technitium), rclone.conf, bitwarden data. Decide the backend: clan vars owned by the user (preferred, one secrets system), or HM sops-nix keyed to the admins group. `owner:claude`: it handles decrypted values with the maintainer. |
+| User secrets | unified user secrets and agenix copies | User-owned Clan vars for GitHub, Atuin, API keys, Gemini OAuth, rclone, and Bitwarden data. GPG recovery stays with the operator. Technitium automation bootstraps its own API token, and Bitwarden can establish a fresh session. |
 | Verification | — | Deploy the ported user environment to `clan-spike` and log in. Shells, git signing, agents and secrets must work. |
 
 Leave out darwin-only modules (`common-darwin.nix`, `attic-client-darwin`,
@@ -188,8 +188,9 @@ secrets bead.
 The Plasma-specific aspect adds Konveyor, Birdtray, Vicinae, and the Plasma
 shortcuts. The fixture also includes the existing mpv configuration aspect
 and checks the NeoHtop and Omasnap packages. The remaining inventory gaps
-are the GPG public-key file and secret-management packages tracked under
-`nch-sny.37.6`, and the retired SSH manager flag documented above.
+are the GPG public-key file and secret-management packages supplied by the
+opt-in Clan workstation secrets aspect, and the retired SSH manager flag
+documented above.
 The fixture retains unified Emerald's evaluated Home Manager state version
 of `25.11`. Carry it over when wiring the operator into the real host.
 
