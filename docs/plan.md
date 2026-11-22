@@ -115,9 +115,11 @@ administratively down until the user approves failover testing.
 Clan configures the LAN default route through the live router and keeps SSH
 reachable on the management interface with loose IPv4 reverse-path filtering.
 The router aspect uses Clan vars for the Technitium password and SNMP
-community. Primary mode also declares the Kea TSIG, Cloudflare, and Tailscale
-credentials. The primary router migration and VRRP operation are separate
-work. User passwords remain tracked in nch-sny.11.
+community. It supplies file paths through the router modules' `*File`
+options, without agenix compatibility aliases. Primary mode also declares the
+Kea TSIG, Cloudflare, and Tailscale credentials. The primary router migration
+and VRRP operation are separate work. User passwords remain tracked in
+nch-sny.11.
 
 Evaluated both flakes' `nixosConfigurations.elitedesk.config` (unified at
 `dc759e8dc76a3095d6a13c994271a68124b23dc5`). Firewall lists below are
