@@ -52,6 +52,13 @@ reports, SSH CA, deploy tooling), then hosts from least to most critical:
 vaglio, podman, homeserver, authentik-host, lattitude, phoenix, emerald,
 elitedesk, router. unified is archived last.
 
+The workstation rollout starts with Lattitude (`nch-sny.18`), followed by
+`pve-strix` (`nch-sny.39`), `pve-rog` (`nch-sny.40`), Phoenix
+(`nch-sny.19`), and Emerald (`nch-sny.20`). On the two Proxmox nodes the
+scope is the root standalone Home Manager profile. Proxmox VE, storage,
+networking, services, and boot configuration stay in place. Lattitude's
+repository-only kiosk comparison is tracked in `nch-sny.18.1`.
+
 ## Inventory
 
 Edit `inventory/hosts.nix` for host addresses, SSH settings, and roles. The
