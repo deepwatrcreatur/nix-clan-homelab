@@ -59,6 +59,24 @@ scope is the root standalone Home Manager profile. Proxmox VE, storage,
 networking, services, and boot configuration stay in place. Lattitude's
 repository-only kiosk comparison is tracked in `nch-sny.18.1`.
 
+### Lattitude kiosk comparison
+
+The `lattitude-kiosk` flake check evaluates a den fixture with Lattitude's
+disk, hardware and Ethernet modules copied from unified
+`5e70e2a069dbb2116e03adf6f2c44a4b2a219848`. The comparison matched the
+local Btrfs and EFI mounts and options, wired address, systemd-boot,
+Sway autologin, zram, and NixOS and Home Manager state versions.
+
+The fixture reuses the workstation shell and Worktrunk. Unified also
+includes the common coding-agent packages, fnox, Bitwarden, rclone sync
+helpers, and Fastfetch configuration. The fixture adds the shared Git SSH
+doctor and Jujutsu. Qutebrowser is excluded because this nixpkgs pin marks it
+insecure. The real host still needs a decision on those home differences,
+the system Nightscout and Strata integrations, and delivery of the CIFS
+credential for `/cloud` and `/storage` and the remote builder identity.
+The fixture is outside Clan inventory, and unified remains authoritative
+for the actual host.
+
 ## Inventory
 
 Edit `inventory/hosts.nix` for host addresses, SSH settings, and roles. The
