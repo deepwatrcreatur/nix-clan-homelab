@@ -34,9 +34,9 @@ in
     nixos = { lib, ... }: {
       imports = [
         inputs.clan-core.inputs.disko.nixosModules.disko
-        ../machines/lattitude/disko.nix
-        ../machines/lattitude/hardware-configuration.nix
-        ../machines/lattitude/networking.nix
+        ../checks/lattitude/disko.nix
+        ../checks/lattitude/hardware-configuration.nix
+        ../checks/lattitude/networking.nix
       ];
       boot.loader.systemd-boot.enable = true;
       boot.loader.efi.canTouchEfiVariables = true;
@@ -66,6 +66,7 @@ in
     in
     {
       checks.lattitude-kiosk =
+        assert !builtins.hasAttr name config.flake.nixosConfigurations;
         assert candidate.networking.hostName == "lattitude";
         assert candidate.systemd.network.networks."10-realtek-eth".address == [ "10.10.11.47/16" ];
         assert candidate.fileSystems."/boot".fsType == "vfat";
