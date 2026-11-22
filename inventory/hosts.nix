@@ -101,6 +101,14 @@
       };
       lanAddress = "10.10.10.4/16";
       managementAddress = "192.168.100.98/24";
+      # WHY: router's WAN identity as the modem sees it (MAC, DUID-EN from its
+      # machine-id, IAID), so a takeover keeps the IPv4 lease and the /56.
+      # Read from `networkctl status enp6s17` on router, 2026-11-22.
+      takeover = {
+        wanMac = "02:76:c6:01:2a:b0";
+        dhcpDuidRawData = "00:00:ab:11:05:d7:c4:8d:af:eb:0b:c9";
+        dhcpIaid = 227970921; # 0x0d968f69
+      };
       wanBandwidth = "2.5Gbit";
       # WHY: preferred primary (docs/router-election.md); router gets 100.
       vrrpPriority = 110;
