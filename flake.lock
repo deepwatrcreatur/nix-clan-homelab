@@ -425,17 +425,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1795215897,
-        "narHash": "sha256-N35W7fSlZ4oRsGMKjNwZwZltHuU6ixAWEoRPf2puQds=",
+        "lastModified": 1795371334,
+        "narHash": "sha256-+NCy40MQBEczunSO4PwKs0PyL0SYYQSBdc88rUdUG3U=",
         "owner": "deepwatrcreatur",
         "repo": "nix-router-optimized",
-        "rev": "a72c9a6feb1566cdb680f199327d5247e4ef37de",
+        "rev": "d7afaee80281bc14b6da70b253c04830f3386c37",
         "type": "github"
       },
       "original": {
         "owner": "deepwatrcreatur",
         "repo": "nix-router-optimized",
-        "rev": "a72c9a6feb1566cdb680f199327d5247e4ef37de",
+        "rev": "d7afaee80281bc14b6da70b253c04830f3386c37",
         "type": "github"
       }
     },
