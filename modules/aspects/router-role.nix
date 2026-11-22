@@ -434,7 +434,7 @@ in
             };
           };
           router-technitium = {
-            bootstrapPasswordSecretName = "technitium-admin-password";
+            bootstrapPasswordFile = varPath "technitium-admin-password";
             # WHY: local names live in the primary's runtime zone (Kea DDNS);
             # standbys hold TSIG-transferred copies so failover keeps them.
             zoneReplication = {
