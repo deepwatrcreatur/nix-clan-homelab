@@ -104,7 +104,12 @@ in
       let
         host = fleet.hosts.${config.networking.hostName};
         router = host.router;
-        primary = router.mode == "primary";
+        # WHY: `promoted` is the manual-failover specialisation of a standby
+        # (docs/router-failover.md). It owns the LAN services, but not those
+        # whose credentials only an inventory primary holds (`full`).
+        promoted = config.routerRole.promoted;
+        full = router.mode == "primary";
+        primary = full || promoted;
         inherit (router.devices) wan lan management;
         legacy = import (inputs.unified + "/lib/hosts.nix");
         topology = legacy.networks;
@@ -142,7 +147,32 @@ in
             router-pangolin
             router-alerting
           ])
-          ++ [ ../_nixos/router-snmp.nix ];
+          ++ [
+            ../_nixos/router-snmp.nix
+            {
+              options.routerRole.promoted = lib.mkOption {
+                type = lib.types.bool;
+                default = false;
+                internal = true;
+                description = "Set by the `primary` specialisation of a standby router.";
+              };
+            }
+          ];
+
+        # WHY: manual failover until VRRP runs (docs/router-failover.md). The
+        # standby carries the primary role as a specialisation, activated with
+        # `switch-to-configuration test`, so a reboot returns it to standby.
+        # INVARIANT: not inside the specialisation itself, or it would nest.
+        specialisation = lib.mkIf (!full && !promoted && router.takeover != null) {
+          primary.configuration = {
+            system.nixos.tags = [ "primary" ];
+            routerRole.promoted = true;
+          };
+        };
+
+        # WHY: drives the Technitium zone-HA owner without keepalived: master
+        # promotes the replicated zones, backup hands them back.
+        systemd.services.technitium-zone-ha-owner.wantedBy = lib.mkIf promoted [ "multi-user.target" ];
 
         # GOTCHA: replies to LAN clients reaching the management IP can leave
         # through the LAN NIC. Strict reverse-path filtering drops that traffic.
@@ -172,10 +202,33 @@ in
         systemd.network.networks = {
           # INVARIANT: the modem can hand its single DHCP lease to the standby
           # if the standby starts a client. Keep networkd enforcing link-down.
-          "10-router-wan-primary".linkConfig.ActivationPolicy = lib.mkIf (!primary) "always-down";
+          "10-router-wan-primary" = lib.mkMerge [
+            { linkConfig.ActivationPolicy = lib.mkIf (!primary) "always-down"; }
+            # WHY: the modem binds its single lease and the /56 to the old
+            # router's MAC, DHCP client ID and DUID/IAID; present all of them.
+            (lib.mkIf (promoted && router.takeover != null) {
+              linkConfig.MACAddress = router.takeover.wanMac;
+              dhcpV4Config = {
+                ClientIdentifier = "duid";
+                DUIDType = "vendor";
+                DUIDRawData = router.takeover.dhcpDuidRawData;
+                IAID = router.takeover.dhcpIaid;
+              };
+              dhcpV6Config = {
+                DUIDType = "vendor";
+                DUIDRawData = router.takeover.dhcpDuidRawData;
+                IAID = router.takeover.dhcpIaid;
+              };
+            })
+          ];
           "20-router-lan" = {
             networkConfig.ConfigureWithoutCarrier = true;
             gateway = lib.optionals (!primary) [ gateway ];
+            # WHY: keep the node's own address so management, zone transfers
+            # and SSH by 10.10.10.4 keep working while it holds the gateway.
+            # GOTCHA: after the gateway address, so 10.10.10.1 stays the
+            # primary source address (Kea's server identifier among others).
+            address = lib.mkIf promoted (lib.mkAfter [ router.lanAddress ]);
           };
         };
 
@@ -192,7 +245,8 @@ in
             routedInterfaces = {
               lan = {
                 device = lan.name;
-                ipv4Address = router.lanAddress;
+                ipv4Address =
+                  if promoted then "${gateway}/${lib.last (lib.splitString "/" lanCidr)}" else router.lanAddress;
                 dns = [ "127.0.0.1" ];
                 domains = [ fleet.domain ];
                 requiredForOnline = "no";
@@ -247,7 +301,7 @@ in
                     ) legacy.hosts
                   );
             };
-            ddns = {
+            ddns = lib.mkIf full {
               enable = true;
               tsigKeyFile = varPath "kea-ddns-tsig-key";
               tsigKeyName = "kea-ddns";
@@ -256,9 +310,9 @@ in
             };
           };
           router-ddns = {
-            enable = primary;
+            enable = full;
           }
-          // lib.optionalAttrs primary {
+          // lib.optionalAttrs full {
             cloudflare = {
               zoneName = fleet.domain;
               labels = legacy.hosts.router.ddnsServices;
@@ -278,11 +332,11 @@ in
             ];
           };
           router-tailscale = {
-            enable = primary;
+            enable = full;
             trustedInterface = true;
-            openFirewall = primary;
+            openFirewall = full;
           }
-          // lib.optionalAttrs primary {
+          // lib.optionalAttrs full {
             authKeyFile = varPath "tailscale-auth-key";
             advertiseExitNode = true;
             advertiseRoutes = [ lanCidr ];
@@ -369,16 +423,16 @@ in
           # standby gerbil restart-looped waiting for Pangolin's local API and
           # hung switch-to-configuration (elitedesk's first role deploy).
           router-pangolin = {
-            enable = primary;
-            openFirewall = primary;
+            enable = full;
+            openFirewall = full;
           };
           traefik.enable = lib.mkForce false;
           router-network-security = {
-            enable = primary;
+            enable = full;
             interfaces = [ lan.name ];
             suricata = {
-              enable = primary;
-              evebox.enable = primary;
+              enable = full;
+              evebox.enable = full;
             };
           };
           router-technitium = {
@@ -389,7 +443,9 @@ in
               tsigKeyFile = varPath "technitium-zone-transfer-tsig";
             }
             // (
-              if primary then
+              # WHY: a promoted standby keeps its secondary copies; the
+              # zone-HA owner promotes them while the role file says master.
+              if full then
                 {
                   primary = {
                     zones = replicatedZones;
@@ -414,13 +470,13 @@ in
                 }
             );
           }
-          // lib.optionalAttrs (!primary) {
+          // lib.optionalAttrs (!full) {
             scopes = lib.mkForce { };
             dhcpReservations = lib.mkForce { };
             ntpServers = lib.mkForce [ ];
             forceBlockListUpdateOnActivation = lib.mkForce false;
           }
-          // lib.optionalAttrs primary {
+          // lib.optionalAttrs full {
             rfc2136 = {
               enable = true;
               tsigKeyFile = varPath "kea-ddns-tsig-key";
@@ -484,6 +540,11 @@ in
         systemd.tmpfiles.rules = [
           "d /var/log/router/prometheus 0750 prometheus prometheus -"
           "d /var/log/router/grafana 0750 grafana grafana -"
+        ]
+        # The role file read by the zone-HA owner (see technitium-zone-ha-owner).
+        ++ lib.optionals (!full) [
+          "d /run/router-ha 0755 root root -"
+          "f+ /run/router-ha/role 0644 root root - ${if promoted then "master" else "backup"}"
         ];
       };
   };
@@ -586,6 +647,44 @@ in
         promtool test rules ${tests}
         touch $out
       '';
+
+    # WHY: the manual-failover specialisation must take over the gateway and
+    # the old router's WAN identity, and own the LAN services
+    # (docs/router-failover.md).
+    checks.router-promotion =
+      let
+        takers = lib.filterAttrs (_: host: host.router.takeover != null) standbyHosts;
+        ok =
+          name:
+          let
+            host = takers.${name};
+            cfg = config.flake.nixosConfigurations.${name}.config;
+            sp = cfg.specialisation.primary.configuration;
+            net = sp.systemd.network.networks;
+            wan = net."10-router-wan-primary";
+            lanNet = net."20-router-lan";
+          in
+          sp.routerRole.promoted
+          && sp.specialisation == { }
+          && sp.services.router-networking.routedInterfaces.lan.ipv4Address == "${fleet.hosts.router.addresses.ip}/16"
+          && lib.head lanNet.address == "${fleet.hosts.router.addresses.ip}/16"
+          && lib.elem host.router.lanAddress lanNet.address
+          && (wan.linkConfig.ActivationPolicy or "up") != "always-down"
+          && wan.linkConfig.MACAddress == host.router.takeover.wanMac
+          && wan.dhcpV4Config.DUIDRawData == host.router.takeover.dhcpDuidRawData
+          && wan.dhcpV6Config.IAID == host.router.takeover.dhcpIaid
+          && sp.services.kea.dhcp4.enable
+          && sp.services.miniupnpd.enable
+          && lib.elem "multi-user.target" sp.systemd.services.technitium-zone-ha-owner.wantedBy
+          && lib.elem "f+ /run/router-ha/role 0644 root root - master" sp.systemd.tmpfiles.rules
+          && lib.elem "f+ /run/router-ha/role 0644 root root - backup" cfg.systemd.tmpfiles.rules
+          # Credentials only an inventory primary holds stay off.
+          && !sp.services.tailscale.enable
+          && !sp.services.inadyn.enable;
+      in
+      assert lib.assertMsg (takers != { }) "The promotion check must cover a standby with a takeover identity.";
+      assert lib.all (name: lib.assertMsg (ok name) "${name}: the primary specialisation does not take over the gateway, WAN identity or LAN services.") (lib.attrNames takers);
+      pkgs.runCommand "router-promotion" { } "touch $out";
 
     checks.router-standby =
       assert lib.assertMsg (
