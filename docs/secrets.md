@@ -32,6 +32,24 @@ commit before pushing.
 An agenix file is deleted from unified only once every host that used it
 reads the secret from vars.
 
+### Workstation user credentials
+
+The operator's home uses Clan vars. The opt-in
+`workstation-user-secrets` aspect declares a shared generator with files
+owned by `deepwatrcreatur` and mode `0400`. It also exposes the GitHub token
+at the path expected by `gh-fnox`. Enable the aspect only on a workstation
+selected for the migration or its coordinated verification.
+
+Imported values are staged under `vars/shared/workstation-user-secrets`
+with admin recipients only. No live machine was granted access during the
+import. When the maintainer coordinates verification, explicitly enable the
+aspect on the chosen machine and update recipients for that machine before
+deployment. Keep the remaining Home Manager consumer wiring and preservation
+of existing application state in scope for user-secret verification.
+
+The legacy SOPS identity is still needed for the GPG private key, the
+Technitium API key, and the Bitwarden session file. See `nch-sny.37.6`.
+
 ### cache/builder notes
 
 - `netrc` contains only the cache.nix-ci.com entry (HTTPS).
