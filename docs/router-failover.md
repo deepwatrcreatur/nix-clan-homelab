@@ -20,7 +20,7 @@ its normal role**: that is the last-resort rollback.
 | | router `standby` | elitedesk `primary` |
 | --- | --- | --- |
 | WAN | `always-down` | DHCP on `enp1s0f1np1` with router's MAC `02:76:c6:01:2a:b0`, DUID-EN and IAID (inventory `router.takeover`), so the modem hands over the same IPv4 lease and `/56` |
-| LAN address | `10.10.10.2/16`, default route via 10.10.10.1 | `10.10.10.1/16` first, plus its own `10.10.10.4/16` |
+| LAN address | `10.10.10.2/16`, default route via 10.10.10.1 | `10.10.10.1/16` only; its own `10.10.10.4` is dropped so the gateway is the kernel's primary address and Kea's server identifier |
 | Kea DHCPv4 | off | on, same pool and reservations |
 | Router adverts and prefix delegation | off (a final lifetime-0 RA withdraws router) | on |
 | UPnP, mDNS reflection | off | on |
@@ -51,9 +51,14 @@ Management IPs (`192.168.100.x`) are reached **through 10.10.10.1**, the
 address that moves. Use the LAN addresses, which are on the same L2 as the
 operator's workstation:
 
+| Host | Before the switch | While elitedesk is primary |
+| --- | --- | --- |
+| router | `10.10.10.1` | `10.10.10.2` |
+| elitedesk | `10.10.10.4` | `10.10.10.1` |
+
 ```sh
-ssh -o HostKeyAlias=router    deepwatrcreatur@10.10.10.1   # before; 10.10.10.2 after
-ssh -o HostKeyAlias=elitedesk deepwatrcreatur@10.10.10.4
+ssh -o HostKeyAlias=router    deepwatrcreatur@<address>
+ssh -o HostKeyAlias=elitedesk deepwatrcreatur@<address>
 ```
 
 **Run every role switch detached**, so a dropped SSH session cannot interrupt
@@ -80,17 +85,24 @@ On router, record the WAN IPv4 address (`ip -br addr show enp6s17`), the
 delegated prefix (`journalctl -u systemd-networkd | grep 'delegated prefix' | tail -1`)
 and the lease count (`wc -l /var/lib/kea/dhcp4.leases`).
 
-### 2. Copy the Kea leases to elitedesk
+### 2. Hand the Kea leases to elitedesk
 
-elitedesk's Kea must not hand out addresses that router already leased:
+elitedesk's Kea must not hand out addresses that router already leased.
+Kea runs with `DynamicUser`, so its state is in `/var/lib/private/kea`, and
+its memfile backend keeps live leases in rotated files (`dhcp4.leases.1`,
+`.2`, `.completed`) as well as in `dhcp4.leases`. Copy all of them, with Kea
+stopped so nothing is leased after the snapshot, and pipe them host to host
+so no copy is left on the workstation:
 
 ```sh
-ssh router sudo cat /var/lib/kea/dhcp4.leases > /tmp/dhcp4.leases
-scp /tmp/dhcp4.leases elitedesk:/tmp/ && ssh elitedesk \
-  'sudo install -D -m 0644 /tmp/dhcp4.leases /var/lib/kea/dhcp4.leases'
+ssh router 'sudo systemctl stop kea-dhcp4-server'   # stays stopped: standby disables it
+ssh router "sudo sh -c 'cd /var/lib/private/kea && tar -cf - dhcp4.leases*'" \
+  | ssh elitedesk "sudo sh -c 'install -d -m 0700 /var/lib/private/kea \
+      && rm -f /var/lib/private/kea/dhcp4.leases* \
+      && tar -C /var/lib/private/kea -xf -'"
 ```
 
-Check the Kea lease path and owner first (`systemctl cat kea-dhcp4-server`).
+systemd chowns the directory to Kea's dynamic user when Kea starts.
 
 ### 3. Demote router, then promote elitedesk
 
@@ -101,17 +113,23 @@ because the modem has one lease.
 # on router (via 10.10.10.1)
 sudo systemd-run --unit=failover --collect \
   /run/current-system/specialisation/standby/bin/switch-to-configuration test
-# wait until router answers on 10.10.10.2 and `ip -br link show enp6s17` is DOWN
+```
+
+**Gate:** do not go on until router's switch has finished (`journalctl -u
+failover` ends with the activation) and router answers on `10.10.10.2`, with
+`ip -br link show enp6s17` DOWN and no `10.10.10.1` in `ip -br addr`.
+
+```sh
 
 # on elitedesk (via 10.10.10.4)
 sudo systemd-run --unit=failover --collect \
   /run/current-system/specialisation/primary/bin/switch-to-configuration test
 ```
 
-Then on elitedesk:
+Then on elitedesk (now at `10.10.10.1`):
 
 ```sh
-ip -br addr show enp1s0f0np0          # 10.10.10.1/16 and 10.10.10.4/16
+ip -br addr show enp1s0f0np0          # 10.10.10.1/16 only
 ip -br link show enp1s0f1np1          # UP, 02:76:c6:01:2a:b0
 ip -br addr show enp1s0f1np1          # the same public IPv4 as the baseline
 ip route show default
@@ -133,21 +151,38 @@ sudo arping -U -c 3 -I enp1s0f0np0 10.10.10.1   # refresh client ARP caches
 
 ### 5. Fail back
 
-```sh
-# on elitedesk (via 10.10.10.4): back to standby first, which drops the WAN
-sudo systemd-run --unit=failback --collect \
-  /nix/var/nix/profiles/system/bin/switch-to-configuration test
-sudo systemctl stop technitium-zone-ha-owner   # demote the zones; it waits for router
+The same order in reverse: elitedesk lets go completely before router takes
+over again.
 
-# on router (via 10.10.10.2): back to primary
+```sh
+# on elitedesk (via 10.10.10.1): back to standby, which drops the WAN,
+# 10.10.10.1 and Kea; it comes back on 10.10.10.4
 sudo systemd-run --unit=failback --collect \
   /nix/var/nix/profiles/system/bin/switch-to-configuration test
 ```
 
-Then confirm that router holds 10.10.10.1, the WAN lease and the prefix, that
-Kea is running, and that elitedesk's role file reads `backup`. Copy any
-leases that elitedesk handed out back to router before restarting router's
-Kea, or accept that those clients may re-DORA.
+**Gate:** on elitedesk (via `10.10.10.4`), `journalctl -u failback` shows the
+activation finished, `ip -br link show enp1s0f1np1` is DOWN, `ip -br addr`
+has no `10.10.10.1`, `systemctl is-active kea-dhcp4-server` is inactive and
+`cat /run/router-ha/role` reads `backup`. Only then:
+
+```sh
+# hand the leases elitedesk issued back to router while router's Kea is off
+ssh elitedesk "sudo sh -c 'cd /var/lib/private/kea && tar -cf - dhcp4.leases*'" \
+  | ssh router "sudo sh -c 'rm -f /var/lib/private/kea/dhcp4.leases* \
+      && tar -C /var/lib/private/kea -xf -'"
+
+# on router (via 10.10.10.2): back to primary
+sudo systemd-run --unit=failback --collect \
+  /nix/var/nix/profiles/system/bin/switch-to-configuration test
+
+# on elitedesk, once router holds 10.10.10.1 again: demote the DNS zones
+# (the owner checks that router answers before handing them back)
+sudo systemctl stop technitium-zone-ha-owner
+```
+
+Then confirm that router holds 10.10.10.1, the WAN lease and the prefix, and
+that Kea is running.
 
 ## Abort
 

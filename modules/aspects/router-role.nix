@@ -224,11 +224,6 @@ in
           "20-router-lan" = {
             networkConfig.ConfigureWithoutCarrier = true;
             gateway = lib.optionals (!primary) [ gateway ];
-            # WHY: keep the node's own address so management, zone transfers
-            # and SSH by 10.10.10.4 keep working while it holds the gateway.
-            # GOTCHA: after the gateway address, so 10.10.10.1 stays the
-            # primary source address (Kea's server identifier among others).
-            address = lib.mkIf promoted (lib.mkAfter [ router.lanAddress ]);
           };
         };
 
@@ -245,6 +240,9 @@ in
             routedInterfaces = {
               lan = {
                 device = lan.name;
+                # GOTCHA: promoted holds only the gateway. Keeping its own address
+                # too would leave it the kernel's primary after a live switch,
+                # and Kea would hand out that address as its server identifier.
                 ipv4Address =
                   if promoted then "${gateway}/${lib.last (lib.splitString "/" lanCidr)}" else router.lanAddress;
                 dns = [ "127.0.0.1" ];
@@ -667,8 +665,7 @@ in
           sp.routerRole.promoted
           && sp.specialisation == { }
           && sp.services.router-networking.routedInterfaces.lan.ipv4Address == "${fleet.hosts.router.addresses.ip}/16"
-          && lib.head lanNet.address == "${fleet.hosts.router.addresses.ip}/16"
-          && lib.elem host.router.lanAddress lanNet.address
+          && lanNet.address == [ "${fleet.hosts.router.addresses.ip}/16" ]
           && (wan.linkConfig.ActivationPolicy or "up") != "always-down"
           && wan.linkConfig.MACAddress == host.router.takeover.wanMac
           && wan.dhcpV4Config.DUIDRawData == host.router.takeover.dhcpDuidRawData
