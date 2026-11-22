@@ -49,7 +49,10 @@ in
     let
       host = lib.getAttrFromPath destination config.flake;
       inventory = import ../checks/emerald-home-inventory.nix;
-      actual = inventory host.config.home-manager.users.deepwatrcreatur;
+      home = host.config.home-manager.users.deepwatrcreatur;
+      actual = inventory home;
+      inherit (import ./_hm/emerald-shell/github-identity.nix) identityFile;
+      github = home.programs.ssh.settings."github.com".data;
       readJSON = path: builtins.fromJSON (builtins.readFile path);
       reference = readJSON ../checks/emerald-home-reference.json;
       expected = readJSON ../checks/emerald-home-expected-differences.json;
@@ -65,5 +68,15 @@ in
           pkgs.runCommand "emerald-home-parity" { } "touch $out"
         else
           throw "Emerald Home Manager differences changed. Observed: ${builtins.toJSON differences}";
+      checks.emerald-github-ssh =
+        if home.programs.ssh.enable
+          && github.IdentityFile == identityFile
+          && github.IdentitiesOnly
+          && home.programs.git.settings.user.signingkey == "${identityFile}.pub"
+          && home.programs.git.settings.gpg.format == "ssh"
+          && home.programs.git.settings.commit.gpgsign
+          && lib.elem "git-ssh-doctor" actual.packages
+        then pkgs.runCommand "emerald-github-ssh" { } "touch $out"
+        else throw "Emerald GitHub SSH and Git signing must use the configured workstation key";
     };
 }

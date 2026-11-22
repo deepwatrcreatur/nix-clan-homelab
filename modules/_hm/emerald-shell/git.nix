@@ -63,6 +63,17 @@
         difftastic # Add difftastic to the list of packages
       ]
       ++ [ meld ]
+      ++ [
+        (pkgs.writeShellApplication {
+          name = "git-ssh-doctor";
+          runtimeInputs = [ pkgs.git pkgs.openssh pkgs.coreutils pkgs.gnugrep pkgs.gnused ];
+          bashOptions = [ "nounset" "pipefail" ];
+          text = ''
+            export GIT_SSH_DOCTOR_EXPECTED_KEY=${(import ./github-identity.nix).publicKey}
+            ${lib.removePrefix "#!/usr/bin/env bash\n" (builtins.readFile ./git-ssh-doctor.sh)}
+          '';
+        })
+      ]
       ++ lib.optional (!(config.programs.fnox.enable or false)) pkgs.gh;
 
     programs.git = {

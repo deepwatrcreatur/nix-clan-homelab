@@ -6,7 +6,9 @@
     ]
   },
   "packages": {
-    "extra": [],
+    "extra": [
+      "git-ssh-doctor"
+    ],
     "missing": [
       "gnupg",
       "sops"

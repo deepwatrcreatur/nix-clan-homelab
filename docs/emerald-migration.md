@@ -139,6 +139,10 @@ for verification against the Clan SSH CA. The generated file replaces the
 unified `ssh-known-hosts-manager` module, so its enable flag remains an
 expected difference.
 
+The [Git SSH doctor](./git-ssh-doctor.md) checks the workstation identity
+used for GitHub transport and Git signing. The helper was added after the
+pinned home inventory and is an expected extra package.
+
 The workstation Just recipes use the Clan checkout in `NH_FLAKE`.
 `build-nixos` builds a system closure and `test-nixos` previews that build.
 `update`, `nh-update`, and `remote-switch` dispatch through `fleet-deploy`.

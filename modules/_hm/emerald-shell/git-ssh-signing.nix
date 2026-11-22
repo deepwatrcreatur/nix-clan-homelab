@@ -7,15 +7,17 @@
 # GitHub: register the same key under Settings → SSH keys → Signing keys.
 { config, lib, pkgs, ... }:
 let
+  inherit (import ./github-identity.nix) identityFile;
   email = config.programs.git.settings.user.email;
   allowedSigners = "${config.xdg.configHome}/git/allowed_signers";
+  localPublicKey = "${config.home.homeDirectory}/${lib.removePrefix "~/" identityFile}.pub";
 in
 {
   programs.git.settings = {
     gpg.format = "ssh";
     commit.gpgsign = true;
     tag.gpgsign = true;
-    "user".signingkey = "~/.ssh/id_ed25519.pub";
+    user.signingkey = "${identityFile}.pub";
     # Nested form produces [gpg "ssh"] subsection (not literal [gpg.ssh])
     gpg.ssh.allowedSignersFile = allowedSigners;
   };
@@ -23,7 +25,7 @@ in
   # Write allowed_signers at activation time from the live public key.
   # This is needed for `git log --show-signature` to verify local commits.
   home.activation.writeGitAllowedSigners = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    _pub="$HOME/.ssh/id_ed25519.pub"
+    _pub=${lib.escapeShellArg localPublicKey}
     _out="${allowedSigners}"
     if [ -f "$_pub" ]; then
       run mkdir -p "$(dirname "$_out")"

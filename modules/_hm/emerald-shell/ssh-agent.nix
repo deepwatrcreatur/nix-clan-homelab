@@ -8,6 +8,9 @@
 #         AddKeysToAgent + UseKeychain in ssh config so keys are loaded
 #         on first use without a passphrase prompt every session.
 { lib, pkgs, ... }:
+let
+  inherit (import ./github-identity.nix) identityFile;
+in
 {
   # Linux: systemd user SSH agent.
   services.ssh-agent.enable = lib.mkIf pkgs.stdenv.isLinux true;
@@ -24,7 +27,7 @@
     settings = {
       "github.com" = {
         IdentitiesOnly = true;
-        IdentityFile = "~/.ssh/id_ed25519";
+        IdentityFile = identityFile;
         AddKeysToAgent = "yes";
       };
     };
