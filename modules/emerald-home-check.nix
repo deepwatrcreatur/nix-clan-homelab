@@ -23,6 +23,7 @@ in
       nixos-base
       home-manager-users
       desktop-media-players
+      workstation-herdr-mobile
     ];
     provides.deepwatrcreatur.includes = with den.aspects; [
       user-workstation-shell
@@ -30,10 +31,7 @@ in
       user-workstation-desktop
       user-workstation-plasma
     ];
-    provides.deepwatrcreatur.homeManager = {
-      home.stateVersion = "25.11";
-      programs.herdr.desktopApp.enable = true;
-    };
+    provides.deepwatrcreatur.homeManager.home.stateVersion = "25.11";
     nixos = {
       fileSystems."/" = {
         device = "/dev/vda";
@@ -53,6 +51,8 @@ in
       actual = inventory home;
       inherit (import ./_hm/emerald-shell/github-identity.nix) identityFile;
       github = home.programs.ssh.settings."github.com".data;
+      operator = host.config.users.users.deepwatrcreatur;
+      core = home.systemd.user.services.herdr-core;
       readJSON = path: builtins.fromJSON (builtins.readFile path);
       reference = readJSON ../checks/emerald-home-reference.json;
       expected = readJSON ../checks/emerald-home-expected-differences.json;
@@ -78,5 +78,15 @@ in
           && lib.elem "git-ssh-doctor" actual.packages
         then pkgs.runCommand "emerald-github-ssh" { } "touch $out"
         else throw "Emerald GitHub SSH and Git signing must use the configured workstation key";
+      checks.emerald-herdr-mobile =
+        if lib.elem "herdr-core" actual.packages
+          && lib.elem "default.target" core.Install.WantedBy
+          && core.Service.Type == "oneshot"
+          && lib.any (lib.hasSuffix "/bin/hc server start") core.Service.ExecStart
+          && operator.linger
+          && operator.shell.pname == "bash-interactive"
+          && lib.elem "deepwatrcreatur" host.config.custom.fishInteractiveShell.users
+        then pkgs.runCommand "emerald-herdr-mobile" { } "touch $out"
+        else throw "Emerald Herdr mobile requires hc, its autostart unit, user linger, and the Bash SSH login shell";
     };
 }
