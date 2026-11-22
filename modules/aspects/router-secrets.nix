@@ -27,7 +27,6 @@ in
     let
       primary = hosts.${config.networking.hostName}.router.mode == "primary";
       varPath = name: config.clan.core.vars.generators."router-${name}".files.value.path;
-      passwordPath = varPath "technitium-admin-password";
     in
     {
       # SECURITY: shared router credentials are scoped to the machines that
@@ -57,11 +56,10 @@ in
         router-tailscale-auth-key = single "Tailscale auth key for the router node" { mode = "0400"; };
       };
 
-      # SECURITY: systemd makes the root-only password available to the
-      # Technitium service's dynamic user through its credentials directory.
-      systemd.services.technitium-dns-server = {
-        serviceConfig.LoadCredential = [ "admin-password:${passwordPath}" ];
-        environment.DNS_SERVER_ADMIN_PASSWORD_FILE = lib.mkForce "%d/admin-password";
-      };
+      # WHY: nix-router-optimized's *File options take the clan var paths
+      # directly (bootstrapPasswordFile is set in router-role), so no agenix
+      # module or age.secrets aliases are needed (nch-sny.29).
+      services.router-dashboard.cloudflareTokenFile = lib.mkIf primary (varPath "cloudflare-api-token");
+
     };
 }

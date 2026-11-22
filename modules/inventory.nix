@@ -41,6 +41,34 @@ let
         default = "1Gbit";
         description = "WAN bandwidth for router diagnostics.";
       };
+      takeover = mkOption {
+        type = types.nullOr (types.submodule {
+          options = {
+            wanMac = mkOption {
+              type = types.str;
+              description = "WAN MAC address of the router whose lease this node takes over.";
+            };
+            dhcpDuidRawData = mkOption {
+              type = types.str;
+              description = ''
+                That router's DHCP DUID as networkd DUIDRawData (DUID-EN: enterprise
+                number plus identifier, colon-separated bytes). The modem binds
+                the IPv4 lease and the delegated prefix to it.
+              '';
+            };
+            dhcpIaid = mkOption {
+              type = types.ints.unsigned;
+              description = "That router's WAN IAID, in decimal.";
+            };
+          };
+        });
+        default = null;
+        description = ''
+          WAN identity of the router this standby replaces. When set, the host
+          gets a `primary` specialisation for manual failover
+          (docs/router-failover.md).
+        '';
+      };
       vrrpPriority = mkOption {
         type = types.ints.between 1 254;
         default = 100;
