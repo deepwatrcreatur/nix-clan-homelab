@@ -76,10 +76,10 @@ the system Nightscout and Strata integrations, and enrollment for the
 existing remote builder identity. Lattitude and Emerald share the Synology
 CIFS mount layout for `/cloud` and `/storage`. The fixture evaluates both
 automounts with a placeholder path. Production uses
-`synology-shares/credentials`, which still needs to be imported and granted
-to the selected hosts.
-The fixture is outside Clan inventory, and unified remains authoritative
-for the actual host.
+`synology-shares/credentials`, now staged in Clan vars for admins only. Add
+Lattitude's machine recipient after its real Clan machine declares the mount
+aspect; do the same for Emerald during its migration. The fixture is outside
+Clan inventory, and unified remains authoritative for the actual host.
 
 ## Inventory
 
