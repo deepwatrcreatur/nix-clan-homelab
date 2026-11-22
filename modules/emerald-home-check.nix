@@ -86,7 +86,9 @@ in
           && operator.linger
           && operator.shell.pname == "bash-interactive"
           && lib.elem "deepwatrcreatur" host.config.custom.fishInteractiveShell.users
+          && lib.elem ../keys/herdr-mobile-1.pub operator.openssh.authorizedKeys.keyFiles
+          && lib.elem ../keys/herdr-mobile-2.pub operator.openssh.authorizedKeys.keyFiles
         then pkgs.runCommand "emerald-herdr-mobile" { } "touch $out"
-        else throw "Emerald Herdr mobile requires hc, its autostart unit, user linger, and the Bash SSH login shell";
+        else throw "Emerald Herdr mobile requires hc, its autostart unit, user linger, Bash for SSH, and both mobile public keys";
     };
 }

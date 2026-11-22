@@ -159,9 +159,10 @@ tracked in `nch-sny.37.4`.
 The `workstation-herdr-mobile` aspect enables the Herdr desktop app and
 keeps the operator's user services running across logout. The
 `emerald-herdr-mobile` flake check verifies `hc`, its autostart unit,
-linger, and the Bash login shell with interactive Fish. Mobile keys need
-operator confirmation in `nch-sny.37.8`. The live mobile connection is
-verified on `clan-spike` in `nch-sny.37.7`.
+linger, the Bash login shell with interactive Fish, and the two
+`herdr-mobile` public keys already authorized on Emerald. Include the
+aspect only on workstations the mobile clients should reach. The live
+mobile connection is verified on `clan-spike` in `nch-sny.37.7`.
 
 The developer aspect also adds the Beads release CLI as `beads-rust`,
 Orca IDE, and repo-updater. T3 Code uses Home Manager's program module and
