@@ -1,0 +1,22 @@
+{ pkgs, ... }:
+
+{
+  programs.helix = {
+    enable = true;
+    defaultEditor = true;
+    extraPackages = with pkgs; [
+      nil
+      nixd
+      elixir-ls
+      yaml-language-server
+      pyright
+      black
+      typescript-language-server
+      prettier
+      gopls
+      go
+    ];
+    settings = import ./settings.nix;
+    languages = import ./languages.nix { inherit pkgs; };
+  };
+}

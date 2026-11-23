@@ -1,0 +1,39 @@
+# modules/home-manager/git-ssh-signing.nix
+#
+# Configures git to sign commits with the host's SSH key instead of GPG.
+# Works identically on NixOS and darwin: no pinentry, no gpg-agent.
+#
+# Requires: ~/.ssh/id_ed25519 (or id_rsa) to exist on the host.
+# GitHub: register the same key under Settings → SSH keys → Signing keys.
+{ config, lib, pkgs, ... }:
+let
+  inherit (import ./github-identity.nix) identityFile;
+  email = config.programs.git.settings.user.email;
+  allowedSigners = "${config.xdg.configHome}/git/allowed_signers";
+  localPublicKey = "${config.home.homeDirectory}/${lib.removePrefix "~/" identityFile}.pub";
+in
+{
+  programs.git.settings = {
+    gpg.format = "ssh";
+    commit.gpgsign = true;
+    tag.gpgsign = true;
+    user.signingkey = "${identityFile}.pub";
+    # Nested form produces [gpg "ssh"] subsection (not literal [gpg.ssh])
+    gpg.ssh.allowedSignersFile = allowedSigners;
+  };
+
+  # Write allowed_signers at activation time from the live public key.
+  # This is needed for `git log --show-signature` to verify local commits.
+  home.activation.writeGitAllowedSigners = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    _pub=${lib.escapeShellArg localPublicKey}
+    _out="${allowedSigners}"
+    if [ -f "$_pub" ]; then
+      run mkdir -p "$(dirname "$_out")"
+      run ${pkgs.runtimeShell} -c '
+        printf "%s namespaces=\"git\" %s\n" "$1" "$(cat "$2")" > "$3"
+      ' write-allowed-signers ${lib.escapeShellArg email} "$_pub" "$_out"
+    else
+      run rm -f "$_out"
+    fi
+  '';
+}

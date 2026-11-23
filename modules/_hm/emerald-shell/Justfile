@@ -1,0 +1,74 @@
+default: help
+
+help:
+    @just --justfile "$HOME/.justfile" --list --unsorted
+
+nix-info:
+    nix flake metadata
+
+nix-update:
+    nix flake update
+
+nix-fmt:
+    nix fmt
+
+nix-check:
+    nix flake check
+
+info:
+    nix flake metadata && nix path-info nixpkgs
+
+test: nix-check
+
+test-build:
+    nix build --dry-run
+
+clean:
+    rm -f ./result
+
+clean-all: clean
+    nix store gc
+
+fmt: nix-fmt
+
+check: nix-check
+
+build-nixos host=`hostname`:
+    nix build --no-link "${NH_FLAKE:?Set NH_FLAKE to the Clan checkout}#nixosConfigurations."{{quote(host)}}".config.system.build.toplevel"
+
+test-nixos host=`hostname`:
+    nix build --dry-run "${NH_FLAKE:?Set NH_FLAKE to the Clan checkout}#nixosConfigurations."{{quote(host)}}".config.system.build.toplevel"
+
+update host=`hostname`:
+    cd "${NH_FLAKE:?Set NH_FLAKE to the Clan checkout}" && nix develop . -c fleet-deploy {{quote(host)}}
+
+nh-update host=`hostname`: (update host)
+
+switch host=`hostname`: (update host)
+
+remote-switch host: (update host)
+
+remote-test host:
+    cd "${NH_FLAKE:?Set NH_FLAKE to the Clan checkout}" && nix develop . -c fleet-deploy --dry-run {{quote(host)}}
+
+nixos-version:
+    nixos-version
+
+nixos-search query:
+    nixos-option {{quote(query)}}
+
+system-gc:
+    /run/wrappers/bin/sudo nix-collect-garbage --delete-old
+
+system-optimize:
+    /run/wrappers/bin/sudo nix-store --optimise
+
+memory-stats:
+    free -h
+
+disk-usage:
+    df -h
+
+system-info:
+    uname -a
+    nixos-version

@@ -52,6 +52,73 @@ reports, SSH CA, deploy tooling), then hosts from least to most critical:
 vaglio, podman, homeserver, authentik-host, lattitude, phoenix, emerald,
 elitedesk, router. unified is archived last.
 
+The workstation rollout starts with Lattitude (`nch-sny.18`), followed by
+`pve-strix` (`nch-sny.39`), `pve-rog` (`nch-sny.40`), Phoenix
+(`nch-sny.19`), and Emerald (`nch-sny.20`). On the two Proxmox nodes the
+scope is the root standalone Home Manager profile. Proxmox VE, storage,
+networking, services, and boot configuration stay in place. Lattitude's
+repository-only kiosk comparison is tracked in `nch-sny.18.1`.
+
+### Lattitude kiosk comparison
+
+The `lattitude-kiosk` flake check evaluates a den fixture with Lattitude's
+disk, hardware and Ethernet modules copied from unified
+`5e70e2a069dbb2116e03adf6f2c44a4b2a219848`. The comparison matched the
+local Btrfs and EFI mounts and options, wired address, systemd-boot,
+Sway autologin, zram, and NixOS and Home Manager state versions.
+
+The fixture reuses the workstation shell and Worktrunk. Unified also
+includes the common coding-agent packages, fnox, Bitwarden, rclone sync
+helpers, and Fastfetch configuration. The fixture adds the shared Git SSH
+doctor and Jujutsu. Qutebrowser is excluded because this nixpkgs pin marks it
+insecure. The Lattitude Clan candidate now composes the workstation shell,
+developer, and desktop aspects, carries over the Nightscout and Strata system
+integrations, and retains Lattitude's kiosk settings. It evaluates both
+Synology automounts using `synology-shares/credentials`. Its Clan machine key
+and recipients for declared shared vars were generated for Lattitude; Emerald
+remains admin-only. The comparison fixture stays outside Clan inventory.
+Unified remains in the repository until the migration bead is complete.
+
+### Lattitude live-system comparison
+
+The candidate toplevel was compared read-only against Lattitude's actual
+`/run/current-system` (`nixos-system-lattitude-26.05.20260812.9f78f44`), not
+Emerald's local generation. The candidate builds as
+`nixos-system-lattitude-26.05.20261116.f684076`. It retains the active
+Tailscale, CUPS/HP printer queue, Avahi discovery, Snapper snapshots, and
+systemd-networkd wait-online behavior. Its wired network file matches the
+Realtek MAC and retains `10.10.11.47/16`, DHCP, gateway, and DNS; the Tailscale
+networkd file remains present. The two Synology CIFS mounts use automounts and
+the Clan credentials file.
+
+The old NixCI netrc copy unit is replaced by the Clan vars path
+`/run/secrets/vars/nix-cache-auth/netrc`. The candidate also updates the
+kernel from 6.18.44 to 6.18.63 and firmware from 20260810 to 20261019; these
+take effect after a reboot. The closure diff contains about 600 package and
+unit lines, including the migrated Home Manager tools.
+
+On 2026-11-23 the Clan generation was activated without rebooting Lattitude.
+The active system is
+`/nix/store/g2m1y9brrqrr2grjw5ng9sqfqnvqkaax-nixos-system-lattitude-26.05.20261116.f684076`.
+After activation, `systemctl is-system-running` was `running`, there were no
+failed units, and Tailscale, CUPS, Avahi, the primary user's Home Manager,
+root's Home Manager, networkd wait-online, both Snapper timers, and the `cloud`
+and `storage` CIFS automounts were active. Both HP printer queues remained
+enabled and idle. The machine uptime increased across both switches, confirming
+that it was not rebooted.
+
+The first switch exposed an empty `home-manager-root.service`: the Clan base
+aspect had set its environment but had not defined the root profile. The root
+profile is now ported with fish, lsd, sops, SSH-signed Git, Fastfetch, Zellij,
+and terminfo; the resulting root activation service is valid and active. The
+old root `.sops.yaml` convenience file and `NH_FLAKE` path remain deferred to
+the user-secret and root-checkout follow-up. The first correction briefly
+omitted Elitedesk's new NixCI auth aspect from the local flake only, so Clan
+would not prompt for its still-undecided token; the aspect was restored after
+Lattitude's update. Review later removed it again until `nch-sny.38` provides
+the dedicated read-only token path. No Elitedesk configuration or credential
+was changed.
+
 ## Inventory
 
 Edit `inventory/hosts.nix` for host addresses, SSH settings, and roles. The
@@ -86,9 +153,11 @@ administratively down until the user approves failover testing.
 Clan configures the LAN default route through the live router and keeps SSH
 reachable on the management interface with loose IPv4 reverse-path filtering.
 The router aspect uses Clan vars for the Technitium password and SNMP
-community. Primary mode also declares the Kea TSIG, Cloudflare, and Tailscale
-credentials. The primary router migration and VRRP operation are separate
-work. User passwords remain tracked in nch-sny.11.
+community. It supplies file paths through the router modules' `*File`
+options, without agenix compatibility aliases. Primary mode also declares the
+Kea TSIG, Cloudflare, and Tailscale credentials. The primary router migration
+and VRRP operation are separate work. User passwords remain tracked in
+nch-sny.11.
 
 Evaluated both flakes' `nixosConfigurations.elitedesk.config` (unified at
 `dc759e8dc76a3095d6a13c994271a68124b23dc5`). Firewall lists below are

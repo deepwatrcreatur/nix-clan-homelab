@@ -68,12 +68,131 @@ Port into den aspects with `homeManager` classes, grouped as in unified:
 | Shell and CLI | `modules/home-manager/common/{fish,starship,atuin,bat,eza,fd-enhanced,fzf,ripgrep-enhanced,tmux-enhanced,helix,nushell,jj,just,grc,*-aliases,motd,platform,packages,env}.nix`, `modules/home-manager/{git,git-ssh-signing,ssh-agent}.nix`, `common/ssh-*.nix` | Largest group; split into two PRs if needed. |
 | Developer and agents | `users/deepwatrcreatur/aspects/developer.nix`, `common/{coding-agents,agent-guards,beads,herdr,dmux,worktrunk,cass-session-search,orca-ide,npm,cargo-binstall,comma,repo-updater,nix-user-config,fnox,iodyne,frankenterm,cmux-tui}.nix` | `t3code-daemon` is already in `modules/_hm`. |
 | Desktop user apps | `ghostty/`, `zen.nix`, browsers (Firefox, Chrome, Vivaldi), `bitwarden-cli.nix`, `rbw.nix`, `fastfetch.nix`, `linuxbrew.nix`, `rclone-scripts.nix`, `kde-plasma.nix` (plasma-manager) | `kde-plasma.nix` is imported by unified's `plasma-session-base`. |
-| User secrets | `users/deepwatrcreatur/{sops.nix,secrets/}`, `modules/home-manager/user-secrets.nix` | github-token, atuin key, GPG private key, API keys (grok, openrouter, z-ai, opencode-zen, technitium), rclone.conf, bitwarden data. Decide the backend: clan vars owned by the user (preferred, one secrets system), or HM sops-nix keyed to the admins group. `owner:claude`: it handles decrypted values with the maintainer. |
+| User secrets | unified user secrets and agenix copies | User-owned Clan vars for GitHub, Atuin, API keys, Gemini OAuth, rclone, and Bitwarden data. GPG recovery stays with the operator. Technitium automation bootstraps its own API token, and Bitwarden can establish a fresh session. |
 | Verification | — | Deploy the ported user environment to `clan-spike` and log in. Shells, git signing, agents and secrets must work. |
 
 Leave out darwin-only modules (`common-darwin.nix`, `attic-client-darwin`,
 `xbar`, `env-darwin`), unused desktops (gnome, cinnamon, mate, xfce, lxde,
 hyprland, rofi) and other hosts' files.
+
+### Regenerate the Home Manager reference snapshot
+
+From the homelab worktree, evaluate unified at the pinned reference revision.
+This uses unified's own lockfile and extracts package names, enabled file
+targets, and enabled programs for the operator on Emerald.
+The inventory skips deprecated program aliases such as `programs.exa`.
+It records `programs.eza` once, and options moved to `services` are outside
+the enabled-program comparison.
+
+```bash
+set -o pipefail
+snapshot=$(mktemp)
+nix eval --impure --json --expr '
+  let
+    unified = builtins.getFlake "git+file://${builtins.getEnv "HOME"}/flakes/unified-nix-configuration?rev=95d9b0ac1eaa2d0897ba399b3cafa0ae62bece4e";
+    inventory = import ./checks/emerald-home-inventory.nix;
+  in inventory unified.nixosConfigurations.emerald.config.home-manager.users.deepwatrcreatur
+' | jq -S . > "$snapshot" &&
+  cp "$snapshot" checks/emerald-home-reference.json
+rm "$snapshot"
+```
+
+Update the pinned revision here if the baseline changes. To inspect the Clan
+fixture's inventory, run
+`nix eval --json .#legacyPackages.x86_64-linux.emeraldHomeInventory | jq -S .`.
+As each group is ported, review the observed differences printed by the
+parity check and update `checks/emerald-home-expected-differences.json`.
+Run `nix build --no-link .#checks.x86_64-linux.emerald-home-parity` and
+`nix flake check --no-build` to validate the result.
+
+### Linux Home Manager input pins
+
+The input port reuses unified's locked revisions for the Emerald baseline.
+The shell and CLI port uses `jj-starship` and `zellij-vivid-rounded`.
+Developer tooling uses `dmux-flake`, `fnox`, `herdr`, `hunk`,
+`llm-agents`, `llm-agents-herdr-app`, `nix-cmux-tui`,
+`nix-deepseek-harness`, `nix-frankenterm`, `nix-index-database`,
+`nix-markit`, `nix-rtk`, `qmd` and `leaf`. Desktop integration uses
+`plasma-manager` and the existing `nix-linuxbrew` and `zen-browser` pins.
+
+Worktrunk and beads-rust come from unified's release-binary package
+definitions. WhiteSur is wired into Phoenix, and Iodyne is absent from
+Emerald's evaluated home inventory. Each of those choices follows the
+audited Emerald configuration at the reference revision.
+
+The `emerald-home-eval` fixture delivers the `user-workstation-shell`
+aspect to the operator through den. The inventory covers Starship, Jujutsu,
+bat, eza, fzf, rename, zoxide, Atuin, the enhanced fd and ripgrep
+configurations, grc, tmux, the SSH login banner, Fish plugins, Nushell, Zsh,
+terminal definitions for Ghostty and Kitty, Helix, shared CLI packages, Git
+aliases and settings, and the SSH signing agent. The banner points at a
+Clan build, and the shared shell environment sets `NH_FLAKE` to the Clan
+main worktree. Git uses `gh-fnox` in the developer aspect. Atuin key
+migration is tracked in `nch-sny.37.6`. The
+shell aspect also enables the Zellij theme and Yazelix layout, Yazi, and
+the existing `nh` cleanup schedule.
+
+The workstation SSH config generates aliases from Clan inventory and keeps
+the operator's dynamic known-hosts file. The managed file contains pinned
+public keys for legacy hosts. Migrated hosts use their canonical DNS name
+for verification against the Clan SSH CA. The generated file replaces the
+unified `ssh-known-hosts-manager` module, so its enable flag remains an
+expected difference.
+
+The [Git SSH doctor](./git-ssh-doctor.md) checks the workstation identity
+used for GitHub transport and Git signing. The helper was added after the
+pinned home inventory and is an expected extra package.
+
+The workstation Just recipes use the Clan checkout in `NH_FLAKE`.
+`build-nixos` builds a system closure and `test-nixos` previews that build.
+`update`, `nh-update`, and `remote-switch` dispatch through `fleet-deploy`.
+`remote-test` previews that dispatch. Secret operations follow the Clan vars
+workflow in [secrets.md](./secrets.md).
+
+The fixture also includes the `user-workstation-developer` aspect. Its first
+group covers npm, Cargo, nix-index and comma, Worktrunk, TuiOS, Hunk, and QMD.
+It also includes the pinned dmux, cmux-tui, FrankenTerm, and Herdr packages
+and the local session search command. The fixture enables Herdr's desktop
+app and captures the resulting user unit. Remaining developer tools are
+tracked in `nch-sny.37.4`.
+
+The `workstation-herdr-mobile` aspect enables the Herdr desktop app and
+keeps the operator's user services running across logout. The
+`emerald-herdr-mobile` flake check verifies `hc`, its autostart unit,
+linger, the Bash login shell with interactive Fish, and the two
+`herdr-mobile` public keys already authorized on Emerald. Include the
+aspect only on workstations the mobile clients should reach. The live
+mobile connection is verified on `clan-spike` in `nch-sny.37.7`.
+
+The developer aspect also adds the Beads release CLI as `beads-rust`,
+Orca IDE, and repo-updater. T3 Code uses Home Manager's program module and
+the existing Clan daemon module for its user service and URL handler.
+Coding-agent packages use the pinned llm-agents overlay with the Clan
+nixpkgs package set. The developer aspect also wires RTK hooks and the
+command guard into Home Manager activation. Fnox provides the GitHub CLI,
+Bitwarden CLI, Claude, and Gemini wrappers. The generated config declares
+public recipients and secret names. Credential seeding and preservation of
+any existing writable fnox config belong to `nch-sny.37.6`. The Home
+Manager Nix config enables flakes and Nix commands, while system cache
+settings and credentials use the Clan NixOS aspects.
+
+The `user-workstation-desktop` aspect starts with Ghostty and its user unit,
+Zed, Fastfetch, Firefox, Chrome, Vivaldi, and Flameshot. Firefox keeps
+`~/.mozilla/firefox` as its profile path. The Emerald reference has no
+enabled Zen configuration. The Home Manager side carries the existing
+Linuxbrew command wrapper. System Linuxbrew setup belongs to the host port.
+The desktop aspect also configures rbw and installs the rclone filter and
+sync commands. The existing user rclone credentials are handled by the
+secrets bead.
+
+The Plasma-specific aspect adds Konveyor, Birdtray, Vicinae, and the Plasma
+shortcuts. The fixture also includes the existing mpv configuration aspect
+and checks the NeoHtop and Omasnap packages. The remaining inventory gaps
+are the GPG public-key file and secret-management packages supplied by the
+opt-in Clan workstation secrets aspect, and the retired SSH manager flag
+documented above.
+The fixture retains unified Emerald's evaluated Home Manager state version
+of `25.11`. Carry it over when wiring the operator into the real host.
 
 ## Part 2: emerald system port (children of `nch-sny.20`)
 

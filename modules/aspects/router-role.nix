@@ -586,6 +586,22 @@ in
       assert lib.all (name: lib.assertMsg (ok name) "${name}: router hardware sensors (timer, textfile collector, dashboard) are not wired.") (lib.attrNames routers);
       pkgs.runCommand "router-hw-sensors" { } "touch $out";
 
+    # WHY: Clan vars are the router credential source; evaluating the router
+    # role must not depend on the legacy agenix module.
+    checks.router-secret-files =
+      let
+        routers = lib.filterAttrs (_: host: host.migrated && !host.archived && host.router != null) fleet.hosts;
+        ok = name:
+          let
+            cfg = config.flake.nixosConfigurations.${name}.config;
+            expected = cfg.clan.core.vars.generators.router-technitium-admin-password.files.value.path;
+          in
+          cfg.services.router-technitium.bootstrapPasswordFile == expected
+          && !(cfg ? age);
+      in
+      assert lib.all (name: lib.assertMsg (ok name) "${name}: router secret file paths or agenix independence are incorrect.") (lib.attrNames routers);
+      pkgs.runCommand "router-secret-files" { } "touch $out";
+
     # WHY: proves the NIC alerts fire, including flap bursts between scrapes.
     checks.router-nic-alerts =
       let

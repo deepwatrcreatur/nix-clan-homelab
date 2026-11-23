@@ -1,0 +1,23 @@
+{
+  "files": {
+    "extra": [],
+    "missing": [
+      ".gnupg/public-key.asc"
+    ]
+  },
+  "packages": {
+    "extra": [
+      "git-ssh-doctor"
+    ],
+    "missing": [
+      "gnupg",
+      "sops"
+    ]
+  },
+  "programs": {
+    "extra": [],
+    "missing": [
+      "ssh-known-hosts-manager"
+    ]
+  }
+}

@@ -24,17 +24,56 @@ commit before pushing.
 
 | Domain | Aspects | Vars | Status |
 | --- | --- | --- | --- |
-| cache/builder | `nix-cache-auth`, `remote-builder-client` | `nix-cache-auth/{attic-token,netrc}`, `nix-remote-builder/key` | imported; verified on clan-spike |
-| user/operator | `console-password` (per clan host) | `console-password/{root,deepwatrcreatur}` (yescrypt hashes); github-token, API keys still todo | console passwords declared; generate with `clan-admin vars generate <machine> --generator console-password` |
+| cache/builder | `nix-cache-auth`, `nix-ci-cache-auth`, `remote-builder-client` | `nix-cache-auth/{attic-token,netrc}`, `nix-ci-cache-auth/netrc`, `nix-remote-builder/key` | existing hosts imported; router token scope decision pending in `nch-sny.38`; builder keys remain off routers |
+| Synology CIFS | `synology-shares` | `synology-shares/credentials` | imported from unified; Lattitude recipient added for candidate; Emerald remains admin-only |
+| user/operator | `console-password` (per clan host) | `console-password/{root,deepwatrcreatur}` (yescrypt hashes); github-token, API keys still todo | Lattitude recipient added for candidate; other hosts still need vars generation |
 | homeserver services | | | todo |
 | router services | | | todo |
 
 An agenix file is deleted from unified only once every host that used it
 reads the secret from vars.
 
+### Workstation user credentials
+
+The operator's home uses Clan vars. The opt-in
+`workstation-user-secrets` aspect declares a shared generator with files
+owned by `deepwatrcreatur` and mode `0400`. It also exposes the GitHub token
+at the path expected by `gh-fnox`. Enable the aspect only on a workstation
+selected for the migration or its coordinated verification.
+
+Imported values are stored under `vars/shared/workstation-user-secrets`.
+Lattitude now declares this aspect, and its machine key is a recipient for
+these encrypted vars. No live machine has read them. Emerald remains
+admin-only. Live verification on each host still needs the maintainer's
+coordination and covers credential delivery and preservation of existing
+application state.
+
+The GPG private key remains in the operator's cloud backup for optional
+recovery. Technitium router automation creates its own API token from the
+separate bootstrap password. Bitwarden establishes a fresh unlock session.
+These three legacy files are outside the required import.
+
+On activation, the workstation aspect seeds missing Atuin, Bitwarden,
+Gemini OAuth and rclone state as owner-only files. Existing application
+state takes precedence, including changes made after the first activation.
+The Claude and Gemini wrappers read Clan files for their API keys when the
+aspect is enabled. The remaining API keys are available as user-owned
+files under `WORKSTATION_CREDENTIALS_DIRECTORY`. The generated fnox
+defaults use a separate file so an existing writable config stays in place.
+
 ### cache/builder notes
 
 - `netrc` contains only the cache.nix-ci.com entry (HTTPS).
+- The `nix-cache-auth` aspect enables the NixCI substituter and signing key
+  alongside that netrc, and keeps the shared Attic push token for later use.
+  Router-class hosts can use `nix-ci-cache-auth`, which provisions only a
+  NixCI user token and does not expose the Attic push token or builder
+  credentials. NixCI's hosted user token can also write to the user's private
+  cache namespace, so router access is pending a dedicated read-only token
+  path in `nch-sny.38` (see [NixCI cache access](https://nix-ci.com/documentation/nix-ci-cache)).
+  Elitedesk currently omits the aspect until that path is ready.
+- The `nix-cache-auth` flake check verifies the NixCI endpoint, key and netrc
+  on the exported NixOS configurations and checks the public-cache fallback.
 - attic's `cache-local` answers unauthenticated reads on the LAN, so pulls
   need no credential. The token only gates pushes (the post-build push hook
   has not been ported yet). Never put it in netrc: the attic substituters are

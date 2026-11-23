@@ -57,6 +57,12 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    nightscout-tui = {
+      url = "github:deepwatrcreatur/nightscout-tui";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-utils.follows = "flake-utils";
+    };
+
     openlogi = {
       url = "github:AprilNEA/OpenLogi";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -72,6 +78,87 @@
 
     home-manager.url = "github:nix-community/home-manager/release-26.05";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
+
+    dmux-flake = {
+      url = "github:deepwatrcreatur/nix-dmux";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    fnox = {
+      url = "github:deepwatrcreatur/fnox-flake";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    herdr.url = "github:herdrdev/herdr/v0.9.5";
+
+    hunk = {
+      url = "github:modem-dev/hunk";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    jj-starship = {
+      url = "github:dmmulroy/jj-starship/v0.7.1";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    leaf = {
+      url = "github:DeepanshuMishraa/leaf";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    llm-agents.url = "github:numtide/llm-agents.nix";
+
+    # WHY: the Herdr desktop and backend use a separate upstream pin and
+    # package set, matching the prebuilt packages used by unified.
+    llm-agents-herdr-app.url = "github:numtide/llm-agents.nix";
+
+    nix-cmux-tui = {
+      url = "github:deepwatrcreatur/nix-cmux-tui";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    nix-deepseek-harness = {
+      url = "github:deepwatrcreatur/nix-deepseek-harness";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    nix-frankenterm = {
+      url = "github:deepwatrcreatur/nix-frankenterm";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    nix-index-database = {
+      url = "github:nix-community/nix-index-database";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    nix-markit = {
+      url = "github:deepwatrcreatur/nix-markit";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    nix-rtk = {
+      url = "github:deepwatrcreatur/nix-rtk";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.llm-agents.follows = "llm-agents";
+    };
+
+    plasma-manager = {
+      url = "github:pjones/plasma-manager";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.home-manager.follows = "home-manager";
+    };
+
+    qmd = {
+      url = "github:tobi/qmd";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-utils.follows = "flake-utils";
+    };
+
+    zellij-vivid-rounded = {
+      url = "github:deepwatrcreatur/nix-zellij-vivid-rounded";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =

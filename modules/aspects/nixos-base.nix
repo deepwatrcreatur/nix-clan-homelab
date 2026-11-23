@@ -58,7 +58,6 @@
           substituters = [
             "http://attic-cache:5001/cache-local"
             "http://10.10.11.55:5001/cache-local"
-            "https://cache.nix-ci.com"
             "https://cache.nixos.org"
             "https://cache.numtide.com"
             "https://nix-community.cachix.org/"
@@ -69,13 +68,12 @@
             "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
             "cache-local:pTXNNDRUFiGxQZmx7SAN4Pl82mDrZcbVq7H5nyFXfM8="
             "cache-local:GozZz7XFsUZ7xI5o/Q36JA/BFfjzONWOjiqC+zAhp2g="
-            "nix-ci:g3xV5BDTLtIBZr/A00IU1x0EtKKlb7YLgBN2SgYgM6A="
             "niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g="
             "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
             "hyprland.cachix.org-1:a7pgxzMz7+chwVL3/pzj6jIBMioiJM7ypFP8PwtkuGc="
           ];
 
-          # Cache credentials: the nix-cache-auth aspect, included per host.
+          # Private NixCI cache access comes from its per-host auth aspect.
           # Console passwords: the console-password aspect, included per
           # clan host (it declares clan vars, so not here).
         };

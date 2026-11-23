@@ -173,6 +173,9 @@
     addresses.ip = "10.10.11.47";
     sshUser = "deepwatrcreatur";
     description = "Latitude laptop - Sway desktop kiosk";
+    # WHY: compose and evaluate the migration candidate; unified remains
+    # authoritative until the coordinated live migration is complete.
+    migrated = true;
     roles = [
       "remoteBuilderClient"
       "desktop"

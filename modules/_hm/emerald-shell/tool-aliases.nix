@@ -1,0 +1,77 @@
+# modules/home-manager/common/tool-aliases.nix
+# Tool and utility aliases
+{
+  config,
+  lib,
+  pkgs,
+  options ? { },
+  osConfig ? null,
+  ...
+}:
+let
+  isNixOS = (options ? osConfig) && (osConfig != null);
+
+  # Tool and utility aliases
+  toolAliases = {
+    # Bat (cat replacement)
+    bp = "bat --paging=never --plain";
+    less = "bat --plain";
+
+    # Just (command runner)
+    j = "just-home";
+    update = "update-system";
+    nh-update = "nh-update-system";
+
+    # SSH
+    ssh-nocheck = "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ";
+    sshb = "ssh-bash";
+    ssh-copy-id-dynamic = "ssh-copy-id -t .ssh/authorized_keys_dynamic";
+
+    # Atuin (shell history)
+    asr = "atuin script run";
+  };
+
+  # NixOS-specific aliases
+  nixosAliases = lib.optionalAttrs isNixOS {
+    sudo = "/run/wrappers/bin/sudo"; # Use wrapped sudo with correct setuid permissions
+  };
+
+  # Darwin-specific aliases
+  darwinAliases = lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
+    xcode = "open -a Xcode";
+    gcc = lib.mkForce "/usr/bin/gcc";
+    test-platform =
+      "Platform detection: " + (if pkgs.stdenv.hostPlatform.isDarwin then "Darwin" else "Not Darwin");
+  };
+
+  # Prefer explicit wrappers via aliases (raw remains available)
+  wrappedToolAliases =
+    (lib.optionalAttrs (pkgs ? gh-fnox) { gh = "gh-fnox"; })
+    // (lib.optionalAttrs (pkgs ? bw-fnox) { bw = "bw-fnox"; })
+    // (lib.optionalAttrs (pkgs ? factory-droid-fnox) { droid = "factory-droid-fnox"; })
+    // (lib.optionalAttrs (pkgs ? proxmox-backup-client-fnox) { pbs = "proxmox-backup-client-fnox"; })
+    // (
+      lib.optionalAttrs ((pkgs ? attic-fnox) && !(config.programs.attic-client.enable or false)) {
+        attic = "attic-fnox";
+      }
+    )
+    // (lib.optionalAttrs (pkgs ? claude-code-fnox) { claude-code = "claude-code-fnox"; });
+in
+{
+  options.custom.toolAliases = {
+    enable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Enable custom tool aliases";
+    };
+
+    aliases = lib.mkOption {
+      type = lib.types.attrsOf lib.types.str;
+      default = toolAliases // wrappedToolAliases // darwinAliases // nixosAliases;
+      description = "Set of shell aliases for tools and utilities";
+    };
+  };
+
+  # Note: Aliases are merged through shell-aliases.nix, not set directly here
+  # to avoid conflicts with programs.bash.shellAliases
+}

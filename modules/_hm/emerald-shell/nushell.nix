@@ -1,0 +1,110 @@
+{
+  config,
+  ...
+}:
+{
+  programs.nushell = {
+    enable = true;
+    environmentVariables = {
+      # Terminal compatibility settings
+      TERM = "xterm-256color";
+      COLORTERM = "truecolor";
+      # Include user terminfo directory for ghostty and other custom terminals
+      TERMINFO_DIRS = "${config.home.homeDirectory}/.terminfo:/usr/share/terminfo";
+    };
+    shellAliases = {
+      rename = "^rename -n";
+      rename-apply = "^rename";
+      l = "ls --all";
+      c = "clear";
+      ll = "ls -l";
+    };
+    configFile.text = ''
+      # CRITICAL: Set TERM to safe default if empty (happens in non-interactive SSH)
+      # This prevents TUI applications like opencode from failing with "invalid input message type" errors
+      if ($env.TERM | is-empty) or ($env.TERM == "") {
+        $env.TERM = "xterm-256color"
+        $env.COLORTERM = "truecolor"
+      }
+
+      # Enhanced table display
+      $env.config.table = {
+        mode: rounded
+        index_mode: always
+        show_empty: true
+        padding: { left: 1, right: 1 }
+        trim: {
+          methodology: wrapping
+          wrapping_try_keep_words: true
+          truncating_suffix: "..."
+        }
+      }
+
+      # Better completions
+      $env.config.completions = {
+        case_sensitive: false
+        quick: true
+        partial: true
+        algorithm: "prefix"
+        use_ls_colors: true
+      }
+
+      # Enhanced shell integration
+      $env.config.shell_integration = {
+        osc2: true   # sets tab/window title
+        osc7: true   # communicates path to terminal
+        osc8: true   # clickable links
+        osc133: true # prompt markers for smart terminals
+      }
+
+      # Better history settings
+      $env.config.history = {
+        max_size: 100_000
+        sync_on_enter: true
+        file_format: "plaintext"
+      }
+
+      # Useful navigation function: cd + ls
+      def --env cx [arg] {
+        cd $arg
+        ls -l
+      }
+
+      # Starship prompt integration
+      $env.STARSHIP_SHELL = "nu"
+      $env.PROMPT_COMMAND = { ||
+          ^starship prompt --cmd-duration $env.CMD_DURATION_MS $"--status=($env.LAST_EXIT_CODE)"
+      }
+      $env.PROMPT_COMMAND_RIGHT = { ||
+          ^starship prompt --right --cmd-duration $env.CMD_DURATION_MS $"--status=($env.LAST_EXIT_CODE)"
+      }
+    '';
+    envFile.text = ''
+      # Better PATH handling with environment conversions
+      $env.ENV_CONVERSIONS = {
+        "PATH": {
+          from_string: { |s| $s | split row (char esep) | path expand --no-symlink }
+          to_string: { |v| $v | path expand --no-symlink | str join (char esep) }
+        }
+        "Path": {
+          from_string: { |s| $s | split row (char esep) | path expand --no-symlink }
+          to_string: { |v| $v | path expand --no-symlink | str join (char esep) }
+        }
+      }
+
+      # Set up PATH - ensure wrappers come before current-system to avoid broken sudo
+      $env.PATH = ($env.PATH | prepend ([
+        "/home/linuxbrew/.linuxbrew/bin"
+        "${config.home.homeDirectory}/.nix-profile/bin"
+        "/nix/var/nix/profiles/default/bin"
+        "/run/wrappers/bin"                # Put wrappers BEFORE current-system
+        "/run/current-system/sw/bin"
+        "/usr/bin"
+        "/bin"
+        "/usr/sbin"
+        "/sbin"
+        "/usr/local/bin"
+      ]) | uniq)
+    '';
+  };
+}

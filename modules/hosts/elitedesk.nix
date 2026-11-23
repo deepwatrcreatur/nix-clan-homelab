@@ -2,8 +2,8 @@
 { den, ... }:
 {
   den.aspects.elitedesk = {
-    # SECURITY: router-class host: no nix-cache-auth or remote-builder-client
-    # (routers hold no outbound keys or fleet credentials).
+    # SECURITY: router-class host gets NixCI cache auth, separate from the
+    # shared Attic push credential and remote-builder-client credentials.
     includes = [
       den.aspects.nixos-base
       den.aspects.console-password
