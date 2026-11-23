@@ -135,7 +135,6 @@
     pavucontrol
     rclone-browser
     remmina
-    realvnc-vnc-viewer
     transmission_4-gtk
     usbutils
     vlc
