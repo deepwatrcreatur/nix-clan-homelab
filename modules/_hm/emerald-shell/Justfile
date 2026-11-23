@@ -40,7 +40,7 @@ test-nixos host=`hostname`:
     nix build --dry-run "${NH_FLAKE:?Set NH_FLAKE to the Clan checkout}#nixosConfigurations."{{quote(host)}}".config.system.build.toplevel"
 
 update host=`hostname`:
-    nix develop "${NH_FLAKE:?Set NH_FLAKE to the Clan checkout}" -c fleet-deploy {{quote(host)}}
+    cd "${NH_FLAKE:?Set NH_FLAKE to the Clan checkout}" && nix develop . -c fleet-deploy {{quote(host)}}
 
 nh-update host=`hostname`: (update host)
 
@@ -49,7 +49,7 @@ switch host=`hostname`: (update host)
 remote-switch host: (update host)
 
 remote-test host:
-    nix develop "${NH_FLAKE:?Set NH_FLAKE to the Clan checkout}" -c fleet-deploy --dry-run {{quote(host)}}
+    cd "${NH_FLAKE:?Set NH_FLAKE to the Clan checkout}" && nix develop . -c fleet-deploy --dry-run {{quote(host)}}
 
 nixos-version:
     nixos-version

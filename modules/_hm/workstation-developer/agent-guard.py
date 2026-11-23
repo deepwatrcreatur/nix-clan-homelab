@@ -76,7 +76,9 @@ def tokenize(text):
 def split_commands(tokens):
     commands, current = [], []
     for tok in tokens:
-        if tok in SEPARATORS:
+        # WHY: shlex groups adjacent punctuation, such as ";\n"; split on
+        # tokens made only of shell separators so the following command is checked.
+        if tok in SEPARATORS or (tok and all(char in ";&|()\n" for char in tok)):
             if current:
                 commands.append(current)
             current = []

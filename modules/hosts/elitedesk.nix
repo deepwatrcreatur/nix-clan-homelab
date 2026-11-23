@@ -7,7 +7,6 @@
     includes = [
       den.aspects.nixos-base
       den.aspects.console-password
-      den.aspects.nix-ci-cache-auth
       den.aspects.router-role
     ];
     nixos = {

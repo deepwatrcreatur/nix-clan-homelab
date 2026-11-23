@@ -115,7 +115,9 @@ old root `.sops.yaml` convenience file and `NH_FLAKE` path remain deferred to
 the user-secret and root-checkout follow-up. The first correction briefly
 omitted Elitedesk's new NixCI auth aspect from the local flake only, so Clan
 would not prompt for its still-undecided token; the aspect was restored after
-Lattitude's update. No Elitedesk configuration or credential was changed.
+Lattitude's update. Review later removed it again until `nch-sny.38` provides
+the dedicated read-only token path. No Elitedesk configuration or credential
+was changed.
 
 ## Inventory
 

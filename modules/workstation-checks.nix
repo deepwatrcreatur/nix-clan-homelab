@@ -94,6 +94,12 @@ in
       # to build (omasnap's sandboxed checkPhase, nch-sny.32) slips through.
       # Build in-repo packages for real.
       omasnap = pkgs.callPackage ./_packages/omasnap.nix { };
+      agent-guard-policy = pkgs.runCommand "agent-guard-policy" {
+        nativeBuildInputs = [ pkgs.python3 ];
+      } ''
+        python3 ${../checks/agent-guard-policy.py} ${./_hm/workstation-developer/agent-guard.py}
+        touch $out
+      '';
     };
   };
 }

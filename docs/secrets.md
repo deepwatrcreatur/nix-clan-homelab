@@ -66,11 +66,12 @@ defaults use a separate file so an existing writable config stays in place.
 - `netrc` contains only the cache.nix-ci.com entry (HTTPS).
 - The `nix-cache-auth` aspect enables the NixCI substituter and signing key
   alongside that netrc, and keeps the shared Attic push token for later use.
-  Router-class hosts can use `nix-ci-cache-auth`, which provisions only the
+  Router-class hosts can use `nix-ci-cache-auth`, which provisions only a
   NixCI user token and does not expose the Attic push token or builder
   credentials. NixCI's hosted user token can also write to the user's private
-  cache namespace, so the maintainer's policy decision is tracked in
-  `nch-sny.38` (see [NixCI cache access](https://nix-ci.com/documentation/nix-ci-cache)).
+  cache namespace, so router access is pending a dedicated read-only token
+  path in `nch-sny.38` (see [NixCI cache access](https://nix-ci.com/documentation/nix-ci-cache)).
+  Elitedesk currently omits the aspect until that path is ready.
 - The `nix-cache-auth` flake check verifies the NixCI endpoint, key and netrc
   on the exported NixOS configurations and checks the public-cache fallback.
 - attic's `cache-local` answers unauthenticated reads on the LAN, so pulls

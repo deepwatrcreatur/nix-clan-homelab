@@ -52,7 +52,8 @@ in
         ControlPath = "~/.ssh/master-%r@%n:%p";
         SendEnv = "LANG LC_* COLORTERM TERM_PROGRAM TERM_PROGRAM_VERSION";
         ForwardX11 = false;
-        ForwardAgent = true;
+        # SECURITY: forward the local agent only for an individual trusted connection (`ssh -A`).
+        ForwardAgent = false;
         AddressFamily = "inet";
         ServerAliveInterval = 15;
         ServerAliveCountMax = 3;
