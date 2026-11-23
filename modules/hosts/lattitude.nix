@@ -89,7 +89,7 @@
     in
     {
       checks.lattitude-host =
-        assert builtins.hasAttr "lattitude" config.clan.inventory.machines;
+        assert builtins.hasAttr "lattitude" config.flake.clan.inventory.machines;
         assert candidate.networking.hostName == "lattitude";
         assert candidate.system.stateVersion == "26.05";
         assert candidate.boot.loader.systemd-boot.enable;
@@ -99,6 +99,13 @@
         assert candidate.services.greetd.settings.initial_session.user == "deepwatrcreatur";
         assert candidate.home-manager.users.deepwatrcreatur.programs.worktrunk.enable;
         assert candidate.home-manager.users.deepwatrcreatur.programs.bitwarden-cli.enable;
+        assert candidate.home-manager.users.root.home.homeDirectory == "/root";
+        assert candidate.home-manager.users.root.programs.git.enable;
+        assert candidate.home-manager.users.root.programs.fish.enable;
+        assert candidate.home-manager.users.root.programs.fastfetch-custom.enable;
+        assert candidate.home-manager.users.root.programs.zellij-vivid-rounded.enable;
+        assert candidate.home-manager.users.root.home.file.".terminfo".recursive;
+        assert (candidate.systemd.services."home-manager-root".serviceConfig.ExecStart or null) != null;
         builtins.seq candidate.system.build.toplevel.drvPath
           (pkgs.runCommand "lattitude-host" { } "touch $out");
     };

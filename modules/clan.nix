@@ -15,7 +15,7 @@ in
 {
   imports = [ inputs.clan-core.flakeModules.default ];
 
-  clan = {
+  flake.clan = {
     meta.name = "deepwater";
     # WHY: the LAN zone Technitium serves and Kea registers hosts in; SSH host
     # certificates are issued for <machine>.<domain>.
