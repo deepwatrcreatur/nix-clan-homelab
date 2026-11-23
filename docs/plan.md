@@ -75,10 +75,9 @@ insecure. The Lattitude Clan candidate now composes the workstation shell,
 developer, and desktop aspects, carries over the Nightscout and Strata system
 integrations, and retains Lattitude's kiosk settings. It evaluates both
 Synology automounts using `synology-shares/credentials`. Its Clan machine key
-and recipients for declared shared vars are staged for review; no generation
-has been activated on Lattitude. Emerald remains admin-only. The comparison
-fixture stays outside Clan inventory; unified remains authoritative for host
-operation until the candidate is approved and deployed.
+and recipients for declared shared vars were generated for Lattitude; Emerald
+remains admin-only. The comparison fixture stays outside Clan inventory.
+Unified remains in the repository until the migration bead is complete.
 
 ### Lattitude live-system comparison
 
@@ -96,10 +95,27 @@ The old NixCI netrc copy unit is replaced by the Clan vars path
 `/run/secrets/vars/nix-cache-auth/netrc`. The candidate also updates the
 kernel from 6.18.44 to 6.18.63 and firmware from 20260810 to 20261019; these
 take effect after a reboot. The closure diff contains about 600 package and
-unit lines, including the migrated Home Manager tools. No generation was
-activated, no service was restarted, and no reboot or boot-default change was
-made. Lattitude remains on unified until the maintainer coordinates the live
-switch and reboot after reviewing this comparison.
+unit lines, including the migrated Home Manager tools.
+
+On 2026-11-23 the Clan generation was activated without rebooting Lattitude.
+The active system is
+`/nix/store/g2m1y9brrqrr2grjw5ng9sqfqnvqkaax-nixos-system-lattitude-26.05.20261116.f684076`.
+After activation, `systemctl is-system-running` was `running`, there were no
+failed units, and Tailscale, CUPS, Avahi, the primary user's Home Manager,
+root's Home Manager, networkd wait-online, both Snapper timers, and the `cloud`
+and `storage` CIFS automounts were active. Both HP printer queues remained
+enabled and idle. The machine uptime increased across both switches, confirming
+that it was not rebooted.
+
+The first switch exposed an empty `home-manager-root.service`: the Clan base
+aspect had set its environment but had not defined the root profile. The root
+profile is now ported with fish, lsd, sops, SSH-signed Git, Fastfetch, Zellij,
+and terminfo; the resulting root activation service is valid and active. The
+old root `.sops.yaml` convenience file and `NH_FLAKE` path remain deferred to
+the user-secret and root-checkout follow-up. The first correction briefly
+omitted Elitedesk's new NixCI auth aspect from the local flake only, so Clan
+would not prompt for its still-undecided token; the aspect was restored after
+Lattitude's update. No Elitedesk configuration or credential was changed.
 
 ## Inventory
 
