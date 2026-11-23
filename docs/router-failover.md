@@ -12,8 +12,27 @@ other role as a NixOS specialisation:
 | `elitedesk` (bare metal) | standby | `primary` | this repo, `modules/aspects/router-role.nix` (`routerRole.promoted`) |
 
 Roles move with `switch-to-configuration test`, never `switch` or `boot`. No
-deploy happens during a rehearsal, and **a reboot always returns a host to
-its normal role**: that is the last-resort rollback.
+deploy happens during a rehearsal.
+
+What a reboot does differs per host:
+
+- **elitedesk** reboots into standby. If it was primary, the network loses its
+  gateway until router is promoted again.
+- **router** remembers that it was demoted. Standby activation writes
+  `/var/lib/router-failover/demoted`, and a boot guard keeps a reset router off
+  the WAN and `10.10.10.1` until someone runs its primary
+  `switch-to-configuration test` (unified
+  `docs/router-source-of-truth.md#a-reboot-of-a-demoted-router-stays-demoted`,
+  nch-sny.36.2). Rehearsal 1 had no guard: the router was reset, came back
+  primary and both routers were active.
+
+**Stop conditions, at every step:** a `switch-to-configuration` that exits
+non-zero (check `systemctl show -p ExecMainStatus failover`), a gate that does
+not pass within its timeout, or anything unexpected. Then go to [Abort](#abort).
+
+**Do not reset or reboot the demoted router during the window.** To abort
+when SSH is gone, use the Proxmox web console (log in on the VM console and
+run the commands under Abort); a VM reset is the last resort.
 
 ## What moves
 
@@ -71,19 +90,31 @@ journalctl -u failover -f
 
 ## Procedure
 
+Prepare every command in advance (a script or a pasted block per step) and
+put a short timeout on every check, so the gap between router's gate and
+elitedesk's promotion is seconds. In rehearsal 1 an operator session stalled
+and the promotion came minutes late.
+
 ### 1. Baseline (router primary)
 
-Start monitors on a LAN workstation and record their timestamps:
+Start the monitors on the workstation as transient user units, so they
+survive a dropped terminal and write to files. In rehearsal 1 backgrounded
+pings died at the cutover and recorded nothing.
 
 ```sh
-ping -D -i 0.2 10.10.10.1          # gateway
-ping -D -i 0.5 1.1.1.1             # IPv4 internet
-ping -6 -D -i 0.5 2606:4700:4700::1111
+d=~/failover-$(date +%F-%H%M); mkdir -p "$d"
+systemd-run --user --unit=fo-gw   sh -c "ping -D -O -i 0.2 10.10.10.1 > $d/gw.log 2>&1"
+systemd-run --user --unit=fo-v4   sh -c "ping -D -O -i 0.5 1.1.1.1 > $d/v4.log 2>&1"
+systemd-run --user --unit=fo-v6   sh -c "ping -6 -D -O -i 0.5 2606:4700:4700::1111 > $d/v6.log 2>&1"
+# afterwards: systemctl --user stop fo-gw fo-v4 fo-v6
 ```
+
+`-O` logs every missed reply, so gaps can be read off the timestamps.
 
 On router, record the WAN IPv4 address (`ip -br addr show enp6s17`), the
 delegated prefix (`journalctl -u systemd-networkd | grep 'delegated prefix' | tail -1`)
-and the lease count (`wc -l /var/lib/kea/dhcp4.leases`).
+and the lease count
+(`sudo sh -c 'cat /var/lib/private/kea/dhcp4.leases* | wc -l'`).
 
 ### 2. Hand the Kea leases to elitedesk
 
@@ -115,11 +146,11 @@ sudo systemd-run --unit=failover --collect \
   /run/current-system/specialisation/standby/bin/switch-to-configuration test
 ```
 
-**Gate:** do not go on until router's switch has finished (`journalctl -u
-failover` ends with the activation) and router answers on `10.10.10.2`, with
-`ip -br link show enp6s17` DOWN and no `10.10.10.1` in `ip -br addr`.
-
-```sh
+**Gate (timeout 60 s):** router's switch has finished with status 0
+(`systemctl show -p ExecMainStatus failover` reads `ExecMainStatus=0`;
+rehearsal 1 exited 4, nch-sny.36.1), router answers on `10.10.10.2`,
+`ip -br link show enp6s17` is DOWN, there is no `10.10.10.1` in `ip -br addr`,
+and `/var/lib/router-failover/demoted` exists. Promote elitedesk **at once**:
 
 # on elitedesk (via 10.10.10.4)
 sudo systemd-run --unit=failover --collect \
@@ -164,39 +195,110 @@ sudo systemd-run --unit=failback --collect \
 **Gate:** on elitedesk (via `10.10.10.4`), `journalctl -u failback` shows the
 activation finished, `ip -br link show enp1s0f1np1` is DOWN, `ip -br addr`
 has no `10.10.10.1`, `systemctl is-active kea-dhcp4-server` is inactive and
-`cat /run/router-ha/role` reads `backup`. Only then:
+`cat /run/router-ha/role` reads `backup`. Give elitedesk's WAN port its own
+MAC back (standby leaves router's MAC on the down link):
 
 ```sh
+sudo ip link set enp1s0f1np1 address "$(ethtool -P enp1s0f1np1 | awk '{print $3}')"
+```
+
+Only then:
+
+```sh
+# before router's Kea serves again: every address router had leased must
+# still be in elitedesk's files (elitedesk only adds to them). Compare first,
+# because the copy below replaces router's files.
+ssh router "sudo sh -c 'cut -d, -f1,2 /var/lib/private/kea/dhcp4.leases*'" | grep -v '^address' | sort -u > /tmp/r.leases
+ssh elitedesk "sudo sh -c 'cut -d, -f1,2 /var/lib/private/kea/dhcp4.leases*'" | grep -v '^address' | sort -u > /tmp/e.leases
+comm -23 /tmp/r.leases /tmp/e.leases     # must print nothing; otherwise stop
+comm -13 /tmp/r.leases /tmp/e.leases     # the leases elitedesk issued
+
 # hand the leases elitedesk issued back to router while router's Kea is off
 ssh elitedesk "sudo sh -c 'cd /var/lib/private/kea && tar -cf - dhcp4.leases*'" \
   | ssh router "sudo sh -c 'rm -f /var/lib/private/kea/dhcp4.leases* \
       && tar -C /var/lib/private/kea -xf -'"
 
-# on router (via 10.10.10.2): back to primary
+# on router (via 10.10.10.2): back to primary; this also clears the
+# demoted marker
 sudo systemd-run --unit=failback --collect \
   /nix/var/nix/profiles/system/bin/switch-to-configuration test
+
+# bounce router's WAN once the switch has finished: after the MAC moved
+# back in rehearsal 1 the ISP gateway did not answer until the link went
+# down and up
+sudo ip link set enp6s17 down && sleep 2 && sudo ip link set enp6s17 up
+sudo networkctl reconfigure enp6s17
 
 # on elitedesk, once router holds 10.10.10.1 again: demote the DNS zones
 # (the owner checks that router answers before handing them back)
 sudo systemctl stop technitium-zone-ha-owner
 ```
 
-Then confirm that router holds 10.10.10.1, the WAN lease and the prefix, and
-that Kea is running.
+Then confirm that router holds 10.10.10.1, the WAN lease and the prefix
+(within 60 s of the bounce), that Kea is running, and that
+`/var/lib/router-failover/demoted` is gone.
 
 ## Abort
 
 At any step, return both hosts to normal in this order:
 
-1. elitedesk: `/nix/var/nix/profiles/system/bin/switch-to-configuration test`
-   (WAN down, LAN 10.10.10.4 only, Kea off).
-2. router: `/nix/var/nix/profiles/system/bin/switch-to-configuration test`.
-3. If SSH is gone, reboot from the console: both boot their normal role.
+1. elitedesk: `sudo /nix/var/nix/profiles/system/bin/switch-to-configuration test`
+   (WAN down, LAN 10.10.10.4 only, Kea off). Then demote its zones and give
+   its WAN port its own MAC back; returning to standby does neither:
+
+   ```sh
+   sudo systemctl stop technitium-zone-ha-owner
+   sudo systemctl start technitium-zone-ha-reconcile   # zones back to Secondary
+   sudo ip link set enp1s0f1np1 down
+   sudo ip link set enp1s0f1np1 address "$(ethtool -P enp1s0f1np1 | awk '{print $3}')"
+   ```
+
+2. If elitedesk issued leases, compare and copy them to router as in
+   [Fail back](#5-fail-back) before router's Kea starts.
+3. router: `sudo /nix/var/nix/profiles/system/bin/switch-to-configuration test`,
+   then the WAN bounce from [Fail back](#5-fail-back).
+4. If SSH is gone, use the consoles (Proxmox web console for router, monitor
+   and keyboard for elitedesk) and run the same commands. Reboot only as the
+   last resort: elitedesk comes back standby, and router comes back standby
+   too while its demoted marker exists (remove it from the console with
+   `sudo rm /var/lib/router-failover/demoted` before rebooting it).
 
 Abort when elitedesk gets no WAN lease within 60 s, internet does not come
-back within 2 minutes, or anything unexpected happens.
+back within 2 minutes, or a stop condition is met.
 
 ## Results
 
 Record each rehearsal here: date, commits of both repos, measured times and
 the anomalies, with links to beads for follow-ups.
+
+### Rehearsal 1: 2026-11-22, aborted
+
+unified 8fc3c0c (#251), clan 254771f (#34). Outage about 14 minutes
+(15:43:04 to 15:56:51 EST).
+
+Worked:
+
+- Lease handoff: 78 lines, including `dhcp4.leases.2`.
+- router standby: WAN down, `10.10.10.2`, Kea, UPnP and inadyn off.
+- elitedesk primary got the **same IPv4** (99.237.231.178/23) from the modem
+  with router's MAC, DUID and IAID; Kea came up, the zones were promoted
+  through the role file, internet from elitedesk at 16 ms.
+
+Failed:
+
+1. router's standby switch exited 4 (`inadyn.timer` had a bad unit file
+   setting) although the role change applied. Fixed in unified #260
+   (nch-sny.36.1); a non-zero exit is now a stop condition.
+2. The router VM was hard-reset from outside at 15:47:16 and 15:47:53, booted
+   primary at 15:49:11 and took `10.10.10.1` and the WAN back while elitedesk
+   was being promoted at 15:50:44 (late: the operator session to router had
+   stalled). Both routers were active; aborted at 15:52:24 by returning
+   elitedesk to standby. Fixed by the demoted-boot guard, unified #261
+   (nch-sny.36.2), and the "do not reset" rule above.
+3. After the abort router's WAN got no reply from the ISP gateway until its
+   link was bounced (15:56:37). The bounce is now part of fail back and abort.
+4. The workstation ping monitors died at the cutover. They now run as
+   transient user units that log to files.
+
+Cleanup after the abort: elitedesk's zones back to Secondary (reconcile), its
+WAN MAC reset to its own, and all 8 leases it issued copied into router's Kea.
