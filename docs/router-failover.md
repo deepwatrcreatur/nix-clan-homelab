@@ -89,8 +89,9 @@ still be read when you reconnect on the new address:
 ```sh
 sudo systemd-run --unit=<name> --remain-after-exit <path>/bin/switch-to-configuration test
 journalctl -u <name> -f
-systemctl show -p ActiveState,Result,ExecMainStatus <name>
-# pass: ActiveState=active, Result=success, ExecMainStatus=0
+systemctl show -p SubState,Result,ExecMainStatus <name>
+# pass: SubState=exited, Result=success, ExecMainStatus=0
+# SubState=running means activation is still going: wait, do not proceed
 ```
 
 Unit names used below: `fo-demote` and `fo-promote` (cutover), `fb-elitedesk`
@@ -161,8 +162,8 @@ sudo systemd-run --unit=fo-demote --remain-after-exit \
 ```
 
 **Gate (timeout 60 s):** router's switch has finished with status 0
-(`systemctl show -p ActiveState,Result,ExecMainStatus fo-demote` reads
-`active`, `success`, `0`; rehearsal 1 exited 4, nch-sny.36.1), router answers on `10.10.10.2`,
+(`systemctl show -p SubState,Result,ExecMainStatus fo-demote` reads
+`exited`, `success`, `0`; rehearsal 1 exited 4, nch-sny.36.1), router answers on `10.10.10.2`,
 `ip -br link show enp6s17` is DOWN, there is no `10.10.10.1` in `ip -br addr`,
 and `/var/lib/router-failover/demoted` exists. Promote elitedesk **at once**:
 
@@ -208,7 +209,7 @@ sudo systemd-run --unit=fb-elitedesk --remain-after-exit \
 ```
 
 **Gate:** on elitedesk (via `10.10.10.4`), `fb-elitedesk` finished with
-`Result=success` and `ExecMainStatus=0`, `ip -br link show enp1s0f1np1` is DOWN, `ip -br addr`
+`SubState=exited`, `Result=success` and `ExecMainStatus=0`, `ip -br link show enp1s0f1np1` is DOWN, `ip -br addr`
 has no `10.10.10.1`, `systemctl is-active kea-dhcp4-server` is inactive and
 `cat /run/router-ha/role` reads `backup`. Give elitedesk's WAN port its own
 MAC back (standby leaves router's MAC on the down link):
@@ -220,17 +221,22 @@ sudo ip link set enp1s0f1np1 address "$(ethtool -P enp1s0f1np1 | awk '{print $3}
 Only then:
 
 ```sh
-# before router's Kea serves again: every address router had leased must
-# still be in elitedesk's files (elitedesk only adds to them). Compare first,
-# because the copy below replaces router's files.
+# before router's Kea serves again: every lease router still had active must
+# also be in elitedesk's files, for the same client. Compare first, because
+# the copy below replaces router's files. The files are an append log with
+# superseded records (and Kea's cleanup may compact elitedesk's), so reduce
+# each side to the latest record per address; for router keep only leases
+# that have not expired.
+latest='{ if ($1 != "address" && $5 >= until[$1]) { until[$1] = $5; mac[$1] = $2 } }
+        END { for (a in until) if (!active || until[a] > systime()) print a "," mac[a] }'
 set -o pipefail
-ssh router "sudo sh -c 'cut -d, -f1,2 /var/lib/private/kea/dhcp4.leases*'" \
-  | { grep -v '^address' || true; } | sort -u > /tmp/r.leases || echo STOP: router read failed
-ssh elitedesk "sudo sh -c 'cut -d, -f1,2 /var/lib/private/kea/dhcp4.leases*'" \
-  | { grep -v '^address' || true; } | sort -u > /tmp/e.leases || echo STOP: elitedesk read failed
+ssh router "sudo sh -c 'cat /var/lib/private/kea/dhcp4.leases*'" \
+  | gawk -F, -v active=1 "$latest" | sort > /tmp/r.leases || echo STOP: router read failed
+ssh elitedesk "sudo sh -c 'cat /var/lib/private/kea/dhcp4.leases*'" \
+  | gawk -F, -v active=0 "$latest" | sort > /tmp/e.leases || echo STOP: elitedesk read failed
 wc -l /tmp/r.leases /tmp/e.leases        # both non-empty; router's near the baseline
 comm -23 /tmp/r.leases /tmp/e.leases     # must print nothing; otherwise stop
-comm -13 /tmp/r.leases /tmp/e.leases     # the leases elitedesk issued
+comm -13 /tmp/r.leases /tmp/e.leases     # leases elitedesk issued or renewed
 
 # hand the leases elitedesk issued back to router while router's Kea is off
 ssh elitedesk "sudo sh -c 'cd /var/lib/private/kea && tar -cf - dhcp4.leases*'" \
@@ -241,7 +247,7 @@ ssh elitedesk "sudo sh -c 'cd /var/lib/private/kea && tar -cf - dhcp4.leases*'" 
 # demoted marker
 sudo systemd-run --unit=fb-router --remain-after-exit \
   /nix/var/nix/profiles/system/bin/switch-to-configuration test
-systemctl show -p ActiveState,Result,ExecMainStatus fb-router   # active, success, 0
+systemctl show -p SubState,Result,ExecMainStatus fb-router   # exited, success, 0
 
 # bounce router's WAN once the switch has finished: after the MAC moved
 # back in rehearsal 1 the ISP gateway did not answer until the link went
