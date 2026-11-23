@@ -176,9 +176,11 @@ in
 
         # Custom type definitions
         ${concatStringsSep "\n" (
-          mapAttrsToList (
-            name: patterns: "--type-add\n${name}:${concatStringsSep "," patterns}"
-          ) cfg.typeDefinitions
+          concatLists (
+            mapAttrsToList (
+              name: patterns: map (pattern: "--type-add\n${name}:${pattern}") patterns
+            ) cfg.typeDefinitions
+          )
         )}
       '';
     };
