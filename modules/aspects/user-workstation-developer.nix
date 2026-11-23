@@ -5,6 +5,17 @@
     let
       home = config.home.homeDirectory;
       system = pkgs.stdenv.hostPlatform.system;
+      dmuxPackage =
+        let
+          upstream = inputs.dmux-flake.packages.${system}.default;
+          # WHY: regenerate the pinned pnpm v10 dependency archive for current pnpm 11; its cached snapshot lacks usable tarballs.
+          pnpmDeps = pkgs.fetchPnpmDeps {
+            inherit (upstream) pname version src;
+            fetcherVersion = 3;
+            hash = "sha256-e7soh+h7HyBvtKBmwVvZ4ExHjzUz3JWjacZfhPMIriQ=";
+          };
+        in
+        upstream.overrideAttrs (_: { inherit pnpmDeps; });
     in
     {
       imports = [
@@ -64,7 +75,7 @@
         ++ lib.optional config.programs.cmux-tui.enable inputs.nix-cmux-tui.packages.${system}.default
         ++ lib.optional config.programs.beads.enable (pkgs.callPackage ../_packages/beads-rust.nix { })
         ++ lib.optional config.programs.orca-ide.enable (pkgs.callPackage ../_packages/orca-ide.nix { })
-        ++ lib.optional config.programs.dmux.enable inputs.dmux-flake.packages.${system}.default
+        ++ lib.optional config.programs.dmux.enable dmuxPackage
         ++ lib.optional config.programs.frankenterm.enable inputs.nix-frankenterm.packages.${system}.default;
         home.file.".npmrc".text = ''
           prefix=${home}/.npm-global

@@ -11,7 +11,8 @@
 let
   cfg = config.programs.coding-agents;
   system = pkgs.stdenv.hostPlatform.system;
-  agentPackages = (pkgs.extend inputs.llm-agents.overlays.shared-nixpkgs).llm-agents;
+  # WHY: nix-rtk's hook module installs pkgs.rtk; keep the CLI on that same version to avoid a bin/rtk collision.
+  agentPackages = (pkgs.extend inputs.llm-agents.overlays.shared-nixpkgs).llm-agents // { rtk = pkgs.rtk; };
 in
 {
   imports = [

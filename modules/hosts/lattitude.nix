@@ -6,8 +6,11 @@
       console-password
       nix-cache-auth
       remote-builder-client
+      desktop-network-shares
       desktop-sway
       desktop-media-players
+      hardware-printer-phoenix-m477
+      btrfs-snapper
       synology-shares
       workstation-user-secrets
     ];
@@ -40,6 +43,12 @@
         ];
 
         programs.strata.defaultFileManager = true;
+
+        # Preserve the active remote-access path on Lattitude.
+        services.tailscale.enable = true;
+
+        # WHY: keep Lattitude's current network-online ordering for remote builds and CIFS automounts.
+        systemd.network.wait-online.enable = lib.mkForce true;
 
         zramSwap.enable = true;
         time.timeZone = "America/Toronto";

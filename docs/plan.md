@@ -80,6 +80,27 @@ has been activated on Lattitude. Emerald remains admin-only. The comparison
 fixture stays outside Clan inventory; unified remains authoritative for host
 operation until the candidate is approved and deployed.
 
+### Lattitude live-system comparison
+
+The candidate toplevel was compared read-only against Lattitude's actual
+`/run/current-system` (`nixos-system-lattitude-26.05.20260812.9f78f44`), not
+Emerald's local generation. The candidate builds as
+`nixos-system-lattitude-26.05.20261116.f684076`. It retains the active
+Tailscale, CUPS/HP printer queue, Avahi discovery, Snapper snapshots, and
+systemd-networkd wait-online behavior. Its wired network file matches the
+Realtek MAC and retains `10.10.11.47/16`, DHCP, gateway, and DNS; the Tailscale
+networkd file remains present. The two Synology CIFS mounts use automounts and
+the Clan credentials file.
+
+The old NixCI netrc copy unit is replaced by the Clan vars path
+`/run/secrets/vars/nix-cache-auth/netrc`. The candidate also updates the
+kernel from 6.18.44 to 6.18.63 and firmware from 20260810 to 20261019; these
+take effect after a reboot. The closure diff contains about 600 package and
+unit lines, including the migrated Home Manager tools. No generation was
+activated, no service was restarted, and no reboot or boot-default change was
+made. Lattitude remains on unified until the maintainer coordinates the live
+switch and reboot after reviewing this comparison.
+
 ## Inventory
 
 Edit `inventory/hosts.nix` for host addresses, SSH settings, and roles. The
