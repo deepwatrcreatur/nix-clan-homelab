@@ -27,7 +27,8 @@ What a reboot does differs per host:
   primary and both routers were active.
 
 **Stop conditions, at every step:** a `switch-to-configuration` that exits
-non-zero (check `systemctl show -p ExecMainStatus failover`), a gate that does
+non-zero (each switch runs as its own unit; see
+[Access during the rehearsal](#access-during-the-rehearsal)), a gate that does
 not pass within its timeout, or anything unexpected. Then go to [Abort](#abort).
 
 **Do not reset or reboot the demoted router during the window.** To abort
@@ -81,16 +82,26 @@ ssh -o HostKeyAlias=elitedesk deepwatrcreatur@<address>
 ```
 
 **Run every role switch detached**, so a dropped SSH session cannot interrupt
-activation halfway:
+activation halfway. Give each switch its own unit name, and keep the unit
+after it exits (`--remain-after-exit`, no `--collect`) so its exit status can
+still be read when you reconnect on the new address:
 
 ```sh
-sudo systemd-run --unit=failover --collect <path>/bin/switch-to-configuration test
-journalctl -u failover -f
+sudo systemd-run --unit=<name> --remain-after-exit <path>/bin/switch-to-configuration test
+journalctl -u <name> -f
+systemctl show -p ActiveState,Result,ExecMainStatus <name>
+# pass: ActiveState=active, Result=success, ExecMainStatus=0
 ```
+
+Unit names used below: `fo-demote` and `fo-promote` (cutover), `fb-elitedesk`
+and `fb-router` (fail back), `ab-elitedesk` and `ab-router` (abort). After the
+window, clear them with `sudo systemctl stop <name>` and
+`sudo systemctl reset-failed`.
 
 ## Procedure
 
-Prepare every command in advance (a script or a pasted block per step) and
+The workstation commands are Bash (the interactive shell is Fish; start
+`bash` first). Prepare every command in advance (a script or a pasted block per step) and
 put a short timeout on every check, so the gap between router's gate and
 elitedesk's promotion is seconds. In rehearsal 1 an operator session stalled
 and the promotion came minutes late.
@@ -102,6 +113,9 @@ survive a dropped terminal and write to files. In rehearsal 1 backgrounded
 pings died at the cutover and recorded nothing.
 
 ```sh
+loginctl show-user "$USER" -p Linger     # must be Linger=yes, or the
+                                         # monitors stop with the last session
+# if not: sudo loginctl enable-linger "$USER"
 d=~/failover-$(date +%F-%H%M); mkdir -p "$d"
 systemd-run --user --unit=fo-gw   sh -c "ping -D -O -i 0.2 10.10.10.1 > $d/gw.log 2>&1"
 systemd-run --user --unit=fo-v4   sh -c "ping -D -O -i 0.5 1.1.1.1 > $d/v4.log 2>&1"
@@ -142,18 +156,19 @@ because the modem has one lease.
 
 ```sh
 # on router (via 10.10.10.1)
-sudo systemd-run --unit=failover --collect \
+sudo systemd-run --unit=fo-demote --remain-after-exit \
   /run/current-system/specialisation/standby/bin/switch-to-configuration test
 ```
 
 **Gate (timeout 60 s):** router's switch has finished with status 0
-(`systemctl show -p ExecMainStatus failover` reads `ExecMainStatus=0`;
-rehearsal 1 exited 4, nch-sny.36.1), router answers on `10.10.10.2`,
+(`systemctl show -p ActiveState,Result,ExecMainStatus fo-demote` reads
+`active`, `success`, `0`; rehearsal 1 exited 4, nch-sny.36.1), router answers on `10.10.10.2`,
 `ip -br link show enp6s17` is DOWN, there is no `10.10.10.1` in `ip -br addr`,
 and `/var/lib/router-failover/demoted` exists. Promote elitedesk **at once**:
 
+```sh
 # on elitedesk (via 10.10.10.4)
-sudo systemd-run --unit=failover --collect \
+sudo systemd-run --unit=fo-promote --remain-after-exit \
   /run/current-system/specialisation/primary/bin/switch-to-configuration test
 ```
 
@@ -188,12 +203,12 @@ over again.
 ```sh
 # on elitedesk (via 10.10.10.1): back to standby, which drops the WAN,
 # 10.10.10.1 and Kea; it comes back on 10.10.10.4
-sudo systemd-run --unit=failback --collect \
+sudo systemd-run --unit=fb-elitedesk --remain-after-exit \
   /nix/var/nix/profiles/system/bin/switch-to-configuration test
 ```
 
-**Gate:** on elitedesk (via `10.10.10.4`), `journalctl -u failback` shows the
-activation finished, `ip -br link show enp1s0f1np1` is DOWN, `ip -br addr`
+**Gate:** on elitedesk (via `10.10.10.4`), `fb-elitedesk` finished with
+`Result=success` and `ExecMainStatus=0`, `ip -br link show enp1s0f1np1` is DOWN, `ip -br addr`
 has no `10.10.10.1`, `systemctl is-active kea-dhcp4-server` is inactive and
 `cat /run/router-ha/role` reads `backup`. Give elitedesk's WAN port its own
 MAC back (standby leaves router's MAC on the down link):
@@ -208,8 +223,12 @@ Only then:
 # before router's Kea serves again: every address router had leased must
 # still be in elitedesk's files (elitedesk only adds to them). Compare first,
 # because the copy below replaces router's files.
-ssh router "sudo sh -c 'cut -d, -f1,2 /var/lib/private/kea/dhcp4.leases*'" | grep -v '^address' | sort -u > /tmp/r.leases
-ssh elitedesk "sudo sh -c 'cut -d, -f1,2 /var/lib/private/kea/dhcp4.leases*'" | grep -v '^address' | sort -u > /tmp/e.leases
+set -o pipefail
+ssh router "sudo sh -c 'cut -d, -f1,2 /var/lib/private/kea/dhcp4.leases*'" \
+  | { grep -v '^address' || true; } | sort -u > /tmp/r.leases || echo STOP: router read failed
+ssh elitedesk "sudo sh -c 'cut -d, -f1,2 /var/lib/private/kea/dhcp4.leases*'" \
+  | { grep -v '^address' || true; } | sort -u > /tmp/e.leases || echo STOP: elitedesk read failed
+wc -l /tmp/r.leases /tmp/e.leases        # both non-empty; router's near the baseline
 comm -23 /tmp/r.leases /tmp/e.leases     # must print nothing; otherwise stop
 comm -13 /tmp/r.leases /tmp/e.leases     # the leases elitedesk issued
 
@@ -220,8 +239,9 @@ ssh elitedesk "sudo sh -c 'cd /var/lib/private/kea && tar -cf - dhcp4.leases*'" 
 
 # on router (via 10.10.10.2): back to primary; this also clears the
 # demoted marker
-sudo systemd-run --unit=failback --collect \
+sudo systemd-run --unit=fb-router --remain-after-exit \
   /nix/var/nix/profiles/system/bin/switch-to-configuration test
+systemctl show -p ActiveState,Result,ExecMainStatus fb-router   # active, success, 0
 
 # bounce router's WAN once the switch has finished: after the MAC moved
 # back in rehearsal 1 the ISP gateway did not answer until the link went
@@ -242,21 +262,30 @@ Then confirm that router holds 10.10.10.1, the WAN lease and the prefix
 
 At any step, return both hosts to normal in this order:
 
-1. elitedesk: `sudo /nix/var/nix/profiles/system/bin/switch-to-configuration test`
-   (WAN down, LAN 10.10.10.4 only, Kea off). Then demote its zones and give
-   its WAN port its own MAC back; returning to standby does neither:
+1. elitedesk, detached (WAN down, LAN 10.10.10.4 only, Kea off), then
+   check `ab-elitedesk` from `10.10.10.4`. Then demote its zones and give its
+   WAN port its own MAC back; returning to standby does neither:
 
    ```sh
+   sudo systemd-run --unit=ab-elitedesk --remain-after-exit \
+     /nix/var/nix/profiles/system/bin/switch-to-configuration test
    sudo systemctl stop technitium-zone-ha-owner
    sudo systemctl start technitium-zone-ha-reconcile   # zones back to Secondary
    sudo ip link set enp1s0f1np1 down
    sudo ip link set enp1s0f1np1 address "$(ethtool -P enp1s0f1np1 | awk '{print $3}')"
    ```
 
-2. If elitedesk issued leases, compare and copy them to router as in
-   [Fail back](#5-fail-back) before router's Kea starts.
-3. router: `sudo /nix/var/nix/profiles/system/bin/switch-to-configuration test`,
-   then the WAN bounce from [Fail back](#5-fail-back).
+2. Lease handback, only while router's Kea is still stopped
+   (`systemctl is-active kea-dhcp4-server` on router reads `inactive`): compare
+   and copy elitedesk's leases as in [Fail back](#5-fail-back). If router's Kea
+   is already serving (an abort after fail back), skip the copy: it would
+   replace newer renewals with stale records.
+3. router, detached, then the WAN bounce from [Fail back](#5-fail-back):
+
+   ```sh
+   sudo systemd-run --unit=ab-router --remain-after-exit \
+     /nix/var/nix/profiles/system/bin/switch-to-configuration test
+   ```
 4. If SSH is gone, use the consoles (Proxmox web console for router, monitor
    and keyboard for elitedesk) and run the same commands. Reboot only as the
    last resort: elitedesk comes back standby, and router comes back standby
