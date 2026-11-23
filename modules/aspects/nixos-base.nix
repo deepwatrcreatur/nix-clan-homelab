@@ -73,7 +73,7 @@
             "hyprland.cachix.org-1:a7pgxzMz7+chwVL3/pzj6jIBMioiJM7ypFP8PwtkuGc="
           ];
 
-          # Private NixCI access comes from nix-cache-auth, included per host.
+          # Private NixCI cache access comes from its per-host auth aspect.
           # Console passwords: the console-password aspect, included per
           # clan host (it declares clan vars, so not here).
         };

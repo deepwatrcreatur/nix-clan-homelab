@@ -24,7 +24,7 @@ commit before pushing.
 
 | Domain | Aspects | Vars | Status |
 | --- | --- | --- | --- |
-| cache/builder | `nix-cache-auth`, `remote-builder-client` | `nix-cache-auth/{attic-token,netrc}`, `nix-remote-builder/key` | imported; verified on clan-spike; Lattitude recipient added for candidate |
+| cache/builder | `nix-cache-auth`, `nix-ci-cache-auth`, `remote-builder-client` | `nix-cache-auth/{attic-token,netrc}`, `nix-ci-cache-auth/netrc`, `nix-remote-builder/key` | existing hosts imported; router token scope decision pending in `nch-sny.38`; builder keys remain off routers |
 | Synology CIFS | `synology-shares` | `synology-shares/credentials` | imported from unified; Lattitude recipient added for candidate; Emerald remains admin-only |
 | user/operator | `console-password` (per clan host) | `console-password/{root,deepwatrcreatur}` (yescrypt hashes); github-token, API keys still todo | Lattitude recipient added for candidate; other hosts still need vars generation |
 | homeserver services | | | todo |
@@ -65,9 +65,12 @@ defaults use a separate file so an existing writable config stays in place.
 
 - `netrc` contains only the cache.nix-ci.com entry (HTTPS).
 - The `nix-cache-auth` aspect enables the NixCI substituter and signing key
-  alongside that netrc. Router-class hosts use the public cache and
-  anonymous Attic reads. Separately scoped NixCI downloads for those hosts
-  are tracked in `nch-sny.38`.
+  alongside that netrc, and keeps the shared Attic push token for later use.
+  Router-class hosts can use `nix-ci-cache-auth`, which provisions only the
+  NixCI user token and does not expose the Attic push token or builder
+  credentials. NixCI's hosted user token can also write to the user's private
+  cache namespace, so the maintainer's policy decision is tracked in
+  `nch-sny.38` (see [NixCI cache access](https://nix-ci.com/documentation/nix-ci-cache)).
 - The `nix-cache-auth` flake check verifies the NixCI endpoint, key and netrc
   on the exported NixOS configurations and checks the public-cache fallback.
 - attic's `cache-local` answers unauthenticated reads on the LAN, so pulls
