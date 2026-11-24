@@ -136,8 +136,9 @@ variable exists, so exporting an empty value would have skipped managed-file
 links and other activation actions. The Attic config is rendered from its
 immutable template after Home Manager links files and materializes user
 secrets, then written with mode `0600`; this preserves token substitution
-without leaving placeholders active or using a stale token.
-The parity check keeps both activation guards in place.
+without leaving placeholders active or using a stale token. A restrictive
+umask keeps intermediate rendered files private too. The parity check keeps
+these activation invariants in place.
 
 The `pve-strix-home-parity` flake check preserves the package-name and managed
 file-target inventories as SHA-256 snapshots in
@@ -148,12 +149,13 @@ Regenerate the snapshot after reviewing an intentional profile change with:
 nix eval --json '.#homeConfigurations."root@pve-strix"' --apply 'c: let h = c.config; packages = builtins.sort builtins.lessThan (map (p: p.pname or p.name) h.home.packages); files = builtins.sort builtins.lessThan (builtins.attrNames h.home.file); in { username = h.home.username; homeDirectory = h.home.homeDirectory; stateVersion = h.home.stateVersion; packageCount = builtins.length packages; packageNamesHash = builtins.hashString "sha256" (builtins.toJSON packages); fileTargetCount = builtins.length files; fileTargetsHash = builtins.hashString "sha256" (builtins.toJSON files); }' > checks/pve-strix-home-reference.json
 ```
 
-This is an evaluation and build comparison only; it has not been activated on
-PVE-Strix. Home Manager activation runs the existing Proxmox root profile's
-agenix user-secret activation and its hook that writes `/etc/nix/machines`.
-Coordinate those live effects and secret decryption separately before
-activating. The migration scope remains root Home Manager; Proxmox VE,
-networking, storage, services, and boot configuration stay in place.
+The standalone root Home Manager profile was activated on PVE-Strix as
+generation 34 on 2026-11-23. Its managed files and user-secret activation
+completed, SSH remained reachable, and `/etc/nix/machines` now points to
+Emerald at `10.10.11.55`. The Attic config is rendered with mode `0600`. The
+No system configuration was activated and the host was not rebooted. This
+verifies only root Home Manager; Proxmox VE, networking, storage, services,
+and boot configuration stay in place.
 
 ## Inventory
 
