@@ -119,6 +119,33 @@ Lattitude's update. Review later removed it again until `nch-sny.38` provides
 the dedicated read-only token path. No Elitedesk configuration or credential
 was changed.
 
+### PVE-Strix standalone Home Manager candidate
+
+The PVE-Strix root Home Manager profile is exposed as the standalone den home
+`root@pve-strix`. It imports the existing Unified root and Proxmox profile
+modules while the PVE system configuration remains under Unified. The
+candidate uses the same Unified and fnox revisions as Unified's current lock
+file. Its evaluated Home Manager package list, managed file targets, account
+name, `/root` home directory, and state version (`25.11`) match
+`homeConfigurations.pve-strix-root` in Unified. The candidate activation
+package builds successfully.
+
+The `pve-strix-home-parity` flake check preserves the package-name and managed
+file-target inventories as SHA-256 snapshots in
+`checks/pve-strix-home-reference.json`, along with the account invariants.
+Regenerate the snapshot after reviewing an intentional profile change with:
+
+```sh
+nix eval --json '.#homeConfigurations."root@pve-strix"' --apply 'c: let h = c.config; packages = builtins.sort builtins.lessThan (map (p: p.pname or p.name) h.home.packages); files = builtins.sort builtins.lessThan (builtins.attrNames h.home.file); in { username = h.home.username; homeDirectory = h.home.homeDirectory; stateVersion = h.home.stateVersion; packageCount = builtins.length packages; packageNamesHash = builtins.hashString "sha256" (builtins.toJSON packages); fileTargetCount = builtins.length files; fileTargetsHash = builtins.hashString "sha256" (builtins.toJSON files); }' > checks/pve-strix-home-reference.json
+```
+
+This is an evaluation and build comparison only; it has not been activated on
+PVE-Strix. Home Manager activation runs the existing Proxmox root profile's
+agenix user-secret activation and its hook that writes `/etc/nix/machines`.
+Coordinate those live effects and secret decryption separately before
+activating. The migration scope remains root Home Manager; Proxmox VE,
+networking, storage, services, and boot configuration stay in place.
+
 ## Inventory
 
 Edit `inventory/hosts.nix` for host addresses, SSH settings, and roles. The
