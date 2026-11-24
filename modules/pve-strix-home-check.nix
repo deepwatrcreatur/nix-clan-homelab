@@ -18,11 +18,12 @@
       };
       expected = builtins.fromJSON (builtins.readFile ../checks/pve-strix-home-reference.json);
       activationPackage = homeConfig.activationPackage;
+      dryRunGuard = home.home.activation.ensureDryRunVariable.data;
     in
     {
       checks.pve-strix-home-parity =
-        if actual != expected then
-          throw "PVE-Strix Home Manager parity changed. Expected ${builtins.toJSON expected}; got ${builtins.toJSON actual}"
+        if actual != expected || dryRunGuard != ":" then
+          throw "PVE-Strix Home Manager parity or activation mode changed. Expected ${builtins.toJSON expected}; got ${builtins.toJSON actual}"
         else
           pkgs.runCommand "pve-strix-home-parity"
             {

@@ -130,6 +130,12 @@ name, `/root` home directory, and state version (`25.11`) match
 `homeConfigurations.pve-strix-root` in Unified. The candidate activation
 package builds successfully.
 
+The PVE-Strix aspect replaces Unified's empty `DRY_RUN` compatibility hook
+with a no-op. Home Manager detects dry-run mode by checking whether the
+variable exists, so exporting an empty value would have skipped managed-file
+links and other activation actions. The parity check keeps this guard in
+place.
+
 The `pve-strix-home-parity` flake check preserves the package-name and managed
 file-target inventories as SHA-256 snapshots in
 `checks/pve-strix-home-reference.json`, along with the account invariants.

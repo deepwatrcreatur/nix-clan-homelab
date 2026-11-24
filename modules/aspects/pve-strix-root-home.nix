@@ -43,6 +43,9 @@ in
       # WHY: retain the Proxmox root home path while this standalone output
       # replaces Unified's profile; the system configuration remains in Unified.
       home.homeDirectory = lib.mkForce "/root";
+      # WHY: Home Manager treats even an empty DRY_RUN variable as dry-run
+      # mode. The upstream compatibility workaround would skip managed links.
+      home.activation.ensureDryRunVariable = lib.mkForce (lib.hm.dag.entryBefore [ "attic-config" ] ":");
       imports = [
         (inputs.unified-pve.outPath + "/users/root")
         (inputs.unified-pve.outPath + "/modules/home-manager")
