@@ -29,7 +29,9 @@ wait_unit router fo-demote 90 || back_to_router "fo-demote did not finish with s
 # earlier; poll instead of reading once (rehearsal 4: a single read 3 s after
 # the switch got no answer and aborted a good demote).
 g=""
-for _ in $(seq 1 15); do
+# WHY: a wall-clock limit; each unanswered SSH attempt can itself take 5 s.
+deadline=$((SECONDS + 30))
+while [ "$SECONDS" -lt "$deadline" ]; do
   g=$(r2 "ip -br link show $ROUTER_WAN | awk '{print \$2}'; ip -br addr | grep -c '$GATEWAY/'; test -e $MARKER && echo marker; true" 2>/dev/null | tr '\n' ' ')
   [ "$g" = "DOWN 0 marker " ] && break
   sleep 2
@@ -40,7 +42,9 @@ log "  router: ${g:-<no answer on $ROUTER_STANDBY_IP>}"
 log "promote elitedesk"
 promote_elitedesk fo-promote || abort_all "fo-promote failed"
 g=""
-for _ in $(seq 1 15); do
+# WHY: a wall-clock limit; each unanswered SSH attempt can itself take 5 s.
+deadline=$((SECONDS + 30))
+while [ "$SECONDS" -lt "$deadline" ]; do
   g=$(e1 "ip -br addr show $ELITEDESK_LAN | grep -c '$GATEWAY/'; ip -br link show $ELITEDESK_WAN | awk '{print \$2, \$3}'; cat /run/router-ha/role; echo; systemctl is-active kea-dhcp4-server; true" 2>/dev/null | tr '\n' ' ')
   [ "$g" = "1 UP $ROUTER_WAN_MAC master active " ] && break
   sleep 2
