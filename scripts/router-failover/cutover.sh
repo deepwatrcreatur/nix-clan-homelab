@@ -52,7 +52,8 @@ done
 log "  elitedesk: ${g:-<no answer on $GATEWAY>}"
 { [ "$g" = "1 UP $ROUTER_WAN_MAC master active " ] && ! forced promote; } || abort_all "promote gate: $g"
 e1 "sudo arping -U -c 3 -I $ELITEDESK_LAN $GATEWAY >/dev/null; true"
-for _ in $(seq 1 15); do
+deadline=$((SECONDS + 30))
+while [ "$SECONDS" -lt "$deadline" ]; do
   e1 "ip -br addr show $ELITEDESK_WAN" | grep -qF "$BASE_WAN_IP" && { log "  elitedesk WAN: $BASE_WAN_IP"; break; }
   sleep 2
 done
