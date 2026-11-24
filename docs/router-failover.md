@@ -430,3 +430,23 @@ unified 09642307 (#262), clan f6fd21b (#49), run with the scripts.
    run before router held `10.10.10.1`: the demote found no other primary
    and kept its Primary copies. Demoted by hand afterwards; the scripts now
    demote after router's takeover.
+4. After unified #263 and clan #50 (router rebuilt from unified 839d88cd),
+   a plain run: the first cutover aborted on a false gate failure (the demote
+   gate read router once, 3 s after the switch, and the workstation still
+   cached `10.10.10.2` as unreachable); the abort put router back as primary
+   in 30 s. The gates now poll for 30 s, and every switch clears a leftover
+   unit of the same name first (old `fo-demote`/`fb-router-1` units would
+   otherwise make `systemd-run` fail and the gate read a stale result).
+5. With those fixes, **cutover and fail back passed**:
+
+   | | Cutover | Fail back |
+   | --- | --- | --- |
+   | Gateway gap | 4.2 s | 10.3 s |
+   | IPv4 internet gap | 4.5 s | 14.1 s, then 6.0 s (WAN bounce) |
+   | IPv6 internet gap | 7.6 s | 16.6 s, then 7.6 s (WAN bounce) |
+
+   Same IPv4 (`99.237.231.178`) and `/56` throughout; 167 lease lines
+   handed over, all 76 active leases matched on the way back; elitedesk the
+   only IPv6 router while primary; the standby router kept internet and
+   Tailscale; zones promoted and handed back; no failed units, no marker
+   left.
