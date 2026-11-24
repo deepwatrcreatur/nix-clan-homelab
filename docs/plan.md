@@ -130,6 +130,15 @@ name, `/root` home directory, and state version (`25.11`) match
 `homeConfigurations.pve-strix-root` in Unified. The candidate activation
 package builds successfully.
 
+The `pve-strix-home-parity` flake check preserves the package-name and managed
+file-target inventories as SHA-256 snapshots in
+`checks/pve-strix-home-reference.json`, along with the account invariants.
+Regenerate the snapshot after reviewing an intentional profile change with:
+
+```sh
+nix eval --json '.#homeConfigurations."root@pve-strix"' --apply 'c: let h = c.config; packages = builtins.sort builtins.lessThan (map (p: p.pname or p.name) h.home.packages); files = builtins.sort builtins.lessThan (builtins.attrNames h.home.file); in { username = h.home.username; homeDirectory = h.home.homeDirectory; stateVersion = h.home.stateVersion; packageCount = builtins.length packages; packageNamesHash = builtins.hashString "sha256" (builtins.toJSON packages); fileTargetCount = builtins.length files; fileTargetsHash = builtins.hashString "sha256" (builtins.toJSON files); }' > checks/pve-strix-home-reference.json
+```
+
 This is an evaluation and build comparison only; it has not been activated on
 PVE-Strix. Home Manager activation runs the existing Proxmox root profile's
 agenix user-secret activation and its hook that writes `/etc/nix/machines`.

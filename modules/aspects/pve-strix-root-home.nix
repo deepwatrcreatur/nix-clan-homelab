@@ -1,17 +1,21 @@
 { den, inputs, ... }:
 let
   system = "x86_64-linux";
+  # WHY: keep Unified's fnox module revision local to this transitional home.
+  proxmoxInputs = inputs // {
+    fnox = inputs.fnox-pve;
+  };
   proxmoxPkgs = import inputs.nixpkgs {
     inherit system;
     config.allowUnfree = true;
     overlays = [
       (final: prev: {
-        fnox = inputs.fnox.packages.${system}.default;
+        fnox = inputs.fnox-pve.packages.${system}.default;
         markit = inputs.nix-markit.packages.${system}.markit;
         leaf = inputs.leaf.packages.${system}.default;
       })
     ]
-    ++ import (inputs.unified.outPath + "/overlays/packages.nix") {
+    ++ import (inputs.unified-pve.outPath + "/overlays/packages.nix") {
       nixpkgsLib = inputs.nixpkgs.lib;
     };
   };
@@ -24,7 +28,7 @@ in
       inputs.home-manager.lib.homeManagerConfiguration {
         inherit pkgs modules;
         extraSpecialArgs = {
-          inherit inputs;
+          inputs = proxmoxInputs;
           hostName = "pve-strix";
           isDesktop = false;
         };
@@ -40,9 +44,9 @@ in
       # replaces Unified's profile; the system configuration remains in Unified.
       home.homeDirectory = lib.mkForce "/root";
       imports = [
-        (inputs.unified.outPath + "/users/root")
-        (inputs.unified.outPath + "/modules/home-manager")
-        (inputs.unified.outPath + "/profiles/home-manager/proxmox-root.nix")
+        (inputs.unified-pve.outPath + "/users/root")
+        (inputs.unified-pve.outPath + "/modules/home-manager")
+        (inputs.unified-pve.outPath + "/profiles/home-manager/proxmox-root.nix")
       ];
     };
 }

@@ -16,6 +16,13 @@
       flake = false;
     };
 
+    # WHY: compare PVE-Strix against Unified main without changing other
+    # hosts' shared inventory reference during this standalone-home migration.
+    unified-pve = {
+      url = "github:deepwatrcreatur/unified-nix-configuration/2eccceae94485ecfd2d72cc5fb1c1adabe613e72";
+      flake = false;
+    };
+
     nix-router-optimized = {
       url = "github:deepwatrcreatur/nix-router-optimized/6db8fe02f3217b36da302d97c229d4370fe3e7d4";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -86,6 +93,13 @@
 
     fnox = {
       url = "github:deepwatrcreatur/fnox-flake";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    # WHY: Unified's Proxmox profile needs the newer SSH identity options;
+    # keep that revision scoped to this transitional home, not other hosts.
+    fnox-pve = {
+      url = "github:deepwatrcreatur/fnox-flake/2ad72d7bd60d7fded65f9b0fc164ece2fd9c7230";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
