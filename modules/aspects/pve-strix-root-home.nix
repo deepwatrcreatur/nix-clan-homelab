@@ -81,9 +81,9 @@ in
       # mode. The upstream compatibility workaround would skip managed links.
       home.activation.ensureDryRunVariable = lib.mkForce (lib.hm.dag.entryBefore [ "attic-config" ] ":");
       # WHY: render the tokenized template only after Home Manager links it;
-      # otherwise linkGeneration replaces the rendered config with placeholders.
+      # after secrets are materialized, or it reads an outdated token.
       home.activation.attic-config = lib.mkForce (
-        lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+        lib.hm.dag.entryAfter [ "linkGeneration" "userSecretsActivation" ] ''
           config_dir=${lib.escapeShellArg "${config.home.homeDirectory}/.config/attic"}
           config_file="$config_dir/config.toml"
           config_template=${lib.escapeShellArg (toString atticTemplate)}
