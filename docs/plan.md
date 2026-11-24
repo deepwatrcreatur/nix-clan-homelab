@@ -134,8 +134,9 @@ The PVE-Strix aspect replaces Unified's empty `DRY_RUN` compatibility hook
 with a no-op. Home Manager detects dry-run mode by checking whether the
 variable exists, so exporting an empty value would have skipped managed-file
 links and other activation actions. The Attic config is rendered from its
-immutable template after Home Manager links files, then written with mode
-`0600`; this preserves token substitution without leaving placeholders active.
+immutable template after Home Manager links files and materializes user
+secrets, then written with mode `0600`; this preserves token substitution
+without leaving placeholders active or using a stale token.
 The parity check keeps both activation guards in place.
 
 The `pve-strix-home-parity` flake check preserves the package-name and managed
