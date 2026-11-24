@@ -28,6 +28,25 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # Phoenix's existing desktop style and phone mirroring modules are
+    # retained for the build-only candidate until those modules are ported.
+    nix-whitesur-config = {
+      url = "github:deepwatrcreatur/nix-whitesur-config/a374aa647c56d7c7e9754dbadd014a7c4dd75cb0";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    nix-omarchy-screen-mirroring = {
+      url = "github:deepwatrcreatur/nix-omarchy-screen-mirroring/f7f91701ebd382fb3e05d84598b8e09f8996bde7";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-utils.follows = "flake-utils";
+    };
+
+    nix-omarchy-iphone-mirror = {
+      url = "github:deepwatrcreatur/nix-omarchy-iphone-mirror/d0a99cfe9eae468ae1e574ac05b9b5d9b8187a98";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-utils.follows = "flake-utils";
+    };
+
     den.url = "github:denful/den/latest";
     import-tree.url = "github:vic/import-tree";
 
