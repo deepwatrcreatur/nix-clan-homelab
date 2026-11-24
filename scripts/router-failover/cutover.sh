@@ -9,7 +9,7 @@ set -u -o pipefail
 
 back_to_router() { # router demoted (or half-demoted), elitedesk untouched
   log "ABORT: $*"
-  if router_to_primary ab-router; then log "ABORT done: router is primary"; exit 1; fi
+  if router_to_primary ab-router; then demote_elitedesk_zones; log "ABORT done: router is primary"; exit 1; fi
   fence_router_and_promote_elitedesk "router did not come back as primary"
 }
 

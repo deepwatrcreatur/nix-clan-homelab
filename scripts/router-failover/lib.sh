@@ -157,7 +157,6 @@ router_released() { # router holds neither the WAN nor the gateway address
 elitedesk_to_standby() { # unit-base
   # shellcheck disable=SC2153 # set in state.env
   run_switch elitedesk "$1" "$ELITEDESK_TOP" 90 || return 1
-  elitedesk "sudo systemctl stop technitium-zone-ha-owner; sudo systemctl start technitium-zone-ha-reconcile; true" >>"$LOG" 2>&1
   elitedesk "sudo ip link set $ELITEDESK_WAN down; sudo ip link set $ELITEDESK_WAN address \"\$(ethtool -P $ELITEDESK_WAN | awk '{print \$3}')\"" >>"$LOG" 2>&1
   local g; g=$(elitedesk "ip -br link show $ELITEDESK_WAN | awk '{print \$2}'; ip -br addr | grep -c '$GATEWAY/'; systemctl is-active kea-dhcp4-server; cat /run/router-ha/role; echo; true" | tr '\n' ' ')
   log "  elitedesk: $g"
@@ -203,6 +202,26 @@ fence_router_and_promote_elitedesk() { # reason
   exit 3
 }
 
+# GOTCHA: elitedesk hands its zones back only when another primary answers
+# SOA, so this must run after router holds 10.10.10.1; run before, it kept
+# its Primary copies and added 24 s to the outage (rehearsal 4).
+demote_elitedesk_zones() {
+  local out
+  elitedesk "sudo systemctl stop technitium-zone-ha-owner; sudo systemctl reset-failed technitium-zone-ha-owner; true" >>"$LOG" 2>&1
+  if ! elitedesk "sudo systemctl start technitium-zone-ha-reconcile" >>"$LOG" 2>&1; then
+    log "  WARN: zone reconcile on elitedesk failed or unreachable; rerun: sudo systemctl start technitium-zone-ha-reconcile"
+    return 0
+  fi
+  # shellcheck disable=SC2016 # expands on elitedesk
+  if ! out=$(elitedesk 'journalctl --no-pager _SYSTEMD_INVOCATION_ID="$(systemctl show -p InvocationID --value technitium-zone-ha-reconcile)"'); then
+    log "  WARN: could not read elitedesk's reconcile log; check its zones"
+  elif grep -q 'keeping the Primary copy' <<<"$out"; then
+    log "  WARN: elitedesk kept Primary zone copies; rerun: sudo systemctl start technitium-zone-ha-reconcile"
+  else
+    log "  elitedesk zones back to Secondary"
+  fi
+}
+
 # Full abort: elitedesk lets go, leases come back, router takes over.
 abort_all() {
   log "ABORT: $*"
@@ -216,6 +235,7 @@ abort_all() {
   # network without a gateway.
   lease_handback || log "  WARN: router serves its own snapshot; check for duplicate leases"
   if router_to_primary ab-router; then
+    demote_elitedesk_zones
     log "ABORT done: router is primary"
     exit 1
   fi

@@ -28,5 +28,5 @@ log "router -> primary"
 if ! router_to_primary fb-router || forced fb-router; then
   fence_router_and_promote_elitedesk "router did not take over"
 fi
-elitedesk 'sudo systemctl stop technitium-zone-ha-owner; true' >>"$LOG" 2>&1
+demote_elitedesk_zones
 log "fail back done: router is primary"
