@@ -94,7 +94,10 @@ ok=1
   sleep 2
 done
 e1 "ip -br addr show $ELITEDESK_WAN" | grep -qF "$BASE_WAN_IP" || { log "  gate: WAN lease $BASE_WAN_IP missing"; ok=; }
-e1 "systemctl is-active --quiet kea-dhcp4-server technitium-dns-server caddy" || { log "  gate: Kea, Technitium or Caddy is down"; ok=; }
+# GOTCHA: is-active with several units succeeds if any one is active.
+for u in kea-dhcp4-server technitium-dns-server caddy; do
+  e1 "systemctl is-active --quiet $u" || { log "  gate: $u is not active"; ok=; }
+done
 z=$(zone_types); [ "$z" = "$want_zones" ] || { log "  gate: zones are $z"; ok=; }
 forced permanent && ok=
 [ -n "$ok" ] || back_to_promoted "a gate failed after the switch"
