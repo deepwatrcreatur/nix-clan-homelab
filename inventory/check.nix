@@ -14,7 +14,10 @@ let
   active = lib.filterAttrs (name: host: !(host.archived || name == "clan-spike")) hosts;
   legacyNames = lib.unique (builtins.attrNames legacyNetwork ++ builtins.attrNames legacyComposition);
   withRole = role: lib.filterAttrs (_: host: builtins.elem role host.roles);
-  builderClients = withRole "remoteBuilderClient" hosts;
+  # WHY: once unified retires a migrated host's system definition (lattitude,
+  # unified #257), only its network entry is left to compare.
+  composedInUnified = lib.filterAttrs (name: host: !host.migrated || legacyComposition ? ${name});
+  builderClients = composedInUnified (withRole "remoteBuilderClient" hosts);
   cacheServers = withRole "cacheServer" hosts;
 
   sort = lib.sort builtins.lessThan;
@@ -86,7 +89,7 @@ let
       )
     ) "Router-class hosts differ"
     ++ lib.optional (
-      !sameNames (builtins.attrNames (withRole "desktop" active)) (
+      !sameNames (builtins.attrNames (composedInUnified (withRole "desktop" active))) (
         builtins.attrNames (lib.filterAttrs (_: host: host.isDesktop or false) legacyComposition)
       )
     ) "Desktops differ";

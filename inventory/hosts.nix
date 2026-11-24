@@ -77,7 +77,7 @@
     system = "x86_64-linux";
     addresses.sshHostname = "192.168.100.98";
     sshUser = "deepwatrcreatur";
-    description = "Bare-metal router host (HP EliteDesk), standby to router";
+    description = "Bare-metal primary router (HP EliteDesk); replaced router on 2026-11-24";
     includeDns = false;
     migrated = true;
     router = {
@@ -172,9 +172,8 @@
     system = "x86_64-linux";
     addresses.ip = "10.10.11.47";
     sshUser = "deepwatrcreatur";
-    description = "Latitude laptop - Sway desktop kiosk";
-    # WHY: compose and evaluate the migration candidate; unified remains
-    # authoritative until the coordinated live migration is complete.
+    description = "Latitude laptop - Sway desktop kiosk (migrated)";
+    # Unified retired its system definition (unified #257); this repo owns it.
     migrated = true;
     roles = [
       "remoteBuilderClient"
@@ -303,7 +302,35 @@
   sw-main = {
     kind = "appliance";
     addresses.ip = "10.10.18.10";
-    description = "Core Switch";
+    description = "Core switch (HRUI LG510S-4T2XS, 4x 10G RJ45 / 2x SFP+)";
+    includeSsh = false;
+  };
+
+  sw-cisco-sg300-52p = {
+    kind = "appliance";
+    addresses.ip = "10.10.18.11";
+    description = "Cisco SG300-52P (52-port PoE, managed)";
+    includeSsh = false;
+  };
+
+  sw-dell-n1124t-on = {
+    kind = "appliance";
+    addresses.ip = "10.10.18.12";
+    description = "Dell N1124T-ON (24-port, managed)";
+    includeSsh = false;
+  };
+
+  sw-hp-2910al-48g-poe = {
+    kind = "appliance";
+    addresses.ip = "10.10.18.13";
+    description = "HP 2910al-48G-PoE (J9148A)";
+    includeSsh = false;
+  };
+
+  sw-dell-powerconnect = {
+    kind = "appliance";
+    addresses.ip = "10.10.18.14";
+    description = "Dell PowerConnect (model unknown)";
     includeSsh = false;
   };
 
