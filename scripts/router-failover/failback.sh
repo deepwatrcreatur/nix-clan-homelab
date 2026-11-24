@@ -18,17 +18,15 @@ r2 "test -x $ROUTER_TOP/bin/switch-to-configuration" || { log "STOP: router lack
 
 log "elitedesk -> standby"
 if ! elitedesk_to_standby fb-elitedesk || forced fb-elitedesk; then
-  log "elitedesk gate failed; re-promoting elitedesk"
-  promote_elitedesk rescue-promote && { log "RESCUE: elitedesk is primary again"; exit 2; }
-  abort_all "elitedesk neither standby nor primary"
+  fence_router_and_promote_elitedesk "elitedesk did not return cleanly to standby"
 fi
-lease_handback || true
+# INVARIANT: router's Kea starts with its primary role, so it may only start
+# once its files hold elitedesk's leases; otherwise it could re-issue them.
+lease_handback || fence_router_and_promote_elitedesk "lease handback failed"
 
 log "router -> primary"
 if ! router_to_primary fb-router || forced fb-router; then
-  log "router did not take over; re-promoting elitedesk"
-  promote_elitedesk rescue-promote && { log "RESCUE: elitedesk is primary again; investigate router"; exit 2; }
-  log "RESCUE FAILED: use the consoles (docs/router-failover.md#abort)"; exit 3
+  fence_router_and_promote_elitedesk "router did not take over"
 fi
 elitedesk 'sudo systemctl stop technitium-zone-ha-owner; true' >>"$LOG" 2>&1
 log "fail back done: router is primary"

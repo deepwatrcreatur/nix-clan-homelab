@@ -113,8 +113,12 @@ Run the rehearsal with the scripts in
 workstation in Bash. They run the commands in the steps below, gate every
 step with a timeout, and **abort automatically when a gate fails**: a failed
 demote puts router back to primary; a failed promotion or fail back returns
-to whichever host can hold the gateway, and promotes elitedesk again if
-router cannot. In rehearsals 2 and 3 the operator's script stopped on a
+to whichever host can hold the gateway. elitedesk is promoted again only
+after router has been fenced (switched to standby and seen without the WAN
+or `10.10.10.1`); if router cannot be fenced, or elitedesk cannot release
+the gateway, the script stops and names the console to use. Router's Kea
+starts only after the lease handback succeeded, and lease files are swapped
+in whole, never left half copied. In rehearsals 2 and 3 the operator's script stopped on a
 failed gate and left the network with no gateway for 15 and 18 minutes.
 
 ```sh

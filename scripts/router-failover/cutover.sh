@@ -10,16 +10,13 @@ set -u -o pipefail
 back_to_router() { # router demoted (or half-demoted), elitedesk untouched
   log "ABORT: $*"
   if router_to_primary ab-router; then log "ABORT done: router is primary"; exit 1; fi
-  log "ABORT: router did not come back; promoting elitedesk instead"
-  promote_elitedesk rescue-promote && { log "RESCUE: elitedesk is primary; investigate router"; exit 2; }
-  log "RESCUE FAILED: use the consoles (docs/router-failover.md#abort)"; exit 3
+  fence_router_and_promote_elitedesk "router did not come back as primary"
 }
 
 log "== cutover"
 log "stop router Kea and copy leases"
 r1 'sudo systemctl stop kea-dhcp4-server' || { r1 'sudo systemctl start kea-dhcp4-server'; log "STOP: could not stop Kea"; exit 1; }
-r1 "sudo sh -c 'cd $KEA_DIR && tar -cf - dhcp4.leases*'" \
-  | e4 "sudo sh -c 'install -d -m 0700 $KEA_DIR && rm -f $KEA_DIR/dhcp4.leases* && tar -C $KEA_DIR -xf -'" \
+copy_leases r1_router e4 \
   || { r1 'sudo systemctl start kea-dhcp4-server'; log "STOP: lease copy failed; router Kea restarted"; exit 1; }
 log "  copied $(e4 "sudo sh -c 'cat $KEA_DIR/dhcp4.leases* | wc -l'") lease lines (baseline $BASE_LEASES)"
 
