@@ -26,7 +26,7 @@ commit before pushing.
 | --- | --- | --- | --- |
 | cache/builder | `nix-cache-auth`, `nix-ci-cache-auth`, `remote-builder-client` | `nix-cache-auth/{attic-token,netrc}`, `nix-ci-cache-auth/netrc`, `nix-remote-builder/key` | existing hosts imported; router token scope decision pending in `nch-sny.38`; builder keys remain off routers |
 | Synology CIFS | `synology-shares` | `synology-shares/credentials` | imported from unified; Lattitude recipient added for candidate; Emerald remains admin-only |
-| user/operator | `console-password` (per clan host) | `console-password/{root,deepwatrcreatur}` (yescrypt hashes); github-token, API keys still todo | Lattitude recipient added for candidate; other hosts still need vars generation |
+| user/operator | `console-password` (per clan host), `workstation-user-secrets` | `console-password/{root,deepwatrcreatur}` (yescrypt hashes); 13 workstation credentials under `vars/shared/workstation-user-secrets` | Credential values are imported as encrypted Clan vars; `clan vars check lattitude` reports all vars present and valid. Lattitude is the only workstation recipient so far; live home delivery and state preservation remain in `nch-sny.37.7`. |
 | homeserver services | | | todo |
 | router services | | | todo |
 
