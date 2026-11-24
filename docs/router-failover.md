@@ -323,9 +323,10 @@ At any step, return both hosts to normal in this order:
    run the same commands. Reboot only as the
    last resort: elitedesk comes back standby, and router comes back standby
    too while its demoted marker exists (remove it from the console with
-   `sudo rm /var/lib/router-failover/demoted` before rebooting it). Booting an
-   older generation from router's boot menu restores the gateway (it predates
-   the guard) but leaves the marker: remove it before the next reboot.
+   `sudo rm /var/lib/router-failover/demoted` before rebooting it). Booting a
+   generation from before the guard (unified #261) from router's boot menu
+   restores the gateway but leaves the marker: remove it before the next
+   reboot. Generations with the guard honour the marker.
 
 Abort when elitedesk gets no WAN lease within 60 s, internet does not come
 back within 2 minutes, or a stop condition is met.
