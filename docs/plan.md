@@ -119,6 +119,24 @@ Lattitude's update. Review later removed it again until `nch-sny.38` provides
 the dedicated read-only token path. No Elitedesk configuration or credential
 was changed.
 
+### PVE-Strix standalone Home Manager candidate
+
+The PVE-Strix root Home Manager profile is exposed as the standalone den home
+`root@pve-strix`. It imports the existing Unified root and Proxmox profile
+modules while the PVE system configuration remains under Unified. The
+candidate uses the same Unified and fnox revisions as Unified's current lock
+file. Its evaluated Home Manager package list, managed file targets, account
+name, `/root` home directory, and state version (`25.11`) match
+`homeConfigurations.pve-strix-root` in Unified. The candidate activation
+package builds successfully.
+
+This is an evaluation and build comparison only; it has not been activated on
+PVE-Strix. Home Manager activation runs the existing Proxmox root profile's
+agenix user-secret activation and its hook that writes `/etc/nix/machines`.
+Coordinate those live effects and secret decryption separately before
+activating. The migration scope remains root Home Manager; Proxmox VE,
+networking, storage, services, and boot configuration stay in place.
+
 ## Inventory
 
 Edit `inventory/hosts.nix` for host addresses, SSH settings, and roles. The

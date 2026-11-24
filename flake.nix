@@ -132,6 +132,17 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # WHY: the standalone Proxmox root profile imports these Home Manager modules.
+    nix-attic-infra = {
+      url = "github:deepwatrcreatur/nix-attic-infra";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    ssh-keys-manager = {
+      url = "github:deepwatrcreatur/nix-ssh-keys-manager";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     nix-markit = {
       url = "github:deepwatrcreatur/nix-markit";
       inputs.nixpkgs.follows = "nixpkgs";
