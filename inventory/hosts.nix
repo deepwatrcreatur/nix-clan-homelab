@@ -81,7 +81,10 @@
     includeDns = false;
     migrated = true;
     router = {
-      mode = "standby";
+      # WHY: permanent primary since router's hardware is being repurposed
+      # (nch-sny.22); it holds the gateway 10.10.10.1, and lanAddress is used
+      # only while a standby.
+      mode = "primary";
       # ConnectX-4 Lx (mlx5) since 2026-11-20, replacing the X520 that
       # dropped off PCIe twice (nch-sny.31). Port 0 has the LAN DAC, port 1
       # the WAN 10G-SR optic: the reverse of the X520 layout.
@@ -102,7 +105,8 @@
       lanAddress = "10.10.10.4/16";
       managementAddress = "192.168.100.98/24";
       # WHY: router's WAN identity as the modem sees it (MAC, DUID-EN from its
-      # machine-id, IAID), so a takeover keeps the IPv4 lease and the /56.
+      # machine-id, IAID). The primary keeps presenting it so the IPv4 lease
+      # and the /56 survive the move off router.
       # Read from `networkctl status enp6s17` on router, 2026-11-22.
       takeover = {
         wanMac = "02:76:c6:01:2a:b0";
@@ -113,10 +117,7 @@
       # WHY: preferred primary (docs/router-election.md); router gets 100.
       vrrpPriority = 110;
     };
-    roles = [
-      "router"
-      "router-standby"
-    ];
+    roles = [ "router" ];
   };
 
   emerald = {
