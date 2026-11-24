@@ -206,9 +206,16 @@ fence_router_and_promote_elitedesk() { # reason
 # SOA, so this must run after router holds 10.10.10.1; run before, it kept
 # its Primary copies and added 24 s to the outage (rehearsal 4).
 demote_elitedesk_zones() {
-  elitedesk "sudo systemctl stop technitium-zone-ha-owner; sudo systemctl reset-failed technitium-zone-ha-owner; sudo systemctl start technitium-zone-ha-reconcile; true" >>"$LOG" 2>&1
+  local out
+  elitedesk "sudo systemctl stop technitium-zone-ha-owner; sudo systemctl reset-failed technitium-zone-ha-owner; true" >>"$LOG" 2>&1
+  if ! elitedesk "sudo systemctl start technitium-zone-ha-reconcile" >>"$LOG" 2>&1; then
+    log "  WARN: zone reconcile on elitedesk failed or unreachable; rerun: sudo systemctl start technitium-zone-ha-reconcile"
+    return 0
+  fi
   # shellcheck disable=SC2016 # expands on elitedesk
-  if elitedesk 'journalctl --no-pager _SYSTEMD_INVOCATION_ID="$(systemctl show -p InvocationID --value technitium-zone-ha-reconcile)"' 2>/dev/null | grep -q 'keeping the Primary copy'; then
+  if ! out=$(elitedesk 'journalctl --no-pager _SYSTEMD_INVOCATION_ID="$(systemctl show -p InvocationID --value technitium-zone-ha-reconcile)"'); then
+    log "  WARN: could not read elitedesk's reconcile log; check its zones"
+  elif grep -q 'keeping the Primary copy' <<<"$out"; then
     log "  WARN: elitedesk kept Primary zone copies; rerun: sudo systemctl start technitium-zone-ha-reconcile"
   else
     log "  elitedesk zones back to Secondary"
