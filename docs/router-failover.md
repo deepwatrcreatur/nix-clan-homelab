@@ -410,3 +410,23 @@ recovery; it was switched back to its current one with `test`.
 3. The scripts are now in `scripts/router-failover/` and abort on every
    failed gate. The marker left behind by both recoveries was removed by
    hand.
+
+### Rehearsal 4: 2026-11-24, forced abort, rescue and fail back
+
+unified 09642307 (#262), clan f6fd21b (#49), run with the scripts.
+
+1. Forced abort (`FAILOVER_FORCE_FAIL=demote`): the demote exited 0 and its
+   gate passed (WAN down, no `10.10.10.1`, marker). The abort's switch back
+   to primary exited 4: `health-wan-carrier`, disabled in standby since
+   #262, started before the WAN link was up and failed its first check
+   (fixed in unified #263, probes allow 60 s at start). The script fenced
+   router and promoted elitedesk on its own: IPv4 out 47 s in total, then
+   internet via elitedesk with the same IPv4 and `/56`.
+2. In that state #262 held: clients had only elitedesk as IPv6 router, and
+   the demoted router had a default route, internet and Tailscale.
+3. Fail back with the #263 build activated by `test`: all 74 active leases
+   on both sides, `fb-router-1` exited 0, router's WAN back 6 s later.
+   Gateway out 34.9 s, of which about 24 s was elitedesk's zone demotion,
+   run before router held `10.10.10.1`: the demote found no other primary
+   and kept its Primary copies. Demoted by hand afterwards; the scripts now
+   demote after router's takeover.
