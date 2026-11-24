@@ -95,8 +95,10 @@ nix build --no-link --max-jobs 2 --cores 2 .#checks.x86_64-linux.phoenix-home-pa
 nix build --no-link --max-jobs 2 --cores 2 .#legacyPackages.x86_64-linux.phoenix-candidate.config.system.build.toplevel
 ```
 
-The repo-wide `nix flake check --no-build` currently stops at
-`checks.x86_64-linux.lattitude-host` before reaching Phoenix. `sops-nix`
-checks a Lattitude OpenSSH Clan var path that Nix reports as an invalid store
-path. The Phoenix checks are run directly so this unrelated failure does not
-hide their result.
+`nix develop -c clan-admin vars check lattitude` reports all Lattitude vars
+present and valid. A later sequential `nix flake check --no-build` also
+evaluated `checks.x86_64-linux.lattitude-host` successfully and proceeded to
+`checks.x86_64-linux.pve-strix-home-parity`, where it fails while evaluating
+fnox's generated config because the `fnox-config-template.toml.drv` store path
+is invalid. That broader check failure is unrelated to Lattitude's secrets;
+the Phoenix checks are run directly so it does not hide their result.
