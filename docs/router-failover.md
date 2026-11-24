@@ -8,7 +8,7 @@ other role as a NixOS specialisation:
 
 | Host | Normal role | Specialisation | Defined in |
 | --- | --- | --- | --- |
-| `router` (Proxmox VM) | primary | `standby` | unified `hosts/nixos/router/standby-specialisation.nix` |
+| `router` (bare metal) | primary | `standby` | unified `hosts/nixos/router/standby-specialisation.nix` |
 | `elitedesk` (bare metal) | standby | `primary` | this repo, `modules/aspects/router-role.nix` (`routerRole.promoted`) |
 
 Roles move with `switch-to-configuration test`, never `switch` or `boot`. No
@@ -32,8 +32,8 @@ non-zero (each switch runs as its own unit; see
 not pass within its timeout, or anything unexpected. Then go to [Abort](#abort).
 
 **Do not reset or reboot the demoted router during the window.** To abort
-when SSH is gone, use the Proxmox web console (log in on the VM console and
-run the commands under Abort); a VM reset is the last resort.
+when SSH is gone, use router's console (monitor and keyboard) and run the
+commands under Abort; a reset is the last resort.
 
 ## What moves
 
@@ -58,10 +58,15 @@ the window:
 
 ## Preconditions
 
-- The operator is present, with console access: the Proxmox web console for
-  router, and a monitor and keyboard for elitedesk.
-- Both hosts run their current configuration, including the specialisation.
-  Check with `ls /run/current-system/specialisation/` on each.
+- The operator is present, with console access: a monitor and keyboard for
+  both router (bare metal since its move off Proxmox) and elitedesk.
+- Both hosts run their **current generation**, not an older one picked from
+  the boot menu: an older generation carries older specialisations
+  (rehearsal 3). `preflight.sh` checks this, that elitedesk is a clean
+  standby, that router has no demoted marker, and that both are idle.
+- Router's own LAN settings in standby come from unified
+  `docs/router-source-of-truth.md#which-file-configures-the-lan` (unified
+  #262 or later deployed).
 - elitedesk's WAN optic is cabled to the WAN switch.
 - No other router change is in flight.
 
@@ -94,18 +99,36 @@ systemctl show -p SubState,Result,ExecMainStatus <name>
 # SubState=running means activation is still going: wait, do not proceed
 ```
 
-Unit names used below: `fo-demote` and `fo-promote` (cutover), `fb-elitedesk`
-and `fb-router` (fail back), `ab-elitedesk` and `ab-router` (abort). After the
-window, clear them with `sudo systemctl stop <name>` and
-`sudo systemctl reset-failed`.
+Unit names used below: `fo-demote` and `fo-promote-N` (cutover),
+`fb-elitedesk-N` and `fb-router-N` (fail back), `ab-elitedesk-N` and
+`ab-router-N` (abort), `rescue-promote-N` (elitedesk promoted again because
+router could not take over). `N` counts retries: a switch that fails with
+`Could not acquire lock` is retried once the host is idle. After the window,
+clear them with `sudo systemctl stop <name>` and `sudo systemctl reset-failed`.
 
 ## Procedure
 
-The workstation commands are Bash (the interactive shell is Fish; start
-`bash` first). Prepare every command in advance (a script or a pasted block per step) and
-put a short timeout on every check, so the gap between router's gate and
-elitedesk's promotion is seconds. In rehearsal 1 an operator session stalled
-and the promotion came minutes late.
+Run the rehearsal with the scripts in
+[`scripts/router-failover/`](../scripts/router-failover/), from a LAN
+workstation in Bash. They run the commands in the steps below, gate every
+step with a timeout, and **abort automatically when a gate fails**: a failed
+demote puts router back to primary; a failed promotion or fail back returns
+to whichever host can hold the gateway, and promotes elitedesk again if
+router cannot. In rehearsals 2 and 3 the operator's script stopped on a
+failed gate and left the network with no gateway for 15 and 18 minutes.
+
+```sh
+eval "$(scripts/router-failover/preflight.sh | tail -1)"   # sets FAILOVER_DIR
+scripts/router-failover/cutover.sh
+# observe (step 4)
+scripts/router-failover/failback.sh
+```
+
+Each run logs to `$FAILOVER_DIR/rehearsal.log`. To exercise an abort path
+on purpose, set `FAILOVER_FORCE_FAIL` to `demote`, `promote`,
+`fb-elitedesk` or `fb-router`: that gate fails after its action ran, so the
+abort runs for real (a short outage). The manual commands below remain the
+reference for the consoles.
 
 ### 1. Baseline (router primary)
 
@@ -292,11 +315,13 @@ At any step, return both hosts to normal in this order:
    sudo systemd-run --unit=ab-router --remain-after-exit \
      /nix/var/nix/profiles/system/bin/switch-to-configuration test
    ```
-4. If SSH is gone, use the consoles (Proxmox web console for router, monitor
-   and keyboard for elitedesk) and run the same commands. Reboot only as the
+4. If SSH is gone, use the consoles (monitor and keyboard on each host) and
+   run the same commands. Reboot only as the
    last resort: elitedesk comes back standby, and router comes back standby
    too while its demoted marker exists (remove it from the console with
-   `sudo rm /var/lib/router-failover/demoted` before rebooting it).
+   `sudo rm /var/lib/router-failover/demoted` before rebooting it). Booting an
+   older generation from router's boot menu restores the gateway (it predates
+   the guard) but leaves the marker: remove it before the next reboot.
 
 Abort when elitedesk gets no WAN lease within 60 s, internet does not come
 back within 2 minutes, or a stop condition is met.
@@ -337,3 +362,46 @@ Failed:
 
 Cleanup after the abort: elitedesk's zones back to Secondary (reconcile), its
 WAN MAC reset to its own, and all 8 leases it issued copied into router's Kea.
+
+### Rehearsal 2: 2026-11-23, cutover passed, fail back failed
+
+unified 2eccceae (#260, #261), clan 2b5c77c (#41).
+
+Worked:
+
+- Cutover: `fo-demote` exited 0, elitedesk promoted 6 s later with the same
+  IPv4 and `/56`. Gateway gap 4.4 s, IPv4 internet gap 5.0 s. Kea served
+  leases, DNS answered, zones promoted.
+- Boot guard: router rebooted while demoted came back with the WAN down and
+  only `10.10.10.2`; `10.10.10.1` stayed on elitedesk's MAC throughout.
+
+Failed:
+
+1. IPv6 gap 83 s: the demoted router kept sending RAs. Its standby
+   overrides sat on a network file networkd ignores; fixed in unified #262.
+2. The router (bare metal, not the Proxmox VM the runbook assumed) waited in
+   its boot menu until the operator picked an entry; cause not found
+   (`timeout: 5`, default entry correct).
+3. Fail back: the boot-time standby activation was still running (90 s
+   `tailscaled-autoconnect` timeout: standby had no default route, unified
+   #262). `fb-router` failed at once with `Could not acquire lock` after
+   elitedesk had already let go, and the operator script waited on the wrong
+   address instead of retrying or aborting. No gateway from 22:28:17 to
+   22:43:17, until the operator booted an older router generation.
+
+### Rehearsal 3: 2026-11-24, aborted at the demote
+
+Same commits. The router had been running an older generation since the
+recovery; it was switched back to its current one with `test`.
+
+1. `fo-demote` exited 4: the switch started the boot guard (not yet running
+   on that boot), which found the marker the activation had just written and
+   failed. The role change itself applied. Fixed in unified #262: the guard
+   acts only while booting.
+2. The operator script stopped on the failed gate without aborting: no
+   gateway from 06:31:42 to 06:49:21, until the operator booted an older
+   router generation. Generation 28 restored IPv4 but emerald had no DNS
+   (it resolves through Tailscale); a later one restored everything.
+3. The scripts are now in `scripts/router-failover/` and abort on every
+   failed gate. The marker left behind by both recoveries was removed by
+   hand.
