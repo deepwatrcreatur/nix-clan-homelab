@@ -29,6 +29,8 @@
           || !(lib.elem "linkGeneration" atticActivation.after)
           || !(lib.elem "userSecretsActivation" atticActivation.after)
           || !(lib.hasInfix "config_template=" atticActivation.data)
+          || !(lib.hasInfix "umask 077" atticActivation.data)
+          || !(lib.hasInfix "chmod 600" atticActivation.data)
         then
           throw "PVE-Strix Home Manager parity or activation ordering changed. Expected ${builtins.toJSON expected}; got ${builtins.toJSON actual}"
         else

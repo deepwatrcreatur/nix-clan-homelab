@@ -89,11 +89,12 @@ in
           config_template=${lib.escapeShellArg (toString atticTemplate)}
 
           if [[ -f "$config_file" ]]; then
+            umask 077
             temp_file="$(${pkgs.coreutils}/bin/mktemp "$config_dir/config.toml.tmp.XXXXXX")"
             trap '${pkgs.coreutils}/bin/rm -f "$temp_file" "$temp_file.rendered"' EXIT
             ${pkgs.coreutils}/bin/cp "$config_template" "$temp_file"
-            ${pkgs.coreutils}/bin/chmod 600 "$temp_file"
             ${atticTokenSubstitutions}
+            ${pkgs.coreutils}/bin/chmod 600 "$temp_file"
             ${pkgs.coreutils}/bin/mv "$temp_file" "$config_file"
             trap - EXIT
           fi
