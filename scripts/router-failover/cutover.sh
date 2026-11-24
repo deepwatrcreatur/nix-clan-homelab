@@ -22,19 +22,38 @@ log "  copied $(e4 "sudo sh -c 'cat $KEA_DIR/dhcp4.leases* | wc -l'") lease line
 
 # INVARIANT: router's WAN must be down before elitedesk's comes up (one lease).
 log "demote router"
+r1 "sudo systemctl stop fo-demote; sudo systemctl reset-failed fo-demote; true" >/dev/null 2>&1
 r1 "sudo systemd-run --unit=fo-demote --remain-after-exit $ROUTER_TOP/specialisation/standby/bin/switch-to-configuration test" >>"$LOG" 2>&1 || true
 wait_unit router fo-demote 90 || back_to_router "fo-demote did not finish with status 0"
-g=$(r2 "ip -br link show $ROUTER_WAN | awk '{print \$2}'; ip -br addr | grep -c '$GATEWAY/'; test -e $MARKER && echo marker; true" | tr '\n' ' ')
-log "  router: $g"
-{ [ "$g" = "DOWN 0 marker " ] && ! forced demote; } || back_to_router "demote gate: $g"
+# WHY: the workstation may still cache 10.10.10.2 as unreachable from
+# earlier; poll instead of reading once (rehearsal 4: a single read 3 s after
+# the switch got no answer and aborted a good demote).
+g=""
+# WHY: a wall-clock limit; each unanswered SSH attempt can itself take 5 s.
+deadline=$((SECONDS + 30))
+while [ "$SECONDS" -lt "$deadline" ]; do
+  g=$(r2 "ip -br link show $ROUTER_WAN | awk '{print \$2}'; ip -br addr | grep -c '$GATEWAY/'; test -e $MARKER && echo marker; true" 2>/dev/null | tr '\n' ' ')
+  [ "$g" = "DOWN 0 marker " ] && break
+  sleep 2
+done
+log "  router: ${g:-<no answer on $ROUTER_STANDBY_IP>}"
+{ [ "$g" = "DOWN 0 marker " ] && ! forced demote; } || back_to_router "demote gate: ${g:-no answer}"
 
 log "promote elitedesk"
 promote_elitedesk fo-promote || abort_all "fo-promote failed"
-g=$(e1 "ip -br addr show $ELITEDESK_LAN | grep -c '$GATEWAY/'; ip -br link show $ELITEDESK_WAN | awk '{print \$2, \$3}'; cat /run/router-ha/role; echo; systemctl is-active kea-dhcp4-server; true" | tr '\n' ' ')
-log "  elitedesk: $g"
+g=""
+# WHY: a wall-clock limit; each unanswered SSH attempt can itself take 5 s.
+deadline=$((SECONDS + 30))
+while [ "$SECONDS" -lt "$deadline" ]; do
+  g=$(e1 "ip -br addr show $ELITEDESK_LAN | grep -c '$GATEWAY/'; ip -br link show $ELITEDESK_WAN | awk '{print \$2, \$3}'; cat /run/router-ha/role; echo; systemctl is-active kea-dhcp4-server; true" 2>/dev/null | tr '\n' ' ')
+  [ "$g" = "1 UP $ROUTER_WAN_MAC master active " ] && break
+  sleep 2
+done
+log "  elitedesk: ${g:-<no answer on $GATEWAY>}"
 { [ "$g" = "1 UP $ROUTER_WAN_MAC master active " ] && ! forced promote; } || abort_all "promote gate: $g"
 e1 "sudo arping -U -c 3 -I $ELITEDESK_LAN $GATEWAY >/dev/null; true"
-for _ in $(seq 1 15); do
+deadline=$((SECONDS + 30))
+while [ "$SECONDS" -lt "$deadline" ]; do
   e1 "ip -br addr show $ELITEDESK_WAN" | grep -qF "$BASE_WAN_IP" && { log "  elitedesk WAN: $BASE_WAN_IP"; break; }
   sleep 2
 done

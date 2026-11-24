@@ -79,6 +79,9 @@ run_switch() { # host-fn unit-base toplevel timeout
     unit="$base-$try"
     wait_idle "$fn" 120 || log "  WARN: $unit: host still busy, trying anyway"
     log "start $unit: $top test"
+    # GOTCHA: a unit left from an earlier run keeps its name and its old
+    # result; clear it, or systemd-run fails and the gate reads stale status.
+    "$fn" "sudo systemctl stop $unit; sudo systemctl reset-failed $unit; true" >/dev/null 2>&1
     "$fn" "sudo systemd-run --unit=$unit --remain-after-exit $top/bin/switch-to-configuration test" >>"$LOG" 2>&1 || true
     wait_unit "$fn" "$unit" "$timeout"; rc=$?
     [ "$rc" = 0 ] && return 0
