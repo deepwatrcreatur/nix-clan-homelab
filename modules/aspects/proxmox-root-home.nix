@@ -1,4 +1,8 @@
-{ den, inputs, ... }:
+{
+  den,
+  inputs,
+  ...
+}:
 let
   system = "x86_64-linux";
   # WHY: keep Unified's fnox module revision local to this transitional home.
@@ -20,8 +24,8 @@ let
     };
   };
 in
-{
-  den.homes.${system}."root@pve-strix" = {
+let
+  mkProxmoxHome = hostName: {
     pkgs = proxmoxPkgs;
     instantiate =
       { pkgs, modules, ... }:
@@ -29,13 +33,20 @@ in
         inherit pkgs modules;
         extraSpecialArgs = {
           inputs = proxmoxInputs;
-          hostName = "pve-strix";
+          inherit hostName;
           isDesktop = false;
         };
       };
   };
+in
+{
+  den.homes.${system} = {
+    "root@pve-strix" = mkProxmoxHome "pve-strix";
+    "root@pve-rog" = mkProxmoxHome "pve-rog";
+  };
 
   den.aspects."root@pve-strix".includes = [ den.batteries.define-user ];
+  den.aspects."root@pve-rog".includes = [ den.batteries.define-user ];
 
   den.aspects.root.homeManager =
     {

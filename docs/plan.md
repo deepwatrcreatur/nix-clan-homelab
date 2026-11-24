@@ -157,6 +157,32 @@ No system configuration was activated and the host was not rebooted. This
 verifies only root Home Manager; Proxmox VE, networking, storage, services,
 and boot configuration stay in place.
 
+### PVE-Rog standalone Home Manager candidate
+
+The root Home Manager profile is exposed as `root@pve-rog` and reuses the
+Proxmox root profile from the pinned Unified input. Its account, state version,
+121 package names, and 58 managed file targets match Unified's
+`homeConfigurations.pve-rog-root`; the targeted parity check preserves that
+snapshot and the activation-order and private Attic-config invariants. Refresh
+the baseline after reviewing an intentional Unified profile change with:
+
+```sh
+nix eval --json '.#homeConfigurations.pve-rog-root' --apply 'c: let h = c.config; packages = builtins.sort builtins.lessThan (map (p: p.pname or p.name) h.home.packages); files = builtins.sort builtins.lessThan (builtins.attrNames h.home.file); in { username = h.home.username; homeDirectory = h.home.homeDirectory; stateVersion = h.home.stateVersion; packageCount = builtins.length packages; packageNamesHash = builtins.hashString "sha256" (builtins.toJSON packages); fileTargetCount = builtins.length files; fileTargetsHash = builtins.hashString "sha256" (builtins.toJSON files); }' | jq . > checks/pve-rog-home-reference.json
+```
+
+Live inspection on 2026-11-24 found PVE-Rog Home Manager generation 26 and
+`/etc/nix/machines` already targeting Emerald at `10.10.11.55`. Its active
+Attic config is a symlink to a read-only store template that still contains an
+unresolved token placeholder. The candidate renders the config after secret
+activation and writes the result with mode `0600`. It was activated as
+Home Manager generation 27 on 2026-11-24. SSH remained reachable, uptime
+increased, the Attic config is now a regular mode-`0600` file with no active
+placeholder, and `/etc/nix/machines` still targets Emerald. Home Manager
+stopped and restarted the root user's `ssh-agent.service` during its user
+systemd reload; the SSH daemon was not targeted. No Proxmox system
+configuration was activated and the host was not rebooted. Proxmox VE,
+networking, storage, and boot remain out of scope.
+
 ## Inventory
 
 Edit `inventory/hosts.nix` for host addresses, SSH settings, and roles. The
