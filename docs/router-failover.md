@@ -3,6 +3,14 @@
 Bead: `nch-sny.36`. Design and the later VRRP plan:
 [`router-election.md`](router-election.md).
 
+> **elitedesk is the permanent primary from 2026-11-24 (nch-sny.22).** The
+> inventory gives it `router.mode = "primary"`, so a build from `main` holds
+> 10.10.10.1 and router's WAN identity. **Never deploy that build while
+> router is primary**: both would claim the gateway and the modem lease. The
+> one-time move is [Permanent primary](#permanent-primary). Router then stays
+> fenced by its demoted marker until its hardware is repurposed. The
+> rehearsal procedure below describes the setup before that.
+
 VRRP is not running yet, so failover is **manual**. Each router carries the
 other role as a NixOS specialisation:
 
@@ -450,3 +458,50 @@ unified 09642307 (#262), clan f6fd21b (#49), run with the scripts.
    only IPv6 router while primary; the standby router kept internet and
    Tailscale; zones promoted and handed back; no failed units, no marker
    left.
+
+## Permanent primary
+
+Run once, with the user at both consoles. elitedesk first takes over through
+the proven rehearsal path, then switches from its promoted specialisation to
+the inventory-primary generation, which also runs what only router ran:
+Caddy (public ingress and ACME), Pangolin and gerbil, Tailscale subnet and
+exit node, Suricata and EveBox, inadyn, Kea DDNS, iVentoy PXE, the Plex port
+forward, the static host records and the blocklists. Then it SNMP-polls the
+core switch.
+
+```sh
+# from this repo on emerald, with elitedesk still running its standby generation
+top=$(nix build --no-link --print-out-paths .#nixosConfigurations.elitedesk.config.system.build.toplevel)
+scripts/router-failover/preflight.sh            # prints FAILOVER_DIR
+export FAILOVER_DIR=...
+scripts/router-failover/cutover.sh              # the rehearsed cutover
+scripts/router-failover/make-permanent.sh "$top"
+```
+
+`make-permanent.sh`:
+
+1. Checks that elitedesk holds the gateway with its zones Primary and that
+   router is fenced.
+2. Copies the generation, saves zone exports and router's Pangolin state
+   (database and gerbil's WireGuard key) to
+   `/var/lib/router-failover/permanent` on elitedesk.
+3. Stops the zone-HA owner first. Its demote hook refuses while the role file
+   says `master`, and the full generation no longer has that unit.
+4. Sets the boot default and runs `switch-to-configuration switch`.
+5. Checks the gateway, the baseline WAN IPv4, Kea, Technitium and Caddy, and
+   that the zones are still Primary.
+6. Restores Pangolin's state.
+
+If a check fails, it sets the boot default back and returns elitedesk to
+the promoted specialisation, so the network keeps its gateway. Router stays
+fenced throughout.
+
+After it:
+
+- Approve elitedesk's subnet route and exit node in the Tailscale admin
+  console unless an autoApprover covers them, then disable router's.
+- Check `https://pangolin.deepwatercreature.com` and a newt site.
+- Routine deploys use `fleet-deploy elitedesk` again (deploy-rs, with magic
+  rollback to the previous full-primary generation).
+- Router keeps `/var/lib/router-failover/demoted` and boots into standby.
+  Power it off for good when its hardware is repurposed.

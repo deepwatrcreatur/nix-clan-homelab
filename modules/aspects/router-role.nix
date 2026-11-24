@@ -149,6 +149,7 @@ in
           ])
           ++ [
             ../_nixos/router-snmp.nix
+            (import ../_nixos/router-primary-edge.nix { inherit inputs legacy; })
             {
               options.routerRole.promoted = lib.mkOption {
                 type = lib.types.bool;
@@ -172,6 +173,8 @@ in
 
         # WHY: drives the Technitium zone-HA owner without keepalived: master
         # promotes the replicated zones, backup hands them back.
+        routerRole.full = full;
+
         systemd.services.technitium-zone-ha-owner.wantedBy = lib.mkIf promoted [ "multi-user.target" ];
 
         # GOTCHA: replies to LAN clients reaching the management IP can leave
@@ -206,7 +209,7 @@ in
             { linkConfig.ActivationPolicy = lib.mkIf (!primary) "always-down"; }
             # WHY: the modem binds its single lease and the /56 to the old
             # router's MAC, DHCP client ID and DUID/IAID; present all of them.
-            (lib.mkIf (promoted && router.takeover != null) {
+            (lib.mkIf (primary && router.takeover != null) {
               linkConfig.MACAddress = router.takeover.wanMac;
               dhcpV4Config = {
                 ClientIdentifier = "duid";
@@ -240,11 +243,11 @@ in
             routedInterfaces = {
               lan = {
                 device = lan.name;
-                # GOTCHA: promoted holds only the gateway. Keeping its own address
+                # GOTCHA: a primary holds only the gateway. Keeping its own address
                 # too would leave it the kernel's primary after a live switch,
                 # and Kea would hand out that address as its server identifier.
                 ipv4Address =
-                  if promoted then "${gateway}/${lib.last (lib.splitString "/" lanCidr)}" else router.lanAddress;
+                  if primary then "${gateway}/${lib.last (lib.splitString "/" lanCidr)}" else router.lanAddress;
                 dns = [ "127.0.0.1" ];
                 domains = [ fleet.domain ];
                 requiredForOnline = "no";
@@ -443,8 +446,10 @@ in
             // (
               # WHY: a promoted standby keeps its secondary copies; the
               # zone-HA owner promotes them while the role file says master.
+              # WHY: with no standby there is nothing to replicate to; the
+              # zones stay Primary from the cutover (docs/router-failover.md).
               if full then
-                {
+                lib.optionalAttrs (standbyHosts != { }) {
                   primary = {
                     zones = replicatedZones;
                     secondaries = map (host: ip host.router.lanAddress) (lib.attrValues standbyHosts);
@@ -695,14 +700,46 @@ in
           && !sp.services.tailscale.enable
           && !sp.services.inadyn.enable;
       in
-      assert lib.assertMsg (takers != { }) "The promotion check must cover a standby with a takeover identity.";
       assert lib.all (name: lib.assertMsg (ok name) "${name}: the primary specialisation does not take over the gateway, WAN identity or LAN services.") (lib.attrNames takers);
       pkgs.runCommand "router-promotion" { } "touch $out";
 
+    # WHY: no migrated standby exists after elitedesk became the primary;
+    # these checks cover the next one when it is added.
+    # WHY: the inventory primary holds the gateway alone and keeps router's WAN
+    # identity, so the move off router kept the IPv4 lease and the /56; it
+    # alone runs public ingress, PXE and DDNS (nch-sny.22).
+    checks.router-primary =
+      let
+        primaries = lib.filterAttrs (
+          _: host: host.migrated && !host.archived && host.router != null && host.router.mode == "primary"
+        ) fleet.hosts;
+        ok =
+          name:
+          let
+            host = primaries.${name};
+            cfg = config.flake.nixosConfigurations.${name}.config;
+            net = cfg.systemd.network.networks;
+            wan = net."10-router-wan-primary";
+            takeover = host.router.takeover;
+          in
+          cfg.routerRole.full
+          && cfg.specialisation == { }
+          && net."20-router-lan".address == [ "${fleet.hosts.router.addresses.ip}/16" ]
+          && (wan.linkConfig.ActivationPolicy or "up") != "always-down"
+          && (takeover == null || (wan.linkConfig.MACAddress == takeover.wanMac && wan.dhcpV6Config.IAID == takeover.dhcpIaid))
+          && cfg.services.kea.dhcp4.enable
+          && cfg.services.kea.dhcp-ddns.enable
+          && cfg.services.caddy.enable
+          && cfg.services.iventoy.enable
+          && cfg.services.inadyn.enable
+          && cfg.services.tailscale.enable
+          && cfg.services.router.dnsZones != { }
+          && cfg.networking.nftables.tables ? plex-remote-access;
+      in
+      assert lib.all (name: lib.assertMsg (ok name) "${name}: the primary router does not hold the gateway, WAN identity or primary-only services.") (lib.attrNames primaries);
+      pkgs.runCommand "router-primary" { } "touch $out";
+
     checks.router-standby =
-      assert lib.assertMsg (
-        standbyHosts != { }
-      ) "The standby check must cover a migrated standby router.";
       assert lib.all (
         name:
         lib.assertMsg (standbySafe name
