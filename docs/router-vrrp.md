@@ -84,7 +84,9 @@ Each live step needs the operator at both consoles and an agreed window
    paired**, so its next deploy is step 4; do not deploy elitedesk for
    anything else in between.
 4. **Pair** (live): deploy elitedesk paired (Kea HA waits for its partner,
-   then serves alone), then deploy router and remove its demoted marker.
+   then serves alone), then deploy router; its keepalived stays off while the
+   demoted marker exists, so remove the marker and `systemctl start
+   keepalived` once router's services look right.
    router's first clan deploy replaces unified's whole configuration, so do
    it with its console at hand. Upload its machine age key first
    (`clan-admin vars upload router`): deploy-rs does not, and sops-nix needs
@@ -102,7 +104,10 @@ Each live step needs the operator at both consoles and an agreed window
 
 ## Abort
 
-At any step: stop keepalived on router and fence it (its demoted marker),
-then deploy elitedesk's previous generation (`mode = "primary"`) with
-`fleet-deploy` or its boot menu. elitedesk then holds the gateway statically
-again, as after the 2026-11-24 move.
+At any step: fence router (`sudo touch /var/lib/router-failover/demoted`),
+stop keepalived on it, then deploy elitedesk's previous generation
+(`mode = "primary"`) with `fleet-deploy` or its boot menu. elitedesk then holds
+the gateway statically again, as after the 2026-11-24 move. The marker keeps
+router's keepalived off across reboots under both unified and clan (a
+`ConditionPathExists` on the unit, `checks.router-vrrp`); remove it only when
+router may compete for the gateway again.

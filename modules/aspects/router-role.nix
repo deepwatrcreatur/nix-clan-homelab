@@ -643,6 +643,12 @@ in
 
         systemd.services.gerbil.serviceConfig.Upholds = lib.mkForce [ ];
 
+        # SECURITY: the abort fence (docs/router-vrrp.md#abort). A fenced
+        # member must not elect itself after a reboot next to a static
+        # primary that sends no VRRP; keepalived stays off until the marker
+        # is removed.
+        systemd.services.keepalived.unitConfig.ConditionPathExists = lib.mkIf vrrp "!/var/lib/router-failover/demoted";
+
         # WHY: units without an upstream ownership option run on the VRRP
         # MASTER only: Pangolin needs the WAN and its state is on the
         # preferred member; two Avahi reflectors on one LAN would reflect
@@ -926,6 +932,8 @@ in
               "Pangolin only on the preferred member, while MASTER" =
                 if preferred then owned "pangolin.service" && owned "gerbil.service" && cfg.systemd.services.pangolin.wantedBy == [ ]
                 else !cfg.services.router-pangolin.enable;
+              "keepalived fenced by the demoted marker" =
+                (cfg.systemd.services.keepalived.unitConfig.ConditionPathExists or null) == "!/var/lib/router-failover/demoted";
               "VRRP password var declared" = cfg.clan.core.vars.generators ? router-vrrp-password;
             };
             failed = lib.attrNames (lib.filterAttrs (_: v: !v) checks);
