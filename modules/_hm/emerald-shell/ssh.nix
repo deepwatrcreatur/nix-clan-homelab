@@ -17,14 +17,21 @@ let
     lib.mapAttrsToList (
       name: host:
       let
-        key = if name == "emerald" then
+        legacyKey = if name == "emerald" then
           ../../../keys/emerald-host-ed25519.pub
         else
           ../../../keys/legacy-hosts + "/${name}-host-ed25519.pub";
-        names = lib.unique ([ host.sshTarget name ] ++ host.aliases);
+        # WHY: a host joining clan keeps serving its old host key without a
+        # certificate until its first clan deploy; pin the key clan holds
+        # under the HostKeyAlias clan connects with, so that deploy (and the
+        # age-key upload before it) can verify the host.
+        clanKey = ../../../vars/per-machine + "/${name}/openssh/ssh.id_ed25519.pub/value";
+        key = if host.migrated then clanKey else legacyKey;
+        names =
+          if host.migrated then [ "${name}.${domain}" ] else lib.unique ([ host.sshTarget name ] ++ host.aliases);
       in
-      lib.optionalString (!host.migrated && builtins.pathExists key)
-        "${lib.concatStringsSep "," names} ${lib.removeSuffix "\n" (builtins.readFile key)}\n"
+      lib.optionalString (builtins.pathExists key)
+        "${lib.concatStringsSep "," names} ${lib.concatStringsSep " " (lib.take 2 (lib.splitString " " (lib.removeSuffix "\n" (builtins.readFile key))))}\n"
     ) sshHosts
   );
   materialize = pkgs.writeShellScript "materialize-workstation-ssh-config" ''

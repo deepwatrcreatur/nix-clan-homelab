@@ -251,6 +251,9 @@
   router = {
     kind = "nixos";
     system = "x86_64-linux";
+    # WHY: the name and its aliases stay on the gateway address, so dns,
+    # dhcp and firewall follow whichever member is VRRP MASTER. The host's
+    # own LAN address is router.lanAddress.
     addresses.ip = "10.10.10.1";
     addresses.sshHostname = "192.168.100.100";
     sshUser = "deepwatrcreatur";
@@ -260,7 +263,41 @@
       "firewall"
       "router-management"
     ];
+    # GOTCHA: must equal unified's description while unified still lists
+    # router (inventory/check.nix). Bare metal, ASRock Z170 Gaming-ITX.
     description = "Main router/firewall running NixOS";
+    migrated = true;
+    router = {
+      # WHY: second VRRP member (docs/router-vrrp.md, nch-sny.36.6).
+      mode = "vrrp";
+      # Read on router 2026-11-25 (ip -br link, sysfs): the igc MACs are the
+      # cards' own, not overrides.
+      devices = {
+        wan = {
+          name = "enp6s17";
+          mac = "02:76:c6:01:2a:b0";
+        };
+        lan = {
+          name = "enp6s16";
+          mac = "02:76:c6:01:2a:af";
+        };
+        management = {
+          name = "ens18";
+          mac = "d0:50:99:8c:5f:9b";
+        };
+      };
+      lanAddress = "10.10.10.2/16";
+      managementAddress = "192.168.100.100/24";
+      # INVARIANT: identical to elitedesk's; the modem's lease and /56 belong
+      # to this identity, and its MAC is router's own WAN NIC.
+      takeover = {
+        wanMac = "02:76:c6:01:2a:b0";
+        dhcpDuidRawData = "00:00:ab:11:05:d7:c4:8d:af:eb:0b:c9";
+        dhcpIaid = 227970921; # 0x0d968f69
+      };
+      wanBandwidth = "2.5Gbit";
+      vrrpPriority = 100;
+    };
     roles = [ "router" ];
   };
 

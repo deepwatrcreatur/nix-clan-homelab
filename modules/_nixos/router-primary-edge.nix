@@ -3,7 +3,7 @@
 # and role.nix) when elitedesk became the permanent primary (nch-sny.22).
 # INVARIANT: everything here is gated on routerRole.full; a standby or a
 # promoted standby never serves public ingress or PXE.
-{ inputs, legacy }:
+{ inputs, legacy, gateway }:
 {
   config,
   lib,
@@ -15,7 +15,6 @@ let
   domain = legacy.domain;
   hosts = legacy.hosts;
   lanCidr = legacy.networks.lan.cidr;
-  gateway = hosts.router.ip;
   fqdn = label: "${label}.${domain}";
   tokenFile = config.clan.core.vars.generators.router-cloudflare-api-token.files.value.path;
   iventoyHttpPort = config.services.iventoy.httpPort;
