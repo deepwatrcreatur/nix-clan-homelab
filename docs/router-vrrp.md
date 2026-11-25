@@ -12,9 +12,9 @@ the gateway 10.10.10.1, raises the WAN with the modem's MAC and DHCP
 identity, and runs the services that must exist once. The other member keeps
 its WAN down and stays ready to take over without a deploy.
 
-No inventory host uses the mode yet. `checks.router-vrrp` evaluates elitedesk
-as a member in three layouts (preferred with a peer, backup to a peer, alone)
-so the mode stays correct until the [rollout](#rollout).
+elitedesk has been a lone member since 2026-11-25 (rollout step 2).
+`checks.router-vrrp` evaluates it in three layouts (preferred with a peer,
+backup to a peer, alone) plus its real inventory entry.
 
 ## What a member gets
 
@@ -63,6 +63,13 @@ Each live step needs the operator at both consoles and an agreed window
    `preemptDelay`), and a WAN bounce as the MASTER transition reapplies the
    cloned MAC and restarts DHCP with the same identity. Kea keeps running
    alone; zones stay Primary.
+   **Done 2026-11-25** (clan #64). Gaps seen from emerald: about 8.5 s for the
+   gateway and 7.5 s for DNS on the VIP, while networkd had dropped the old
+   static 10.10.10.1 and keepalived waited out its boot delay. Internet was
+   lost for about 1.2 s, during the WAN bounce. IPv4 stayed the same, but the
+   /56 changed: activation reconfigured the up WAN and networkd's DHCP clients
+   sent RELEASE. nix-router-optimized #189 stops that (`SendRelease=no`); take
+   it in the pin before any later deploy that touches the WAN.
 3. **router into clan** (code): inventory entry with `mode = "vrrp"`,
    priority 100, devices and disks from unified's bare-metal config (igc
    LAN/WAN, e1000e management, Limine), its existing SSH host key imported.
