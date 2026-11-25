@@ -33,11 +33,6 @@ class ClosureDiffTests(unittest.TestCase):
             ],
         )
 
-    def test_kernel_rebuild_is_reported(self):
-        old = {path("linux-6.18.44"), path("linux-firmware-20260810")}
-        self.assertTrue(any("reboot" in l for l in diff["report"](old, {path("linux-6.18.44", "b"), path("linux-firmware-20260810")})))
-        self.assertFalse(any("reboot" in l for l in diff["report"](old, {path("linux-6.18.44"), path("linux-firmware-20261019")})))
-
     def test_rejects_other_output(self):
         with self.assertRaises(ValueError):
             diff["packages"]({"Warning: something"})

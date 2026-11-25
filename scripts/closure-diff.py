@@ -11,10 +11,9 @@ import sys
 from collections import defaultdict
 
 STORE_PATH = re.compile(r"^/nix/store/[0-9a-z]{32}-(?P<name>.+)$")
-# Same rule as builtins.parseDrvName: the version starts at the first dash
-# that is followed by something other than a letter.
+# UPSTREAM: same rule as builtins.parseDrvName: the version starts at the first
+# dash that is followed by something other than a letter.
 VERSION = re.compile(r"^(?P<name>.+?)-(?P<version>[^a-zA-Z].*)$")
-KERNEL = re.compile(r"^/nix/store/[0-9a-z]{32}-linux-[0-9][0-9.]*$")
 
 
 def read(path):
@@ -54,15 +53,12 @@ def report(old_paths, new_paths):
         ("Changed versions", changed),
         ("Added", [f"  {n}: {show(new[n])}" for n in sorted(new.keys() - old.keys())]),
         ("Removed", [f"  {n}: {show(old[n])}" for n in sorted(old.keys() - new.keys())]),
-        # Same version, different store path: configuration files, units, and
-        # packages rebuilt because a dependency changed.
+        # WHY: one group, because a path list cannot tell a configuration change
+        # from a rebuild caused by a dependency.
         ("Rebuilt or reconfigured", [f"  {n}" for n in rebuilt]),
     ):
         if entries:
             lines += [f"{title} ({len(entries)}):", *entries]
-    kernels = [{p for p in paths if KERNEL.match(p)} for paths in (old_paths, new_paths)]
-    if kernels[0] != kernels[1]:
-        lines.append("Kernel changed: it takes effect after a reboot.")
     lines.append(f"Store paths: {len(old_paths)} -> {len(new_paths)}")
     return lines
 
@@ -72,7 +68,7 @@ def main(argv):
         print("Usage: closure-diff OLD NEW", file=sys.stderr)
         return 2
     old_paths, new_paths = read(argv[1]), read(argv[2])
-    # An empty list means the query failed, not that the host is empty.
+    # WHY: an empty list means the query failed, not that the host is empty.
     if not old_paths or not new_paths:
         print("closure-diff: empty closure list", file=sys.stderr)
         return 1

@@ -64,15 +64,25 @@ in
           if "$diff"; then
             workdir=$(mktemp -d)
             trap 'rm -rf -- "$workdir"' EXIT
-            # WHY: read-only on the host. Only the list of running store paths
+            # WHY: read-only on the host. Only the list of active store paths
             # is fetched; nothing is copied there and nothing is activated.
-            ssh -o HostKeyAlias="$host_key_alias" "$target" \
-              /run/current-system/sw/bin/nix-store --query --requisites /run/current-system \
-              > "$workdir/old"
+            # GOTCHA: the running kernel is the booted generation's, which a
+            # live switch leaves behind; compare with that, not current-system.
+            ssh -o HostKeyAlias="$host_key_alias" "$target" '
+              set -e
+              PATH=/run/current-system/sw/bin
+              readlink -f /run/booted-system/kernel
+              nix-store --query --requisites /run/current-system
+            ' > "$workdir/remote"
+            booted_kernel=$(head -n 1 "$workdir/remote")
+            tail -n +2 "$workdir/remote" > "$workdir/old"
             toplevel=$(nix build --no-link --print-out-paths \
               ".#nixosConfigurations.$host.config.system.build.toplevel")
             nix-store --query --requisites "$toplevel" > "$workdir/new"
             closure-diff "$workdir/old" "$workdir/new"
+            if [[ $booted_kernel != "$(readlink -f "$toplevel/kernel")" ]]; then
+              echo "Kernel differs from the booted one: a reboot is needed to run it."
+            fi
             exit 0
           fi
 
