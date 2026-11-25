@@ -1,0 +1,28 @@
+{
+  "files": {
+    "missing": [
+      ".config/wezterm/wezterm.lua"
+    ],
+    "extra": [
+      ".config/fnox/clan-defaults.toml",
+      ".config/git/github-token"
+    ]
+  },
+  "packages": {
+    "missing": [
+      "beads-q",
+      "install-brew-packages"
+    ],
+    "extra": [
+      "git-ssh-doctor",
+      "vivaldi"
+    ]
+  },
+  "programs": {
+    "missing": [
+      "linuxbrew",
+      "ssh-known-hosts-manager"
+    ],
+    "extra": []
+  }
+}

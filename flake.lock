@@ -682,6 +682,24 @@
         "type": "github"
       }
     },
+    "flake-utils_9": {
+      "inputs": {
+        "systems": "systems_15"
+      },
+      "locked": {
+        "lastModified": 1731533236,
+        "narHash": "sha256-l0KFg5HjrsfsO/JpG+r7fRrqm12kzFHyUHqHCVpMMbI=",
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "rev": "11707dc2f618dd54ca8739b309ec4fc024de578b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "type": "github"
+      }
+    },
     "fnox": {
       "inputs": {
         "flake-utils": "flake-utils_2",
@@ -1243,6 +1261,54 @@
         "type": "github"
       }
     },
+    "nix-omarchy-iphone-mirror": {
+      "inputs": {
+        "flake-utils": [
+          "flake-utils"
+        ],
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1790123567,
+        "narHash": "sha256-0ukiNclKevVssK1SwiiaGNAVq9qLK+Pw21drxvrQz1A=",
+        "owner": "deepwatrcreatur",
+        "repo": "nix-omarchy-iphone-mirror",
+        "rev": "d0a99cfe9eae468ae1e574ac05b9b5d9b8187a98",
+        "type": "github"
+      },
+      "original": {
+        "owner": "deepwatrcreatur",
+        "repo": "nix-omarchy-iphone-mirror",
+        "rev": "d0a99cfe9eae468ae1e574ac05b9b5d9b8187a98",
+        "type": "github"
+      }
+    },
+    "nix-omarchy-screen-mirroring": {
+      "inputs": {
+        "flake-utils": [
+          "flake-utils"
+        ],
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1790114139,
+        "narHash": "sha256-domA84BldW3RgbBgKGc9khb94kWpZLoXVBKDtQp0JEw=",
+        "owner": "deepwatrcreatur",
+        "repo": "nix-omarchy-screen-mirroring",
+        "rev": "f7f91701ebd382fb3e05d84598b8e09f8996bde7",
+        "type": "github"
+      },
+      "original": {
+        "owner": "deepwatrcreatur",
+        "repo": "nix-omarchy-screen-mirroring",
+        "rev": "f7f91701ebd382fb3e05d84598b8e09f8996bde7",
+        "type": "github"
+      }
+    },
     "nix-router-optimized": {
       "inputs": {
         "nixpkgs": [
@@ -1319,6 +1385,28 @@
       "original": {
         "owner": "nix-community",
         "repo": "nix-snapd",
+        "type": "github"
+      }
+    },
+    "nix-whitesur-config": {
+      "inputs": {
+        "flake-utils": "flake-utils_8",
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1767035367,
+        "narHash": "sha256-dHSwu0LBSqbMqJQW/5L5hJ2KciTDB6h83iWTVI3gcEM=",
+        "owner": "deepwatrcreatur",
+        "repo": "nix-whitesur-config",
+        "rev": "a374aa647c56d7c7e9754dbadd014a7c4dd75cb0",
+        "type": "github"
+      },
+      "original": {
+        "owner": "deepwatrcreatur",
+        "repo": "nix-whitesur-config",
+        "rev": "a374aa647c56d7c7e9754dbadd014a7c4dd75cb0",
         "type": "github"
       }
     },
@@ -1628,9 +1716,12 @@
         "nix-index-database": "nix-index-database",
         "nix-linuxbrew": "nix-linuxbrew",
         "nix-markit": "nix-markit",
+        "nix-omarchy-iphone-mirror": "nix-omarchy-iphone-mirror",
+        "nix-omarchy-screen-mirroring": "nix-omarchy-screen-mirroring",
         "nix-router-optimized": "nix-router-optimized",
         "nix-rtk": "nix-rtk",
         "nix-snapd": "nix-snapd",
+        "nix-whitesur-config": "nix-whitesur-config",
         "nixpkgs": [
           "clan-core",
           "nixpkgs"
@@ -1849,6 +1940,21 @@
       }
     },
     "systems_14": {
+      "locked": {
+        "lastModified": 1681028828,
+        "narHash": "sha256-Vy1rq5AaRuLzOxct8nz4T6wlgyUR7zLU309k9mBC768=",
+        "owner": "nix-systems",
+        "repo": "default",
+        "rev": "da67096a3b9bf56a91d16901293e51ba5b49a27e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-systems",
+        "repo": "default",
+        "type": "github"
+      }
+    },
+    "systems_15": {
       "locked": {
         "lastModified": 1681028828,
         "narHash": "sha256-Vy1rq5AaRuLzOxct8nz4T6wlgyUR7zLU309k9mBC768=",
@@ -2154,7 +2260,7 @@
     },
     "zellij-vivid-rounded": {
       "inputs": {
-        "flake-utils": "flake-utils_8",
+        "flake-utils": "flake-utils_9",
         "nixpkgs": [
           "nixpkgs"
         ]
