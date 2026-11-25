@@ -11,6 +11,9 @@ let
   standbyHosts = lib.filterAttrs (
     _: host: host.migrated && !host.archived && host.router != null && host.router.mode == "standby"
   ) fleet.hosts;
+  vrrpHosts = lib.filterAttrs (
+    _: host: host.migrated && !host.archived && host.router != null && host.router.mode == "vrrp"
+  ) fleet.hosts;
   standbySafe =
     name: host:
     let
@@ -102,14 +105,28 @@ in
     nixos =
       { config, pkgs, ... }:
       let
-        host = fleet.hosts.${config.networking.hostName};
-        router = host.router;
+        router = config.routerRole.node;
         # WHY: `promoted` is the manual-failover specialisation of a standby
         # (docs/router-failover.md). It owns the LAN services, but not those
         # whose credentials only an inventory primary holds (`full`).
         promoted = config.routerRole.promoted;
-        full = router.mode == "primary";
+        # WHY: a `vrrp` member holds every credential, because keepalived can
+        # make it MASTER without a redeploy (docs/router-vrrp.md).
+        vrrp = router.mode == "vrrp";
+        full = router.mode == "primary" || vrrp;
         primary = full || promoted;
+        # INVARIANT: only a non-VRRP primary holds the gateway address itself;
+        # under VRRP keepalived adds it to the MASTER.
+        staticGateway = primary && !vrrp;
+        vrrpPeers = lib.filterAttrs (name: _: name != config.networking.hostName) config.routerRole.vrrpMembers;
+        # The highest-priority member is Kea's HA primary and the only one
+        # with Pangolin's state.
+        preferred = vrrp && lib.all (peer: peer.vrrpPriority < router.vrrpPriority) (lib.attrValues vrrpPeers);
+        # WHY: Kea HA and zone HA need a peer; a lone member (the first step
+        # of the rollout, docs/router-vrrp.md#rollout) keeps its zones Primary
+        # and runs Kea alone.
+        paired = vrrp && vrrpPeers != { };
+        peerLanIps = map (peer: ip peer.lanAddress) (lib.attrValues vrrpPeers);
         inherit (router.devices) wan lan management;
         legacy = import (inputs.unified + "/lib/hosts.nix");
         topology = legacy.networks;
@@ -151,11 +168,27 @@ in
             ../_nixos/router-snmp.nix
             (import ../_nixos/router-primary-edge.nix { inherit inputs legacy; })
             {
-              options.routerRole.promoted = lib.mkOption {
-                type = lib.types.bool;
-                default = false;
-                internal = true;
-                description = "Set by the `primary` specialisation of a standby router.";
+              options.routerRole = {
+                promoted = lib.mkOption {
+                  type = lib.types.bool;
+                  default = false;
+                  internal = true;
+                  description = "Set by the `primary` specialisation of a standby router.";
+                };
+                # WHY: options, not direct inventory reads, so checks can
+                # evaluate a host in another mode with extendModules.
+                node = lib.mkOption {
+                  type = lib.types.attrs;
+                  default = fleet.hosts.${config.networking.hostName}.router;
+                  internal = true;
+                  description = "This host's inventory `router` attributes.";
+                };
+                vrrpMembers = lib.mkOption {
+                  type = lib.types.attrsOf lib.types.attrs;
+                  default = lib.mapAttrs (_: host: host.router) vrrpHosts;
+                  internal = true;
+                  description = "Inventory `router` attributes of every `vrrp` member, by host name.";
+                };
               };
             }
           ];
@@ -227,6 +260,15 @@ in
           "20-router-lan" = {
             networkConfig.ConfigureWithoutCarrier = true;
             gateway = lib.optionals (!primary) [ gateway ];
+            # WHY: a BACKUP's WAN is down; it reaches the internet (Tailscale,
+            # updates) through the MASTER. On the MASTER the VIP is local and
+            # the WAN's DHCP route (metric 1024) wins.
+            routes = lib.optionals vrrp [
+              {
+                Gateway = gateway;
+                Metric = 2000;
+              }
+            ];
           };
         };
 
@@ -238,7 +280,8 @@ in
               dhcp = if primary then "yes" else "no";
               ipv6AcceptRA = primary;
               dhcpv6Client = if primary then "always" else "no";
-              requiredForOnline = if primary then "routable" else "no";
+              # GOTCHA: a VRRP BACKUP's WAN is down; requiring it would block boot.
+              requiredForOnline = if staticGateway then "routable" else "no";
             };
             routedInterfaces = {
               lan = {
@@ -247,7 +290,7 @@ in
                 # too would leave it the kernel's primary after a live switch,
                 # and Kea would hand out that address as its server identifier.
                 ipv4Address =
-                  if primary then "${gateway}/${lib.last (lib.splitString "/" lanCidr)}" else router.lanAddress;
+                  if staticGateway then "${gateway}/${lib.last (lib.splitString "/" lanCidr)}" else router.lanAddress;
                 dns = [ "127.0.0.1" ];
                 domains = [ fleet.domain ];
                 requiredForOnline = "no";
@@ -263,14 +306,43 @@ in
               };
             };
           };
-          # WHY: standby is a manual spare. VRRP participation can be enabled
-          # separately when the primary and its peers have been migrated.
+          # WHY: only `vrrp` members run keepalived; a standby is a manual
+          # spare and a `primary` holds the gateway statically.
           router-ha = {
-            enable = false;
+            enable = vrrp;
             priority = router.vrrpPriority;
             # WHY: a recovered elitedesk waits before taking the role back
             # (docs/router-election.md#33-preemption-and-stability).
             preemptDelay = router.vrrpPreemptDelay;
+          }
+          // lib.optionalAttrs vrrp {
+            # With preemptDelay every member starts BACKUP; priority elects.
+            role = if preferred then "master" else "backup";
+            virtualIp = "${gateway}/${lib.last (lib.splitString "/" lanCidr)}";
+            vrrpInterface = lan.name;
+            vrrpPasswordFile = varPath "vrrp-password";
+            routerAdvertisements.mode = "vrrp-owner";
+            wan = {
+              enable = true;
+              interface = wan.name;
+              # WHY: the modem binds the lease to this MAC; the DUID-EN and
+              # IAID set on the WAN network above win over the link-layer
+              # DUID router-ha would derive (upstream
+              # router-ha-wan-own-dhcp-identity-wins-eval).
+              clonedMac = router.takeover.wanMac;
+              # WHY: a MASTER whose WAN is dead hands over instead of keeping
+              # the VIP (docs/router-vrrp.md).
+              healthCheck.enable = true;
+            };
+            # WHY: docs/router-vrrp.md#ownership; boot is disabled below.
+            singleActiveUnits = [
+              "avahi-daemon.socket"
+              "avahi-daemon.service"
+            ]
+            ++ lib.optionals preferred [
+              "pangolin.service"
+              "gerbil.service"
+            ];
           };
           router-dhcp.enable = false;
           router-kea = {
@@ -301,17 +373,40 @@ in
                       _: entry: (entry.dhcpReservation or null) != null && (entry.ip or null) != null
                     ) legacy.hosts
                   );
+            }
+            // lib.optionalAttrs paired {
+              # WHY: hot-standby: the preferred member answers every client,
+              # the other only once it stops responding (upstream #185; ISC's
+              # preferred mode). Kea HA runs regardless of VRRP state.
+              ha = {
+                enable = true;
+                mode = "hot-standby";
+                thisServerName = config.networking.hostName;
+                peerName = lib.head (lib.attrNames vrrpPeers);
+                role = if preferred then "primary" else "secondary";
+                localAddress = ip router.lanAddress;
+                peerAddress = lib.head peerLanIps;
+              };
             };
-            ddns = lib.mkIf full {
-              enable = true;
-              tsigKeyFile = varPath "kea-ddns-tsig-key";
-              tsigKeyName = "kea-ddns";
-              forwardZone = fleet.domain;
-              reverseZone = "10.10.in-addr.arpa";
-            };
+            ddns = lib.mkIf full (
+              {
+                enable = true;
+                tsigKeyFile = varPath "kea-ddns-tsig-key";
+                tsigKeyName = "kea-ddns";
+                forwardZone = fleet.domain;
+                reverseZone = "10.10.in-addr.arpa";
+              }
+              // lib.optionalAttrs vrrp {
+                # WHY: with Kea HA both servers allocate, so D2 runs on both
+                # and sends updates to the VIP, where the zone primary lives.
+                # A lone member runs D2 only while MASTER.
+                ha.mode = if paired then "follow-vip" else "single-active";
+              }
+            );
           };
           router-ddns = {
             enable = full;
+            ha.singleActiveOwner = vrrp;
           }
           // lib.optionalAttrs full {
             cloudflare = {
@@ -324,6 +419,7 @@ in
             enable = primary;
             externalInterface = wan.name;
             internalIPs = [ lan.name ];
+            ha.singleActiveOwner = vrrp;
           };
           router-mdns = {
             enable = primary;
@@ -423,9 +519,12 @@ in
           # WHY: Pangolin/gerbil are the public tunnel edge and need WAN; on a
           # standby gerbil restart-looped waiting for Pangolin's local API and
           # hung switch-to-configuration (elitedesk's first role deploy).
+          # WHY: Pangolin's database and gerbil's WireGuard key live on one
+          # node, so under VRRP only the preferred member runs them, and only
+          # while MASTER (docs/router-vrrp.md#ownership).
           router-pangolin = {
-            enable = full;
-            openFirewall = full;
+            enable = full && (!vrrp || preferred);
+            openFirewall = full && (!vrrp || preferred);
           };
           traefik.enable = lib.mkForce false;
           router-network-security = {
@@ -448,7 +547,21 @@ in
               # zone-HA owner promotes them while the role file says master.
               # WHY: with no standby there is nothing to replicate to; the
               # zones stay Primary from the cutover (docs/router-failover.md).
-              if full then
+              # WHY: in a VRRP pair every member holds the zones as Secondary
+              # of the VIP and the MASTER promotes its copy (upstream
+              # zoneReplication.ha); peers are the other members' own addresses.
+              if paired then
+                {
+                  secondary = {
+                    zones = replicatedZones;
+                    primaryAddresses = [ gateway ];
+                  };
+                  ha = {
+                    enable = true;
+                    peers = peerLanIps;
+                  };
+                }
+              else if full then
                 lib.optionalAttrs (standbyHosts != { }) {
                   primary = {
                     zones = replicatedZones;
@@ -502,6 +615,17 @@ in
                 [ gateway ];
             searchDomains = [ fleet.domain ];
             technitium.apiKeySecretName = null;
+            # WHY: D2 sends updates to the VIP, and a wildcard listener would
+            # answer from the node's own address (upstream router-kea
+            # assertion). Binding the VIP on a BACKUP relies on router-ha's
+            # ip_nonlocal_bind. IPv6 clients keep the wildcard.
+            serviceListenAddresses = lib.optionals vrrp [
+              "127.0.0.1"
+              gateway
+              (ip router.lanAddress)
+              (ip router.managementAddress)
+              "::"
+            ];
           };
           fail2ban = {
             enable = true;
@@ -516,6 +640,17 @@ in
         };
 
         systemd.services.gerbil.serviceConfig.Upholds = lib.mkForce [ ];
+
+        # WHY: units without an upstream ownership option run on the VRRP
+        # MASTER only: Pangolin needs the WAN and its state is on the
+        # preferred member; two Avahi reflectors on one LAN would reflect
+        # each other's traffic.
+        # GOTCHA: router-ha starts and stops these (singleActiveUnits, in
+        # services.router-ha above) but leaves boot to us.
+        systemd.services.avahi-daemon.wantedBy = lib.mkIf vrrp (lib.mkForce [ ]);
+        systemd.sockets.avahi-daemon.wantedBy = lib.mkIf vrrp (lib.mkForce [ ]);
+        systemd.services.pangolin.wantedBy = lib.mkIf (vrrp && preferred) (lib.mkForce [ ]);
+        systemd.services.gerbil.wantedBy = lib.mkIf (vrrp && preferred) (lib.mkForce [ ]);
         systemd.services.traefik.enable = false;
 
         # WHY: docs/router-election.md#router-nic-alerts (nch-sny.31).
@@ -738,6 +873,83 @@ in
       in
       assert lib.all (name: lib.assertMsg (ok name) "${name}: the primary router does not hold the gateway, WAN identity or primary-only services.") (lib.attrNames primaries);
       pkgs.runCommand "router-primary" { } "touch $out";
+
+    # WHY: a VRRP member must hand the gateway, the WAN identity and the
+    # single-owner services to keepalived, keep the modem's DUID, and pair
+    # Kea and the zones only when a peer exists (docs/router-vrrp.md). The
+    # reference host is also evaluated as a member in three layouts, so the
+    # mode stays checked before any inventory host uses it.
+    checks.router-vrrp =
+      let
+        gateway = fleet.hosts.router.addresses.ip;
+        okVrrp =
+          label: cfg:
+          let
+            node = cfg.routerRole.node;
+            peers = lib.filterAttrs (name: _: name != cfg.networking.hostName) cfg.routerRole.vrrpMembers;
+            preferred = lib.all (peer: peer.vrrpPriority < node.vrrpPriority) (lib.attrValues peers);
+            paired = peers != { };
+            ha = cfg.services.router-ha;
+            net = cfg.systemd.network.networks;
+            wanNet = net."10-router-wan-primary";
+            lanNet = net."20-router-lan";
+            kea = cfg.services.router-kea;
+            zones = cfg.services.router-technitium.zoneReplication.ha;
+            owned = unit: lib.elem unit ha.singleActiveUnits;
+            checks = {
+              "keepalived holds the VIP" = ha.enable && ha.virtualIp == "${gateway}/16" && ha.vrrpInterface == node.devices.lan.name;
+              "the preferred member starts as master" = ha.role == (if preferred then "master" else "backup");
+              "WAN follows VRRP with the modem's MAC" = ha.wan.enable && ha.wan.clonedMac == node.takeover.wanMac && ha.wan.healthCheck.enable;
+              "WAN keeps the modem's DUID-EN and IAID" =
+                wanNet.linkConfig.ActivationPolicy == "manual"
+                && wanNet.dhcpV4Config.DUIDRawData == node.takeover.dhcpDuidRawData
+                && wanNet.dhcpV6Config.IAID == node.takeover.dhcpIaid;
+              "WAN is not required for boot" = (wanNet.linkConfig.RequiredForOnline or "no") == "no";
+              "LAN holds only the node address" = lanNet.address == [ node.lanAddress ];
+              "LAN fallback route via the VIP" = lib.elem { Gateway = gateway; Metric = 2000; } lanNet.routes;
+              "no manual-failover specialisation" = cfg.specialisation == { };
+              "DDNS, UPnP and Avahi run on the MASTER only" =
+                lib.all owned [ "inadyn.timer" "miniupnpd.service" "avahi-daemon.service" "avahi-daemon.socket" ];
+              "Kea HA hot-standby iff paired" =
+                kea.dhcp4.ha.enable == paired
+                && (!paired || (kea.dhcp4.ha.mode == "hot-standby" && kea.dhcp4.ha.role == (if preferred then "primary" else "secondary")));
+              "D2 follows the VIP iff paired" = kea.ddns.ha.mode == (if paired then "follow-vip" else "single-active");
+              "zones follow VRRP iff paired" = zones.enable == paired && (!paired || zones.peers != [ ]);
+              "Pangolin only on the preferred member, while MASTER" =
+                if preferred then owned "pangolin.service" && owned "gerbil.service" && cfg.systemd.services.pangolin.wantedBy == [ ]
+                else !cfg.services.router-pangolin.enable;
+              "VRRP password var declared" = cfg.clan.core.vars.generators ? router-vrrp-password;
+            };
+            failed = lib.attrNames (lib.filterAttrs (_: v: !v) checks);
+          in
+          lib.assertMsg (failed == [ ]) "${label}: ${lib.concatStringsSep "; " failed}";
+
+        asMember =
+          name: priorities:
+          let
+            base = config.flake.nixosConfigurations.${name};
+            node = base.config.routerRole.node // { mode = "vrrp"; };
+          in
+          (base.extendModules {
+            modules = [
+              {
+                routerRole.node = node;
+                routerRole.vrrpMembers =
+                  { ${name} = node; }
+                  // lib.mapAttrs (_: priority: node // { lanAddress = "10.10.10.2/16"; vrrpPriority = priority; }) priorities;
+              }
+            ];
+          }).config;
+        reference = "elitedesk";
+        variants = {
+          "${reference} as preferred member" = asMember reference { peer = 100; };
+          "${reference} as backup member" = asMember reference { peer = 120; };
+          "${reference} as lone member" = asMember reference { };
+        }
+        // lib.mapAttrs' (name: _: lib.nameValuePair name config.flake.nixosConfigurations.${name}.config) vrrpHosts;
+      in
+      assert lib.all (label: okVrrp label variants.${label}) (lib.attrNames variants);
+      pkgs.runCommand "router-vrrp" { } "touch $out";
 
     checks.router-standby =
       assert lib.all (

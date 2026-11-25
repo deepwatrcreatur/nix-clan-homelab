@@ -11,7 +11,8 @@ Bead: `nch-sny.36`. Design and the later VRRP plan:
 > fenced by its demoted marker until its hardware is repurposed. The
 > rehearsal procedure below describes the setup before that.
 
-VRRP is not running yet, so failover is **manual**. Each router carries the
+VRRP is not running yet, so failover is **manual**. The VRRP pair that
+replaces this procedure: [`router-vrrp.md`](router-vrrp.md). Each router carries the
 other role as a NixOS specialisation:
 
 | Host | Normal role | Specialisation | Defined in |

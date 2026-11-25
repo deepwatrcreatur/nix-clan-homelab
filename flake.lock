@@ -1316,17 +1316,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1795533711,
-        "narHash": "sha256-58yuSLDZY/WDKrUD2yseRJ4hB5RjBfAShz4XACWj8F0=",
+        "lastModified": 1795596484,
+        "narHash": "sha256-kOgszJe0+txjzThWm41rNIgut8t4btEPSPa2uc7Ae8w=",
         "owner": "deepwatrcreatur",
         "repo": "nix-router-optimized",
-        "rev": "6e1779bac560fcb63465c699985f997dfd234ad4",
+        "rev": "6fc0f5f99c0064a50a2f04ec6782fe51b2f9eede",
         "type": "github"
       },
       "original": {
         "owner": "deepwatrcreatur",
         "repo": "nix-router-optimized",
-        "rev": "6e1779bac560fcb63465c699985f997dfd234ad4",
+        "rev": "6fc0f5f99c0064a50a2f04ec6782fe51b2f9eede",
         "type": "github"
       }
     },
