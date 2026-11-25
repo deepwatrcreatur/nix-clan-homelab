@@ -641,7 +641,17 @@ in
           };
         };
 
-        systemd.services.gerbil.serviceConfig.Upholds = lib.mkForce [ ];
+        # GOTCHA: define these only where Pangolin runs. Even a mkIf-false
+        # attribute under systemd.services.<unit> creates a bare unit file,
+        # and switching a member without Pangolin then failed with "bad unit
+        # file setting".
+        systemd.services.gerbil = lib.mkIf config.services.router-pangolin.enable {
+          serviceConfig.Upholds = lib.mkForce [ ];
+          wantedBy = lib.mkIf vrrp (lib.mkForce [ ]);
+        };
+        systemd.services.pangolin = lib.mkIf (config.services.router-pangolin.enable && vrrp) {
+          wantedBy = lib.mkForce [ ];
+        };
 
         # SECURITY: the abort fence (docs/router-vrrp.md#abort). A fenced
         # member must not elect itself after a reboot next to a static
@@ -657,8 +667,6 @@ in
         # services.router-ha above) but leaves boot to us.
         systemd.services.avahi-daemon.wantedBy = lib.mkIf vrrp (lib.mkForce [ ]);
         systemd.sockets.avahi-daemon.wantedBy = lib.mkIf vrrp (lib.mkForce [ ]);
-        systemd.services.pangolin.wantedBy = lib.mkIf (vrrp && preferred) (lib.mkForce [ ]);
-        systemd.services.gerbil.wantedBy = lib.mkIf (vrrp && preferred) (lib.mkForce [ ]);
         systemd.services.traefik.enable = false;
 
         # WHY: docs/router-election.md#router-nic-alerts (nch-sny.31).
@@ -931,7 +939,7 @@ in
               "zones follow VRRP iff paired" = zones.enable == paired && (!paired || zones.peers != [ ]);
               "Pangolin only on the preferred member, while MASTER" =
                 if preferred then owned "pangolin.service" && owned "gerbil.service" && cfg.systemd.services.pangolin.wantedBy == [ ]
-                else !cfg.services.router-pangolin.enable;
+                else !cfg.services.router-pangolin.enable && !(cfg.systemd.services ? pangolin) && !(cfg.systemd.services ? gerbil);
               "keepalived fenced by the demoted marker" =
                 (cfg.systemd.services.keepalived.unitConfig.ConditionPathExists or null) == "!/var/lib/router-failover/demoted";
               "VRRP password var declared" = cfg.clan.core.vars.generators ? router-vrrp-password;
