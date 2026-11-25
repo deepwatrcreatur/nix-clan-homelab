@@ -24,7 +24,7 @@
     };
 
     nix-router-optimized = {
-      url = "github:deepwatrcreatur/nix-router-optimized/c53437022b7853f0c3badc8c65c13d5b3bd7098f";
+      url = "github:deepwatrcreatur/nix-router-optimized/6612839a07a66c40e96bc19e92ff5bd2fe72245b";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 

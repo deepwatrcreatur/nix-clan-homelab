@@ -88,8 +88,8 @@ Each live step needs the operator at both consoles and an agreed window
    router's first clan deploy replaces unified's whole configuration, so do
    it with its console at hand. Upload its machine age key first
    (`clan-admin vars upload router`): deploy-rs does not, and sops-nix needs
-   it to decrypt the vars. The pin must include nix-router-optimized #189,
-   so no WAN reconfigure releases the lease.
+   it to decrypt the vars. The pin includes nix-router-optimized #189,
+   so a WAN reconfigure no longer releases the lease.
    Expected: router BACKUP, Kea `hot-standby` on both, zones Secondary on
    router.
 5. **Drill**, measuring gateway, IPv4, IPv6, DNS and DHCP gaps from a LAN
