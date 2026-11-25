@@ -596,10 +596,11 @@ in
             rfc2136 = {
               enable = true;
               tsigKeyFile = varPath "kea-ddns-tsig-key";
-              zones = [
-                { name = fleet.domain; }
-                { name = "10.10.in-addr.arpa"; }
-              ];
+              # WHY: paired, D2 sends to the VIP from the node's own LAN
+              # address; Technitium checks this ACL before TSIG.
+              zones = map (name: { inherit name; } // lib.optionalAttrs paired {
+                updateNetworkACL = [ "127.0.0.1" gateway (ip router.lanAddress) ] ++ peerLanIps;
+              }) [ fleet.domain "10.10.in-addr.arpa" ];
             };
           };
           router-dns-service = {
@@ -914,6 +915,11 @@ in
                 kea.dhcp4.ha.enable == paired
                 && (!paired || (kea.dhcp4.ha.mode == "hot-standby" && kea.dhcp4.ha.role == (if preferred then "primary" else "secondary")));
               "D2 follows the VIP iff paired" = kea.ddns.ha.mode == (if paired then "follow-vip" else "single-active");
+              "peers may send DNS updates iff paired" =
+                lib.all (zone:
+                  let acl = zone.updateNetworkACL; in
+                  if paired then lib.elem (builtins.head (lib.splitString "/" node.lanAddress)) acl && lib.length acl > 3 else acl == [ "127.0.0.1" ]
+                ) cfg.services.router-technitium.rfc2136.zones;
               "zones follow VRRP iff paired" = zones.enable == paired && (!paired || zones.peers != [ ]);
               "Pangolin only on the preferred member, while MASTER" =
                 if preferred then owned "pangolin.service" && owned "gerbil.service" && cfg.systemd.services.pangolin.wantedBy == [ ]

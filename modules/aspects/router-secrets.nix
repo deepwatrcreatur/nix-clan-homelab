@@ -66,7 +66,11 @@ in
           files.value.mode = "0400";
           runtimeInputs = [ pkgs.coreutils ];
           script = ''
-            tr -dc 'A-Za-z0-9' </dev/urandom | head -c 8 >"$out/value"
+            # GOTCHA: clan runs this with pipefail; reading /dev/urandom
+            # unbounded into `head` ends in SIGPIPE (exit 141).
+            value="$(head -c 4096 /dev/urandom | tr -dc 'A-Za-z0-9')"
+            [ "''${#value}" -ge 8 ]
+            printf '%s' "''${value:0:8}" >"$out/value"
           '';
         };
       };
