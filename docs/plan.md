@@ -204,6 +204,7 @@ remains authoritative for operating it.
   unified's `docs/adding-a-nixos-host.md#router-hosts`).
 - Migrate elitedesk (standby) before router, with console access ready.
 - Never deploy a router change without the user available.
+- VRRP pair design, ownership and rollout: [`router-vrrp.md`](router-vrrp.md).
 
 ### Router role and elitedesk standby (nch-sny.26)
 

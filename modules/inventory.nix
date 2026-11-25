@@ -14,8 +14,15 @@ let
         type = types.enum [
           "standby"
           "primary"
+          "vrrp"
         ];
-        description = "Whether this node owns WAN and LAN services.";
+        description = ''
+          `primary`: holds the gateway address and the WAN statically.
+          `standby`: a manual spare with a `primary` specialisation
+          (docs/router-failover.md). `vrrp`: a member of the VRRP pair;
+          keepalived decides which member holds the gateway and the WAN
+          (docs/router-vrrp.md).
+        '';
       };
       devices = lib.genAttrs [ "wan" "lan" "management" ] (_: {
         name = mkOption {
@@ -72,7 +79,11 @@ let
       vrrpPriority = mkOption {
         type = types.ints.between 1 254;
         default = 100;
-        description = "VRRP priority if the host participates in HA.";
+        description = ''
+          VRRP priority in `vrrp` mode. The member with the highest priority is
+          the preferred router: Kea's HA primary and the only one running
+          Pangolin and PXE (docs/router-vrrp.md).
+        '';
       };
       vrrpPreemptDelay = mkOption {
         type = types.ints.between 0 1000;

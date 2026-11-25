@@ -2,15 +2,14 @@
 # SECURITY: include only on router-class hosts; sops encrypts a shared var
 # only to machines that declare its generator, so no other host can read
 # these. Standby hosts declare only what they use.
-# TODO(nch-sny.27): with VRRP election a standby takes over without a
-# redeploy, so it will need the primary-only credentials installed too.
+# WHY: a `vrrp` member can become MASTER without a redeploy, so it holds the
+# primary credentials too (docs/router-vrrp.md).
 {
   config,
   lib,
   ...
 }:
 let
-  hosts = config.homelab.hosts;
   single = description: file: {
     share = true;
     prompts.value = {
@@ -23,9 +22,12 @@ let
 in
 {
   den.aspects.router-secrets.nixos =
-    { config, ... }:
+    { config, pkgs, ... }:
     let
-      primary = hosts.${config.networking.hostName}.router.mode == "primary";
+      # WHY: routerRole.node, not the inventory, so checks can evaluate a host
+      # in another mode.
+      mode = config.routerRole.node.mode;
+      primary = mode == "primary" || mode == "vrrp";
       varPath = name: config.clan.core.vars.generators."router-${name}".files.value.path;
     in
     {
@@ -54,6 +56,23 @@ in
           mode = "0440";
         };
         router-tailscale-auth-key = single "Tailscale auth key for the router node" { mode = "0400"; };
+      }
+      // lib.optionalAttrs (mode == "vrrp") {
+        # SECURITY: VRRPv2 PASS auth is clear text on the LAN; it only keeps
+        # other VRRP groups out. keepalived uses 8 characters, from a set
+        # router-ha accepts.
+        router-vrrp-password = {
+          share = true;
+          files.value.mode = "0400";
+          runtimeInputs = [ pkgs.coreutils ];
+          script = ''
+            # GOTCHA: clan runs this with pipefail; reading /dev/urandom
+            # unbounded into `head` ends in SIGPIPE (exit 141).
+            value="$(head -c 4096 /dev/urandom | tr -dc 'A-Za-z0-9')"
+            [ "''${#value}" -ge 8 ]
+            printf '%s' "''${value:0:8}" >"$out/value"
+          '';
+        };
       };
 
       # WHY: nix-router-optimized's *File options take the clan var paths

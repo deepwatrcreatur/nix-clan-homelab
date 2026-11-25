@@ -38,3 +38,5 @@ redirect
 
 # bv (beads viewer) lock file
 .bv.lock
+# Local rebuild-failure copies of the database
+.br_recovery/
