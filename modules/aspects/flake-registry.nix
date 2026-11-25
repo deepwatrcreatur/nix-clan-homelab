@@ -1,8 +1,10 @@
 # Pin the flake registry to this flake's locked inputs on workstations.
 # WHY: nixos-base sets `flake-registry = ""`, so only NixOS's built-in
 # `nixpkgs` entry resolves; `nix run home-manager#...` failed. The entries are
-# store paths in the system closure, so garbage collection keeps the inputs and
-# `nix run`/`nix develop` against them needs no download.
+# store paths in the system closure, so garbage collection keeps those sources.
+# GOTCHA: only the source revision is pinned. `nix run home-manager` uses that
+# flake's own flake.lock, not our `follows`, so it may download dependencies
+# and does not work offline. #57 covers offline evaluation of this checkout.
 {
   config,
   den,
