@@ -40,6 +40,8 @@ class AgentGuardPolicyTests(unittest.TestCase):
             "find /nix/store -name '*.so'",
             "find -L /nix/store/ -type f",
             "sudo find /nix -name hello",
+            "find /nix/store/* -name hello",
+            "find /nix/store/*/ -name hello",
             "rg foo /nix/store",
             "fd hello /nix/store",
             "grep -r foo /nix/store",

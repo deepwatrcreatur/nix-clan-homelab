@@ -214,7 +214,11 @@ def check_rm(args):
 
 
 def is_store_root(path):
-    return os.path.normpath(path) in ("/nix", "/nix/store") if path.startswith("/") else False
+    # WHY: the hook sees the text before the shell expands a match-all glob. The
+    # guard is a hint, not a sandbox: it does not follow `cd` or variables.
+    return path.startswith("/") and os.path.normpath(path) in (
+        "/nix", "/nix/store", "/nix/*", "/nix/store/*",
+    )
 
 
 # Options of search tools that take a separate argument.
