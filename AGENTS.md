@@ -55,7 +55,9 @@ beads-rust sync --flush-only && git add -- .beads/issues.jsonl   # before every 
   `owner:claude` beads touch decrypted secrets or live hosts.
 - Before creating child beads under a parent, fetch and check open PRs:
   `<parent>.N` comes from each clone's own counter, so parallel branches mint
-  the same ID.
+  the same ID. Comment IDs collide the same way. `checks.beads-integrity`
+  fails on duplicate issue or comment IDs and dangling dependencies; if it
+  fails after a rebase, renumber your own record, not the one on `main`.
 - If acceptance needs a deployed host, put those checks in the deployment or
   verification bead, not in a bead that bead depends on.
 - Found new work? Create a bead with a dependency rather than widening scope.
