@@ -27,7 +27,7 @@ so the mode stays correct until the [rollout](#rollout).
 | Boot | WAN never required for `network-online` | a BACKUP's WAN is down |
 | BACKUP's own internet | LAN route via the VIP, metric 2000 | on the MASTER the WAN's DHCP route wins |
 | Credentials | all primary ones, plus the shared `router-vrrp-password` | a member becomes MASTER without a deploy |
-| Transitions | applied in order through keepalived's notify FIFO | nix-router-optimized #186; bump the pin before step 2 |
+| Transitions | applied in order through keepalived's notify FIFO | nix-router-optimized #186 (pinned) |
 
 ## Ownership
 
@@ -38,7 +38,7 @@ so the mode stays correct until the [rollout](#rollout).
 | Technitium zones | Secondary of the VIP on every member; the MASTER promotes its copy | `zoneReplication.ha`; only when paired |
 | Technitium | both; listens on loopback, the VIP, the node's LAN and management addresses and `::` | replies to D2 come from the VIP |
 | Dynamic DNS updates | accepted from loopback, the VIP and both members' LAN addresses, TSIG-signed | `rfc2136.zones.<zone>.updateNetworkACL`; only when paired |
-| Static DNS records | written by the zone owner; a Secondary skips them, promotion rewrites them | nix-router-optimized #188; bump the pin before step 4 |
+| Static DNS records | written by the zone owner; a Secondary skips them, promotion rewrites them | nix-router-optimized #188 (pinned) |
 | inadyn (Cloudflare DDNS) | MASTER | `router-ddns.ha.singleActiveOwner` |
 | miniupnpd | MASTER | `router-upnp.ha.singleActiveOwner` |
 | IPv6 router advertisements | MASTER is the default router | `routerAdvertisements.mode = "vrrp-owner"` |
