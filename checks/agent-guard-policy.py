@@ -44,6 +44,12 @@ class AgentGuardPolicyTests(unittest.TestCase):
             "fd hello /nix/store",
             "grep -r foo /nix/store",
             "grep foo -rn /nix/store/",
+            "rg -n -e foo /nix/store",
+            "rg --files /nix/store",
+            "rg -g '*.nix' foo /nix/store",
+            "rg --glob '*.nix' foo /nix/store",
+            "grep -rne foo /nix/store",
+            "fd -e nix . /nix/store",
             "ls -R /nix/store",
             "bash -c 'find /nix/store -name x'",
         ):
@@ -61,6 +67,11 @@ class AgentGuardPolicyTests(unittest.TestCase):
             "ls -ltr /nix/store",
             "ls -d /nix/store/*-hello",
             "rg nix/store .",
+            "rg -n -e /nix/store modules",
+            "rg /nix/store modules",
+            "rg --regexp=/nix/store modules",
+            "grep -rn /nix/store modules",
+            "grep -r -e /nix/store modules",
         ):
             with self.subTest(command=command):
                 self.assertEqual(guard["evaluate"](command)[0], guard["ALLOW"])

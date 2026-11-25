@@ -217,6 +217,55 @@ def is_store_root(path):
     return os.path.normpath(path) in ("/nix", "/nix/store") if path.startswith("/") else False
 
 
+# Options of search tools that take a separate argument.
+SEARCH_VALUE_OPTS = {
+    "rg": {
+        "-e", "-f", "-g", "-t", "-T", "-A", "-B", "-C", "-m", "-r", "-d", "-j",
+        "-M", "-E", "--regexp", "--file", "--glob", "--iglob", "--type",
+        "--type-not", "--max-depth", "--max-count", "--replace", "--sort",
+        "--context", "--after-context", "--before-context", "--color",
+    },
+    "grep": {
+        "-e", "-f", "-A", "-B", "-C", "-m", "-d", "-D", "--regexp", "--file",
+        "--include", "--exclude", "--exclude-dir", "--max-count", "--context",
+        "--after-context", "--before-context",
+    },
+    "fd": {
+        "-e", "-t", "-E", "-d", "-S", "-o", "-c", "-j", "--extension", "--type",
+        "--exclude", "--max-depth", "--min-depth", "--size", "--owner", "--color",
+    },
+}
+SEARCH_VALUE_OPTS["fdfind"] = SEARCH_VALUE_OPTS["fd"]
+SEARCH_VALUE_OPTS["egrep"] = SEARCH_VALUE_OPTS["fgrep"] = SEARCH_VALUE_OPTS["grep"]
+
+
+def search_roots(name, args):
+    """Return the paths a search tool walks, without its pattern."""
+    value_opts = SEARCH_VALUE_OPTS[name]
+    out, pattern_given, i = [], False, 0
+    while i < len(args):
+        a = args[i]
+        if a == "--":
+            out += args[i + 1:]
+            break
+        if a.startswith("-") and len(a) > 1:
+            # WHY: covers -e PAT, -ePAT and clusters such as -rne.
+            if name not in ("fd", "fdfind") and re.match(
+                r"-[a-zA-Z]*e|-f|--(regexp|file)(=|$)", a
+            ):
+                pattern_given = True
+            if a in value_opts or (
+                not a.startswith("--") and "-" + a[-1] in value_opts
+            ):
+                i += 1
+        else:
+            out.append(a)
+        i += 1
+    if pattern_given or (name == "rg" and "--files" in args):
+        return out
+    return out[1:]
+
+
 def check_store_scan(name, args):
     """Refuse walks of the whole store; a specific store path is fine."""
     if name == "find":
@@ -232,7 +281,9 @@ def check_store_scan(name, args):
             depth = args[args.index("-maxdepth") + 1]
         if depth in ("0", "1"):
             return ALLOW, ""
-    elif name in ("rg", "fd", "fdfind", "du", "tree"):
+    elif name in ("rg", "fd", "fdfind"):
+        roots = search_roots(name, args)
+    elif name in ("du", "tree"):
         roots = positional(args)
     elif name in ("grep", "egrep", "fgrep", "ls"):
         flags = short_flags(args)
@@ -240,11 +291,9 @@ def check_store_scan(name, args):
         recursive = {"R"} if name == "ls" else {"r", "R"}
         if not (flags & recursive or {"--recursive", "--dereference-recursive"} & set(args)):
             return ALLOW, ""
-        roots = positional(args)
+        roots = positional(args) if name == "ls" else search_roots(name, args)
     else:
         return ALLOW, ""
-    # GOTCHA: a search pattern is positional too, so a pattern that is exactly
-    # /nix/store needs -e.
     if any(is_store_root(r) for r in roots):
         return SCAN, f"{name} over the whole Nix store"
     return ALLOW, ""
