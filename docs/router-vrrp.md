@@ -22,7 +22,7 @@ so the mode stays correct until the [rollout](#rollout).
 | --- | --- | --- |
 | Gateway 10.10.10.1/16 | keepalived adds it on the MASTER | each member keeps its own `lanAddress` |
 | WAN | `router-ha.wan`: `ActivationPolicy=manual`; MASTER sets `takeover.wanMac` and starts DHCP | the network keeps the modem's DUID-EN and IAID; they win over router-ha's derived DUID |
-| Dead WAN on the MASTER | `wan.healthCheck`: yields to the peer, pins itself low | |
+| Dead WAN on the MASTER | `wan.healthCheck`: yields to the peer, pins itself low | only when paired; a lone member keeps the gateway and DNS through an ISP outage |
 | Fail-back | waits `vrrpPreemptDelay` (300 s) as BACKUP | |
 | Boot | WAN never required for `network-online` | a BACKUP's WAN is down |
 | BACKUP's own internet | LAN route via the VIP, metric 2000 | on the MASTER the WAN's DHCP route wins |
