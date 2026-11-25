@@ -92,6 +92,15 @@ Each live step needs the operator at both consoles and an agreed window
    (`clan-admin vars upload router`): deploy-rs does not, and sops-nix needs
    it to decrypt the vars. The pin includes nix-router-optimized #189,
    so a WAN reconfigure no longer releases the lease.
+   **Done 2026-11-25.** elitedesk's paired deploy kept the /56 and the IPv4
+   lease; gaps were about 7.5 s for the gateway and 5 s for internet and DNS,
+   and Kea paused DHCP for about 20 s (WAITING, then PARTNER-DOWN) until
+   router joined as its hot-standby partner. router's first clan switch
+   failed twice and kept running the new generation: an expired shared
+   Tailscale key, bare `pangolin`/`gerbil` units (#67), then tailscaled still
+   retrying the old key (restart it once after replacing the key). With the
+   marker removed, router's keepalived came up BACKUP with no client-visible
+   gap.
    Expected: router BACKUP, Kea `hot-standby` on both, zones Secondary on
    router.
 5. **Drill**, measuring gateway, IPv4, IPv6, DNS and DHCP gaps from a LAN
