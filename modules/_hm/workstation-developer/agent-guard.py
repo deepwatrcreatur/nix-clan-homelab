@@ -3,8 +3,9 @@
 Runs as a Claude Code PreToolUse hook (and optionally a Gemini CLI BeforeTool
 hook) on shell commands. Commands that destroy data or rewrite shared history
 are sent back for confirmation ("ask"); a few that are never intended, such as
-a recursive delete of / or $HOME, are refused outright ("deny"). Everything
-else is allowed silently.
+a recursive delete of / or $HOME, are refused outright ("deny"). Searches that
+walk the whole Nix store are also refused, with the cheaper alternative in the
+message. Everything else is allowed silently.
 
 Usage:
   agent-guard                 read a hook payload (JSON) on stdin
@@ -20,8 +21,10 @@ import re
 import shlex
 import sys
 
-ALLOW, ASK, DENY = "allow", "ask", "deny"
-RANK = {ALLOW: 0, ASK: 1, DENY: 2}
+ALLOW, ASK, SCAN, DENY = "allow", "ask", "scan", "deny"
+# INVARIANT: SCAN ranks above ASK (it blocks) and below DENY, so a destructive
+# command on the same line keeps its own message.
+RANK = {ALLOW: 0, ASK: 1, SCAN: 2, DENY: 3}
 
 SEPARATORS = {";", "&", "&&", "|", "||", "|&", "\n", "(", ")", ";;"}
 REDIRECTS = re.compile(r"^[0-9]*(>|>>|<|<<|<<<|>&|<&|&>|&>>)$")
@@ -210,6 +213,43 @@ def check_rm(args):
     return ALLOW, ""
 
 
+def is_store_root(path):
+    return os.path.normpath(path) in ("/nix", "/nix/store") if path.startswith("/") else False
+
+
+def check_store_scan(name, args):
+    """Refuse walks of the whole store; a specific store path is fine."""
+    if name == "find":
+        # find's roots come before its first expression; a depth limit of 1
+        # only lists the directory.
+        roots = []
+        for a in args:
+            if a.startswith(("-", "(", "!")) and a not in ("-H", "-L", "-P"):
+                break
+            roots.append(a)
+        depth = None
+        if "-maxdepth" in args[:-1]:
+            depth = args[args.index("-maxdepth") + 1]
+        if depth in ("0", "1"):
+            return ALLOW, ""
+    elif name in ("rg", "fd", "fdfind", "du", "tree"):
+        roots = positional(args)
+    elif name in ("grep", "egrep", "fgrep", "ls"):
+        flags = short_flags(args)
+        # WHY: ls -r only reverses the order; grep -r recurses.
+        recursive = {"R"} if name == "ls" else {"r", "R"}
+        if not (flags & recursive or {"--recursive", "--dereference-recursive"} & set(args)):
+            return ALLOW, ""
+        roots = positional(args)
+    else:
+        return ALLOW, ""
+    # GOTCHA: a search pattern is positional too, so a pattern that is exactly
+    # /nix/store needs -e.
+    if any(is_store_root(r) for r in roots):
+        return SCAN, f"{name} over the whole Nix store"
+    return ALLOW, ""
+
+
 def check_git(args):
     i = 0
     while i < len(args) and args[i].startswith("-"):
@@ -273,6 +313,9 @@ def check_simple(argv, raw_lower):
     sub = args[0] if args else ""
     sub2 = args[1] if len(args) > 1 else ""
 
+    decision, reason = check_store_scan(name, args)
+    if decision != ALLOW:
+        return decision, reason
     if name == "rm":
         return check_rm(args)
     if name == "git":
@@ -355,7 +398,7 @@ def main(argv):
     if argv[1:2] == ["check"]:
         decision, reason = evaluate(" ".join(argv[2:]))
         print(f"{decision}: {reason}" if reason else decision)
-        return {ALLOW: 0, ASK: 1, DENY: 2}[decision]
+        return {ALLOW: 0, ASK: 1, SCAN: 2, DENY: 2}[decision]
 
     if os.environ.get("AGENT_GUARD_SKIP") == "1":
         return 0
@@ -373,6 +416,13 @@ def main(argv):
         return 0
     if decision == DENY:
         message = f"[agent-guard] Refused: {reason}. This is never run by an agent."
+    elif decision == SCAN:
+        message = (
+            f"[agent-guard] Refused: {reason}. Search one store path instead: "
+            "`nix eval --raw nixpkgs#<pkg>.outPath`, `nix build --print-out-paths`, "
+            "`nix flake archive --json` for inputs, or `nix-locate`."
+        )
+        decision = DENY
     else:
         message = f"[agent-guard] {reason}. Confirm only if this is intended."
 
