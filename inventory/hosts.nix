@@ -81,10 +81,10 @@
     includeDns = false;
     migrated = true;
     router = {
-      # WHY: permanent primary since router's hardware is being repurposed
-      # (nch-sny.22); it holds the gateway 10.10.10.1, and lanAddress is used
-      # only while a standby.
-      mode = "primary";
+      # WHY: VRRP member (docs/router-vrrp.md), alone until router joins
+      # (nch-sny.36.6); keepalived adds the gateway 10.10.10.1 next to
+      # lanAddress while MASTER.
+      mode = "vrrp";
       # ConnectX-4 Lx (mlx5) since 2026-11-20, replacing the X520 that
       # dropped off PCIe twice (nch-sny.31). Port 0 has the LAN DAC, port 1
       # the WAN 10G-SR optic: the reverse of the X520 layout.

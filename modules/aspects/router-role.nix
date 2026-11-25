@@ -330,9 +330,10 @@ in
               # DUID router-ha would derive (upstream
               # router-ha-wan-own-dhcp-identity-wins-eval).
               clonedMac = router.takeover.wanMac;
-              # WHY: a MASTER whose WAN is dead hands over instead of keeping
-              # the VIP (docs/router-vrrp.md).
-              healthCheck.enable = true;
+              # WHY: a MASTER whose WAN is dead hands over to the peer. Alone
+              # there is no one to hand over to, and the LAN would lose its
+              # gateway and DNS for the whole outage.
+              healthCheck.enable = paired;
             };
             # WHY: docs/router-vrrp.md#ownership; boot is disabled below.
             singleActiveUnits = [
@@ -900,7 +901,8 @@ in
             checks = {
               "keepalived holds the VIP" = ha.enable && ha.virtualIp == "${gateway}/16" && ha.vrrpInterface == node.devices.lan.name;
               "the preferred member starts as master" = ha.role == (if preferred then "master" else "backup");
-              "WAN follows VRRP with the modem's MAC" = ha.wan.enable && ha.wan.clonedMac == node.takeover.wanMac && ha.wan.healthCheck.enable;
+              "WAN follows VRRP with the modem's MAC" = ha.wan.enable && ha.wan.clonedMac == node.takeover.wanMac;
+              "WAN health check yields iff paired" = ha.wan.healthCheck.enable == paired;
               "WAN keeps the modem's DUID-EN and IAID" =
                 wanNet.linkConfig.ActivationPolicy == "manual"
                 && wanNet.dhcpV4Config.DUIDRawData == node.takeover.dhcpDuidRawData
