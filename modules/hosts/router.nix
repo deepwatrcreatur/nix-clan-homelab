@@ -34,7 +34,8 @@
         hardware.cpu.intel.updateMicrocode = lib.mkDefault config.hardware.enableRedistributableFirmware;
 
         # SECURITY: the spinning disk is mounted, never formatted (see disko.nix).
-        # WHY: nofail so a dead disk cannot stop the router booting.
+        # WHY: nofail and automount, as unified mounted them, so a dead disk
+        # cannot stop the router booting.
         fileSystems = {
           "/var/log/router" = {
             device = "/dev/disk/by-partlabel/disk-logs-logs";
@@ -42,6 +43,7 @@
             options = [
               "noatime"
               "nofail"
+              "x-systemd.automount"
             ];
           };
           "/srv/pxe" = {
@@ -50,6 +52,7 @@
             options = [
               "noatime"
               "nofail"
+              "x-systemd.automount"
             ];
           };
         };

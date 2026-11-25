@@ -263,7 +263,9 @@
       "firewall"
       "router-management"
     ];
-    description = "Bare-metal router (ASRock Z170 Gaming-ITX); VRRP backup to elitedesk";
+    # GOTCHA: must equal unified's description while unified still lists
+    # router (inventory/check.nix). Bare metal, ASRock Z170 Gaming-ITX.
+    description = "Main router/firewall running NixOS";
     migrated = true;
     router = {
       # WHY: second VRRP member (docs/router-vrrp.md, nch-sny.36.6).

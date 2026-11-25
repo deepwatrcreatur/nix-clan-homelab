@@ -76,8 +76,20 @@ Each live step needs the operator at both consoles and an agreed window
    Read-only hardware checks on router first (`ip -br link`, `lsblk`,
    facter). The gateway address must come from the network, not from the
    `router` host entry, once `router` is a member.
+   **Done 2026-11-25** (nch-sny.36.6): `modules/hosts/router.nix`,
+   `machines/router/` (NVMe-only disko matching unified's layout, facter),
+   `homelab.gateway`. router's fstab and kernel parameters match the running
+   system exactly. Its existing ed25519 host key is imported and it has its
+   own healthchecks.io check. **From this change on, elitedesk evaluates as
+   paired**, so its next deploy is step 4; do not deploy elitedesk for
+   anything else in between.
 4. **Pair** (live): deploy elitedesk paired (Kea HA waits for its partner,
    then serves alone), then deploy router and remove its demoted marker.
+   router's first clan deploy replaces unified's whole configuration, so do
+   it with its console at hand. Upload its machine age key first
+   (`clan-admin vars upload router`): deploy-rs does not, and sops-nix needs
+   it to decrypt the vars. The pin must include nix-router-optimized #189,
+   so no WAN reconfigure releases the lease.
    Expected: router BACKUP, Kea `hot-standby` on both, zones Secondary on
    router.
 5. **Drill**, measuring gateway, IPv4, IPv6, DNS and DHCP gaps from a LAN
