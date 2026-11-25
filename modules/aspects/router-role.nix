@@ -132,7 +132,7 @@ in
         topology = legacy.networks;
         lanCidr = topology.lan.cidr;
         managementCidr = topology.management.cidr;
-        gateway = fleet.hosts.router.addresses.ip;
+        gateway = fleet.gateway;
         ip = address: builtins.head (lib.splitString "/" address);
         varPath = name: config.clan.core.vars.generators."router-${name}".files.value.path;
         replicatedZones = map (name: { inherit name; }) [
@@ -166,7 +166,7 @@ in
           ])
           ++ [
             ../_nixos/router-snmp.nix
-            (import ../_nixos/router-primary-edge.nix { inherit inputs legacy; })
+            (import ../_nixos/router-primary-edge.nix { inherit inputs legacy; inherit (fleet) gateway; })
             {
               options.routerRole = {
                 promoted = lib.mkOption {
@@ -822,8 +822,8 @@ in
           in
           sp.routerRole.promoted
           && sp.specialisation == { }
-          && sp.services.router-networking.routedInterfaces.lan.ipv4Address == "${fleet.hosts.router.addresses.ip}/16"
-          && lanNet.address == [ "${fleet.hosts.router.addresses.ip}/16" ]
+          && sp.services.router-networking.routedInterfaces.lan.ipv4Address == "${fleet.gateway}/16"
+          && lanNet.address == [ "${fleet.gateway}/16" ]
           && (wan.linkConfig.ActivationPolicy or "up") != "always-down"
           && wan.linkConfig.MACAddress == host.router.takeover.wanMac
           && wan.dhcpV4Config.DUIDRawData == host.router.takeover.dhcpDuidRawData
@@ -861,7 +861,7 @@ in
           in
           cfg.routerRole.full
           && cfg.specialisation == { }
-          && net."20-router-lan".address == [ "${fleet.hosts.router.addresses.ip}/16" ]
+          && net."20-router-lan".address == [ "${fleet.gateway}/16" ]
           && (wan.linkConfig.ActivationPolicy or "up") != "always-down"
           && (takeover == null || (wan.linkConfig.MACAddress == takeover.wanMac && wan.dhcpV6Config.IAID == takeover.dhcpIaid))
           && cfg.services.kea.dhcp4.enable
@@ -883,7 +883,7 @@ in
     # mode stays checked before any inventory host uses it.
     checks.router-vrrp =
       let
-        gateway = fleet.hosts.router.addresses.ip;
+        gateway = fleet.gateway;
         okVrrp =
           label: cfg:
           let

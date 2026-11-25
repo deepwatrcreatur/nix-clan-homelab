@@ -206,6 +206,15 @@ in
     description = "LAN DNS zone; SSH host certificates name <machine>.<domain>.";
   };
 
+  options.homelab.gateway = mkOption {
+    type = types.str;
+    default = "10.10.10.1";
+    description = ''
+      LAN gateway address. A `primary` router holds it statically; under
+      `vrrp` keepalived moves it to the MASTER. Not any host's own address.
+    '';
+  };
+
   options.homelab.hosts = mkOption {
     type = types.attrsOf hostType;
     description = "Homelab inventory keyed by canonical host name.";
