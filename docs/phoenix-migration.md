@@ -2,9 +2,12 @@
 
 The source comparison is Unified commit
 `2eccceae94485ecfd2d72cc5fb1c1adabe613e72`, matching the `unified-pve` pin.
-The candidate is exposed only as
-`legacyPackages.x86_64-linux.phoenix-candidate`; Phoenix is not marked as a
-migrated Clan machine and the fixture is not a deployment target.
+The comparison fixture is exposed as
+`legacyPackages.x86_64-linux.phoenix-candidate`. Phoenix is also registered
+as a Clan inventory candidate so its machine composition can be evaluated,
+but `migrated` remains false and the fleet deployment dispatcher rejects it.
+Unified remains authoritative, and the comparison fixture is not a deployment
+target.
 
 `modules/phoenix-candidate-check.nix` composes the ported workstation base,
 Niri/Noctalia/COSMIC fallback, networking, media, printer, snapshot, safe-mode,
@@ -28,16 +31,23 @@ or decrypted. They make the candidate unsuitable for deployment. A live
 Phoenix configuration must use actual Clan var paths and pass `clan-admin vars
 check phoenix` before deployment.
 
+The Clan machine configuration currently cannot evaluate its final toplevel:
+Clan reports that the `openssh` generator's `ssh.id_ed25519.pub` file is
+missing and recommends `clan vars generate`. That generated host-key var and
+all other vars are outside the offline wiring bead. The `phoenix-clan-candidate`
+check therefore validates inventory and machine options without forcing the
+secret-dependent toplevel. Do not treat it as ready to deploy.
+
 The required console password, cache netrc and Attic token, Emerald builder
 SSH key, Synology credentials, and 13 workstation credentials are Clan vars
 with shared generators. The workstation credential values are already
 imported under `vars/shared/workstation-user-secrets`; `vars check lattitude`
-reports them present and valid. Lattitude is the only workstation recipient
-currently, and no live workstation has read those credentials yet. Adding
-Phoenix to Clan and declaring the same generators should make it a recipient
-without another import. The maintainer still needs to coordinate that
-recipient check and first live delivery. The GPG recovery key is not part of
-this migration.
+reports them present and valid. Phoenix is in the Clan inventory but its vars
+have not been generated or recipient-checked. The missing `openssh` public-key
+file currently blocks toplevel evaluation. No vars were generated or
+decrypted; the maintainer must coordinate host-key generation, recipient
+checks and first live delivery. The GPG recovery key is not part of this
+migration.
 
 The source WhiteSur configuration names a wallpaper under the old Unified
 checkout, but that image is absent from the Unified worktree and this repo.
@@ -68,8 +78,9 @@ names and 55 enabled programs. It currently records these reviewed differences:
 | Packages | `install-brew-packages` | `git-ssh-doctor`, `vivaldi` |
 | Enabled programs | `linuxbrew`, `ssh-known-hosts-manager` | — |
 
-Regenerate the reference only after reviewing an intentional Unified profile
-change:
+Regenerate the Unified reference only after reviewing an intentional profile
+change. The command writes the sorted Unified inventory to
+`checks/phoenix-home-reference.json`:
 
 ```sh
 nix eval --impure --json --expr '
@@ -80,18 +91,26 @@ nix eval --impure --json --expr '
 ' | jq -S . > checks/phoenix-home-reference.json
 ```
 
-Then review and update `checks/phoenix-home-expected-differences.json` against
-`nix eval --json .#legacyPackages.x86_64-linux.phoenixHomeInventory`.
+Capture the sorted candidate inventory with:
 
-The candidate deliberately does not mark Phoenix migrated, change Unified's
-authoritative host config, activate a generation, change boot defaults, reboot,
-restart services, or decrypt secrets. Resolve or accept the listed desktop
-and package differences before migrating Phoenix.
+```sh
+nix eval --json .#legacyPackages.x86_64-linux.phoenixHomeInventory \
+  | jq -S . > /tmp/phoenix-home-candidate.json
+```
+
+Compare each `files`, `packages`, and `enabledPrograms` list with the reference,
+review every changed name, then update
+`checks/phoenix-home-expected-differences.json` with the intended deltas.
+
+This work does not mark Phoenix migrated, change Unified's authoritative host
+config, activate a generation, change boot defaults, reboot, restart services,
+or decrypt secrets. Resolve or accept the listed desktop and package
+differences and coordinate the missing Clan vars before migrating Phoenix.
 
 Build-only validation:
 
 ```sh
-nix build --no-link --max-jobs 2 --cores 2 .#checks.x86_64-linux.phoenix-home-parity .#checks.x86_64-linux.phoenix-candidate
+nix build --no-link --max-jobs 2 --cores 2 .#checks.x86_64-linux.phoenix-home-parity .#checks.x86_64-linux.phoenix-candidate .#checks.x86_64-linux.phoenix-clan-candidate
 nix build --no-link --max-jobs 2 --cores 2 .#legacyPackages.x86_64-linux.phoenix-candidate.config.system.build.toplevel
 ```
 

@@ -7,7 +7,11 @@
 }:
 let
   name = "phoenix-candidate";
-  destination = [ "legacyPackages" "x86_64-linux" name ];
+  destination = [
+    "legacyPackages"
+    "x86_64-linux"
+    name
+  ];
 in
 {
   den.hosts.x86_64-linux.${name} = {
@@ -94,21 +98,26 @@ in
               };
               nix-remote-builder.files.key.path = "/run/secrets/phoenix-candidate/remote-builder-key";
               synology-shares.files.credentials.path = "/run/secrets/phoenix-candidate/synology-credentials";
-              workstation-user-secrets.files = lib.genAttrs [
-                "anthropic-api-key"
-                "atuin-key-b64"
-                "bitwarden-data"
-                "deepseek-api-key"
-                "gemini-api-key"
-                "github-token"
-                "grok-api-key"
-                "oauth-creds"
-                "openai-api-key"
-                "opencode-zen-api-key"
-                "openrouter-api-key"
-                "rclone-conf"
-                "z-ai-api-key"
-              ] (name: { path = "/run/secrets/phoenix-candidate/${name}"; });
+              workstation-user-secrets.files =
+                lib.genAttrs
+                  [
+                    "anthropic-api-key"
+                    "atuin-key-b64"
+                    "bitwarden-data"
+                    "deepseek-api-key"
+                    "gemini-api-key"
+                    "github-token"
+                    "grok-api-key"
+                    "oauth-creds"
+                    "openai-api-key"
+                    "opencode-zen-api-key"
+                    "openrouter-api-key"
+                    "rclone-conf"
+                    "z-ai-api-key"
+                  ]
+                  (name: {
+                    path = "/run/secrets/phoenix-candidate/${name}";
+                  });
             };
           }
         ];
@@ -125,6 +134,7 @@ in
     let
       host = lib.getAttrFromPath destination config.flake;
       candidate = host.config;
+      clanCandidate = config.flake.nixosConfigurations.phoenix.config;
       home = candidate.home-manager.users.deepwatrcreatur;
       inventory = import ../checks/emerald-home-inventory.nix;
       actual = inventory home;
@@ -148,31 +158,35 @@ in
         assert candidate.networking.hostName == "phoenix";
         assert candidate.system.stateVersion == "25.05";
         assert candidate.boot.loader.limine.enable;
-        assert candidate.boot.loader.limine.biosDevice == "/dev/disk/by-id/nvme-TEAM_TM8FPK002T_TPBF2401080020300197";
+        assert
+          candidate.boot.loader.limine.biosDevice
+          == "/dev/disk/by-id/nvme-TEAM_TM8FPK002T_TPBF2401080020300197";
         assert candidate.boot.loader.limine.partitionIndex == 3;
         assert candidate.boot.loader.limine.efiInstallAsRemovable;
         assert candidate.boot.loader.limine.biosSupport;
         assert !candidate.boot.loader.efi.canTouchEfiVariables;
-        assert builtins.sort builtins.lessThan candidate.boot.kernelModules == [
-          "amdgpu"
-          "atkbd"
-          "br_netfilter"
-          "bridge"
-          "ctr"
-          "kvm-amd"
-          "loop"
-          "veth"
-          "xt_nat"
-        ];
-        assert builtins.sort builtins.lessThan candidate.boot.kernelParams == [
-          "amdgpu.gfxoff=0"
-          "amdgpu.runpm=0"
-          "loglevel=4"
-          "lsm=landlock,yama,bpf"
-          "pcie_aspm=off"
-          "root=fstab"
-          "usbcore.autosuspend=-1"
-        ];
+        assert
+          builtins.sort builtins.lessThan candidate.boot.kernelModules == [
+            "amdgpu"
+            "atkbd"
+            "br_netfilter"
+            "bridge"
+            "ctr"
+            "kvm-amd"
+            "loop"
+            "veth"
+            "xt_nat"
+          ];
+        assert
+          builtins.sort builtins.lessThan candidate.boot.kernelParams == [
+            "amdgpu.gfxoff=0"
+            "amdgpu.runpm=0"
+            "loglevel=4"
+            "lsm=landlock,yama,bpf"
+            "pcie_aspm=off"
+            "root=fstab"
+            "usbcore.autosuspend=-1"
+          ];
         assert candidate.fileSystems."/".device == "/dev/disk/by-partlabel/disk-main-root";
         assert candidate.fileSystems."/".fsType == "btrfs";
         assert candidate.fileSystems."/boot".device == "/dev/disk/by-partlabel/disk-main-ESP";
@@ -181,9 +195,19 @@ in
         assert candidate.fileSystems."/data".device == "/dev/disk/by-label/data";
         assert candidate.fileSystems."/cloud".device == "//10.10.11.88/cloud";
         assert candidate.fileSystems."/storage".device == "//10.10.11.88/storage";
-        assert lib.all (share: lib.elem "x-systemd.automount" candidate.fileSystems.${share}.options) [ "/cloud" "/storage" ];
+        assert lib.all (share: lib.elem "x-systemd.automount" candidate.fileSystems.${share}.options) [
+          "/cloud"
+          "/storage"
+        ];
         assert candidate.networking.networkmanager.enable;
-        assert candidate.networking.firewall.allowedTCPPorts == [ 22 631 3773 5201 24800 ];
+        assert
+          candidate.networking.firewall.allowedTCPPorts == [
+            22
+            631
+            3773
+            5201
+            24800
+          ];
         assert candidate.services.tailscale.enable;
         assert candidate.services.printing.enable;
         assert candidate.programs.niri.enable;
@@ -193,7 +217,8 @@ in
         assert candidate.services.flatpak.enable;
         assert (builtins.head candidate.nix.buildMachines).hostName == "10.10.11.55";
         assert candidate.nix.settings.netrc-file == "/run/secrets/phoenix-candidate/nix-ci-netrc";
-        assert candidate.clan.core.vars.generators.workstation-user-secrets.files.rclone-conf.path
+        assert
+          candidate.clan.core.vars.generators.workstation-user-secrets.files.rclone-conf.path
           == "/run/secrets/phoenix-candidate/rclone-conf";
         assert candidate.programs.strata.enable;
         assert home.programs.firefox.enable;
@@ -201,7 +226,22 @@ in
         assert home.programs.herdr.desktopApp.enable;
         assert home.programs.noctalia.enable;
         assert home.programs.vicinae.enable;
-        builtins.seq candidate.system.build.toplevel.drvPath
-          (pkgs.runCommand "phoenix-candidate" { } "touch $out");
+        builtins.seq candidate.system.build.toplevel.drvPath (
+          pkgs.runCommand "phoenix-candidate" { } "touch $out"
+        );
+
+      checks.phoenix-clan-candidate =
+        assert config.homelab.hosts.phoenix.clanCandidate;
+        assert !config.homelab.hosts.phoenix.migrated;
+        assert builtins.hasAttr "phoenix" config.flake.clan.inventory.machines;
+        assert clanCandidate.networking.hostName == "phoenix";
+        assert clanCandidate.system.stateVersion == "25.05";
+        assert clanCandidate.boot.loader.limine.enable;
+        assert
+          clanCandidate.boot.loader.limine.biosDevice
+          == "/dev/disk/by-id/nvme-TEAM_TM8FPK002T_TPBF2401080020300197";
+        assert clanCandidate.fileSystems."/cloud".device == "//10.10.11.88/cloud";
+        assert clanCandidate.fileSystems."/storage".device == "//10.10.11.88/storage";
+        pkgs.runCommand "phoenix-clan-candidate" { } "touch $out";
     };
 }

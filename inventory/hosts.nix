@@ -197,6 +197,9 @@
     addresses.ip = "10.10.11.92";
     sshUser = "deepwatrcreatur";
     description = "Phoenix workstation";
+    # WHY: expose an offline Clan candidate while Unified remains authoritative;
+    # the fleet-deploy dispatcher only accepts hosts marked migrated.
+    clanCandidate = true;
     roles = [
       "remoteBuilderClient"
       "desktop"

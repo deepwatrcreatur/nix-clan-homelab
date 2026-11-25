@@ -186,11 +186,14 @@ networking, storage, and boot remain out of scope.
 ## Inventory
 
 Edit `inventory/hosts.nix` for host addresses, SSH settings, and roles. The
-typed `homelab.hosts` option lives in `modules/inventory.nix`. Set `migrated`
-when a host is ready for den and Clan. Clan currently imports x86_64 NixOS
-hosts and uses their roles as inventory tags. Clan and deploy-rs share the
-SSH user and endpoint from inventory. For `clan-spike`, that endpoint is its
-DHCP-registered name, `clan-spike.deepwatercreature.com`.
+typed `homelab.hosts` option lives in `modules/inventory.nix`. Set
+`clanCandidate` to compose an offline Clan candidate while Unified remains
+authoritative and the fleet deployment dispatcher refuses the host. Set
+`migrated` only when the host is ready for den, Clan, and dispatcher-based
+deployment. Clan currently imports x86_64 NixOS hosts and uses their roles as
+inventory tags. Clan and deploy-rs share the SSH user and endpoint from
+inventory. For `clan-spike`, that endpoint is its DHCP-registered name,
+`clan-spike.deepwatercreature.com`.
 
 The `inventory-matches-unified` flake check imports the pinned unified data
 files and compares active hosts and role memberships. Archived `ruby` and
