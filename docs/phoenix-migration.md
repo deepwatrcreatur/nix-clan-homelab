@@ -35,22 +35,26 @@ or decrypted. They make the candidate unsuitable for deployment. A live
 Phoenix configuration must use actual Clan var paths and pass `clan-admin vars
 check phoenix` before deployment.
 
-The Clan machine configuration currently cannot evaluate its final toplevel:
-Clan reports that the `openssh` generator's `ssh.id_ed25519.pub` file is
-missing and recommends `clan vars generate`. That generated host-key var and
-all other vars are outside the offline wiring bead. The `phoenix-clan-candidate`
-check therefore validates inventory and machine options without forcing the
-secret-dependent toplevel. Do not treat it as ready to deploy.
+Phoenix now has a Clan machine age identity and state-version var. Generating
+the machine identity added Phoenix as a recipient to the existing shared
+vars declared by its aspects: console password hashes, cache credentials,
+builder key, Synology credentials, and all 13 workstation credentials. Clan
+re-encrypted those files for the new recipient; no plaintext files were
+written.
 
-The required console password, cache netrc and Attic token, Emerald builder
-SSH key, Synology credentials, and 13 workstation credentials are Clan vars
-with shared generators. The workstation credential values are already
-imported under `vars/shared/workstation-user-secrets`; `vars check lattitude`
-reports them present and valid. Phoenix is in the Clan inventory but its vars
-have not been generated or recipient-checked. The missing `openssh` public-key
-file currently blocks toplevel evaluation. No vars were generated or
-decrypted; the maintainer must coordinate host-key generation, recipient
-checks and first live delivery. The GPG recovery key is not part of this
+Phoenix's existing Ed25519 SSH host private key was streamed from the live
+host into `clan-admin vars set`, then the public key and host certificate were
+stored as Clan vars. The Clan key fingerprint matches the key on Phoenix and
+the key currently presented by SSH. `clan-admin vars check phoenix` reports
+all vars present and valid, and the real Phoenix toplevel evaluates. No vars
+were uploaded to Phoenix, and it has not been deployed or activated.
+
+Unified also installs a stable root SSH client key at
+`/root/.ssh/id_ed25519`. Phoenix's live key fingerprint matches Unified's
+`root-stable-identity.pub`. The `root-ssh-identity` aspect now declares a
+shared Clan var and exposes it at the same path with root-only permissions.
+Its existing private key was streamed into the encrypted Clan var; no
+plaintext file was written. The GPG recovery key is not part of this
 migration.
 
 The source WhiteSur configuration names a wallpaper under the old Unified
@@ -107,8 +111,8 @@ review every changed name, then update
 
 This work does not mark Phoenix migrated, change Unified's authoritative host
 config, activate a generation, change boot defaults, reboot, restart services,
-or decrypt secrets. Resolve or accept the listed desktop and package
-differences and coordinate the missing Clan vars before migrating Phoenix.
+or deliver Clan vars to Phoenix. Resolve or accept the listed desktop and
+package differences before migrating Phoenix.
 
 Build-only validation:
 
@@ -118,10 +122,8 @@ nix build --no-link --max-jobs 2 --cores 2 .#legacyPackages.x86_64-linux.phoenix
 ```
 
 The focused Phoenix checks also pass alongside
-`checks.x86_64-linux.emerald-home-parity`. The full `nix flake check
---no-build` evaluates those checks and proceeds through the Lattitude,
-PVE-Strix, and PVE-Rog checks, then stops while evaluating the real
-`nixosConfigurations.phoenix`: Clan's OpenSSH generator has no generated
-`ssh.id_ed25519.pub` var. This is the documented vars-generation blocker,
-outside the offline wiring bead. The fixture toplevel build below does not
-exercise or satisfy that real Clan machine requirement.
+`checks.x86_64-linux.emerald-home-parity`. After generating Phoenix's machine
+vars, `nix flake check --no-build` passes, including evaluation of the real
+Phoenix toplevel. It reports the repo's existing `boot.zfs.forceImportRoot`
+and unknown-output warnings. The fixture toplevel build does not exercise or
+satisfy Clan machine var requirements.

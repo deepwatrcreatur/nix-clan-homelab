@@ -24,9 +24,9 @@ commit before pushing.
 
 | Domain | Aspects | Vars | Status |
 | --- | --- | --- | --- |
-| cache/builder | `nix-cache-auth`, `nix-ci-cache-auth`, `remote-builder-client` | `nix-cache-auth/{attic-token,netrc}`, `nix-ci-cache-auth/netrc`, `nix-remote-builder/key` | existing hosts imported; router token scope decision pending in `nch-sny.38`; builder keys remain off routers |
-| Synology CIFS | `synology-shares` | `synology-shares/credentials` | imported from unified; Lattitude recipient added for candidate; Emerald remains admin-only |
-| user/operator | `console-password` (per clan host), `workstation-user-secrets` | `console-password/{root,deepwatrcreatur}` (yescrypt hashes); 13 workstation credentials under `vars/shared/workstation-user-secrets` | Credential values are imported as encrypted Clan vars; `clan vars check lattitude` reports all vars present and valid. Lattitude is the only workstation recipient so far; live home delivery and state preservation remain in `nch-sny.37.7`. |
+| cache/builder | `nix-cache-auth`, `nix-ci-cache-auth`, `remote-builder-client` | `nix-cache-auth/{attic-token,netrc}`, `nix-ci-cache-auth/netrc`, `nix-remote-builder/key` | Existing values are imported; Phoenix is now a recipient for the vars it declares. Router token scope decision remains in `nch-sny.38`; builder keys remain off routers. |
+| Synology CIFS | `synology-shares` | `synology-shares/credentials` | Imported from unified; Lattitude and Phoenix are recipients. Emerald remains admin-only. |
+| user/operator | `console-password` (per clan host), `workstation-user-secrets`, `root-ssh-identity` | `console-password/{root,deepwatrcreatur}` (yescrypt hashes); 13 workstation credentials under `vars/shared/workstation-user-secrets`; stable root client key under `vars/shared/root-ssh-identity` | Values are encrypted Clan vars; Lattitude and Phoenix are recipients for their declared vars. No live host has read the workstation credentials. Root SSH identity is preserved for Phoenix, with no Clan vars delivered yet. Workstation credential delivery and state preservation remain in `nch-sny.37.7`. |
 | homeserver services | | | todo |
 | router services | | | todo |
 
@@ -42,11 +42,11 @@ at the path expected by `gh-fnox`. Enable the aspect only on a workstation
 selected for the migration or its coordinated verification.
 
 Imported values are stored under `vars/shared/workstation-user-secrets`.
-Lattitude now declares this aspect, and its machine key is a recipient for
-these encrypted vars. No live machine has read them. Emerald remains
-admin-only. Live verification on each host still needs the maintainer's
-coordination and covers credential delivery and preservation of existing
-application state.
+Lattitude and Phoenix declare this aspect, and both machine keys are
+recipients for these encrypted vars. No live machine has read them. Emerald
+remains admin-only. Live verification on each host still needs the
+maintainer's coordination and covers credential delivery and preservation of
+existing application state.
 
 The GPG private key remains in the operator's cloud backup for optional
 recovery. Technitium router automation creates its own API token from the

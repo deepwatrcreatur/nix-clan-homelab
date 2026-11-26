@@ -32,6 +32,7 @@ in
             default = { };
           };
           config.clan.core.vars.generators = {
+            root-ssh-identity.files.key.path = "/run/secrets/phoenix-candidate/root-ssh-identity/key";
             console-password.files = {
               root.path = "/run/secrets/phoenix-candidate/root-password";
               deepwatrcreatur.path = "/run/secrets/phoenix-candidate/user-password";

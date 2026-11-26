@@ -13,6 +13,7 @@
       hardware-printer-phoenix-m477
       btrfs-snapper
       safe-mode
+      root-ssh-identity
       synology-shares
       workstation-user-secrets
       rclone-client
