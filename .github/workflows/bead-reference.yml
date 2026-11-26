@@ -9,7 +9,10 @@ on:
 permissions:
   contents: read
 jobs:
-  check:
+  # INVARIANT: `bead-reference` is a required status check on main (branch
+  # protection); renaming this job breaks merging until the rule is updated.
+  bead-reference:
+    name: bead-reference
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
