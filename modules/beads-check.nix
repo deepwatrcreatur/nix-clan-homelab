@@ -16,6 +16,13 @@
         assert !builtins.pathExists ../.beads;
         pkgs.runCommand "no-beads-on-main" { } "touch $out";
 
+      # WHY: the Bead: line rule runs in GitHub Actions (it needs the PR
+      # description); its parsing is tested here.
+      checks.bead-reference = pkgs.runCommand "bead-reference" { nativeBuildInputs = [ pkgs.python3 ]; } ''
+        python3 ${../checks/bead-reference.py} ${../scripts/bead-reference.py}
+        touch $out
+      '';
+
       # From a source checkout with no .beads/, beads-q reads the queue branch
       # and pushes a write to it (the Clan homes' only way to reach the queue).
       checks.beads-q-smoke =

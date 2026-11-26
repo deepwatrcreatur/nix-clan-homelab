@@ -1,0 +1,24 @@
+# Every PR to main names its claimed bead, or says why it has none
+# (AGENTS.md "Work queue"; docs/discussions/01-beads-rust-task-tracker.md).
+name: bead reference
+on:
+  pull_request:
+    branches: [main]
+    # WHY: `edited` re-runs the check when the description is fixed.
+    types: [opened, edited, synchronize, reopened]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: beads-queue
+          path: queue
+      # SECURITY: the description is passed through the environment, never
+      # interpolated into the script.
+      - env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: printf '%s' "$PR_BODY" | python3 scripts/bead-reference.py queue/.beads/issues.jsonl
