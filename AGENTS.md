@@ -30,8 +30,11 @@ beads-q close <id> --reason "<what was done, PR link>" --actor <you>
   (`~/flakes-worktrees/nix-clan-homelab/beads`) to the remote tip, runs the
   command, and pushes writes; a claim someone else already holds fails with
   `CLAIM_CONFLICT` (exit 4): pick other work.
-- Claim before starting. Put `Bead: <id>` in the PR description. Close the
-  bead after the PR merges, citing the PR.
+- Claim before starting. Put `Bead: <id>` on its own line in the PR
+  description (several ids allowed), or `Bead: none (<reason>)` for work
+  without one. The `bead reference` check fails otherwise, and when a named
+  bead is not claimed (`in_progress`) on `beads-queue`; editing the
+  description re-runs it. Close the bead after the PR merges, citing the PR.
 - Feature branches and PRs never touch `.beads/`; `checks.no-beads-on-main`
   fails if it reappears on `main`. Don't edit or run `git` in the queue
   worktree by hand, and never force-push `beads-queue`.
