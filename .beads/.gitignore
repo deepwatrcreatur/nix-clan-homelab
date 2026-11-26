@@ -40,3 +40,12 @@ redirect
 .bv.lock
 # Local rebuild-failure copies of the database
 .br_recovery/
+
+# beads_rust >= 0.7 (FrankenSQLite) sidecars and recovery state
+*.db-wal*
+*-fsqlite-ns-gate
+*-fsqlite-ns-use
+*.vacuum-wal-cert*
+*.fsqlite-migration-state
+.br-wal-index-*/
+.write.lock
