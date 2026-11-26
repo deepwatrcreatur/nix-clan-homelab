@@ -8,6 +8,13 @@ let
   deployableHosts = lib.filterAttrs (
     name: host: host.migrated && !host.archived && builtins.hasAttr name config.flake.clan.machines
   ) config.homelab.hosts;
+  # The hosts fleet-status reads, with the same SSH target and host key alias.
+  statusHosts = builtins.toJSON (
+    lib.mapAttrs (name: host: {
+      target = "${host.sshUser}@${host.sshTarget}";
+      alias = "${name}.${config.homelab.domain}";
+    }) deployableHosts
+  );
   backendCases = lib.concatStringsSep "\n" (
     lib.mapAttrsToList (name: host: ''
       ${lib.escapeShellArg name})
@@ -98,6 +105,21 @@ in
           exec "''${command[@]}"
         '';
       };
+
+      # Read-only: which hosts lag this checkout, need a reboot or have failed
+      # units (nch-a9a.3). ssh and nix come from the caller's PATH.
+      packages.fleet-status = pkgs.writeShellApplication {
+        name = "fleet-status";
+        text = ''
+          FLEET_STATUS_HOSTS=${lib.escapeShellArg statusHosts} \
+            exec ${lib.getExe pkgs.python3} ${../scripts/fleet-status.py} "$@"
+        '';
+      };
+
+      checks.fleet-status = pkgs.runCommand "fleet-status" { nativeBuildInputs = [ pkgs.python3 ]; } ''
+        python3 ${../checks/fleet-status.py} ${../scripts/fleet-status.py}
+        touch $out
+      '';
 
       checks.closure-diff = pkgs.runCommand "closure-diff" { nativeBuildInputs = [ pkgs.python3 ]; } ''
         python3 ${../checks/closure-diff.py} ${../scripts/closure-diff.py}
