@@ -2,8 +2,8 @@
   perSystem =
     { pkgs, ... }:
     {
-      # UPSTREAM: fixed in beads_rust v0.7.0 (#486, #512); delete once no machine
-      # runs 0.1.45 (nch-a9a.7).
+      # WHY: kept after beads_rust v0.7.0 fixed import (#486, #512): it is the
+      # only guard against writes that bypass beads-q. docs/discussions/01-beads-rust-task-tracker.md
       # WHY: parallel branches mint the same bead or comment ID from their own
       # SQLite counters; git merges both, and fresh clones then fail to import.
       checks.beads-integrity = pkgs.runCommand "beads-integrity" {

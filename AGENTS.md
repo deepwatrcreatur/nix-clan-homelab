@@ -62,8 +62,9 @@ beads-rust sync --flush-only && git add -- .beads/issues.jsonl   # before every 
   the same ID; same-parent children usually conflict in git (redo as above).
   Comment IDs also collide, often without a git conflict. beads-rust 0.7
   renumbers those on import, but 0.1.45 clones cannot import the file, so
-  `checks.beads-integrity` still fails on duplicate issue or comment IDs and
-  dangling dependencies until every machine runs 0.7 (`nch-a9a.7`). If it
+  `checks.beads-integrity` fails on duplicate issue or comment IDs and
+  dangling dependencies, and stays as a permanent guard
+  ([discussion 01](docs/discussions/01-beads-rust-task-tracker.md)). If it
   fails after a rebase, renumber your own record, not the one on `main`.
 - If acceptance needs a deployed host, put those checks in the deployment or
   verification bead, not in a bead that bead depends on.
