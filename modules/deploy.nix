@@ -79,10 +79,8 @@ in
             toplevel=$(nix build --no-link --print-out-paths \
               ".#nixosConfigurations.$host.config.system.build.toplevel")
             nix-store --query --requisites "$toplevel" > "$workdir/new"
-            closure-diff "$workdir/old" "$workdir/new"
-            if [[ $booted_kernel != "$(readlink -f "$toplevel/kernel")" ]]; then
-              echo "Kernel differs from the booted one: a reboot is needed to run it."
-            fi
+            closure-diff "$workdir/old" "$workdir/new" \
+              "$booted_kernel" "$(readlink -f "$toplevel/kernel")"
             exit 0
           fi
 
