@@ -9,12 +9,16 @@ but `migrated` remains false and the fleet deployment dispatcher rejects it.
 Unified remains authoritative, and the comparison fixture is not a deployment
 target.
 
-`modules/phoenix-candidate-check.nix` composes the ported workstation base,
-Niri/Noctalia/COSMIC fallback, networking, media, printer, snapshot, safe-mode,
-builder, cache, share, developer, desktop and user-secret aspects. The Phoenix
-disk, hardware and networking modules are copied into `machines/`. WhiteSur
-desktop settings are ported into `modules/_hm/workstation-desktop/` and its
-upstream inputs are pinned to the Unified revisions.
+`modules/hosts/phoenix.nix` is shared by the Clan machine and the
+`legacyPackages.x86_64-linux.phoenix-candidate` fixture, which adds inert
+secret paths for evaluation. The shared aspect composes the ported workstation
+base, Niri/Noctalia/COSMIC fallback, networking, media, printer, snapshot,
+safe-mode, builder, cache, share, developer, desktop and user-secret aspects.
+The Phoenix disk, hardware and networking modules are copied into `machines/`.
+WhiteSur desktop settings are ported into `modules/_hm/workstation-desktop/`
+and its upstream inputs are pinned to the Unified revisions. The OpenLogi
+NixOS module now points directly to the `packaging` subflake at the previously
+locked revision, avoiding its deprecated root-flake alias.
 
 The check asserts the Phoenix hostname, Limine device and partition, scratch
 and data filesystems, Synology share mounts, NetworkManager firewall ports,
@@ -62,20 +66,19 @@ both phone-mirroring services. CIFS mount options match except for the
 credential path, which is a runtime Clan var in the live candidate and an
 inert fixture path during this check.
 
-The logical system package inventory has 327 names in Unified and 321 in the
-candidate. The candidate is missing `graphite-cli`, `iodyne`, `lazyrsync`,
-`lightpanda`, `nixbit` and `wezterm`; `command-not-found` is extra. These are
-reviewed differences to resolve or explicitly retain before Phoenix is marked
-migrated.
+The logical system package inventory has 327 names in both Unified and the
+candidate after restoring `graphite-cli`, `iodyne`, `lazyrsync`,
+`lightpanda`, `nixbit` and `wezterm`. NixOS's `command-not-found` helper is
+the one candidate-only package and remains enabled.
 
 The Home Manager snapshot has 102 file targets, 184 package names and 57
-enabled programs in Unified. The candidate has 103 file targets, 184 package
-names and 55 enabled programs. It currently records these reviewed differences:
+enabled programs in Unified. The candidate has 104 file targets, 184 package
+names and 55 enabled programs. It currently records these differences:
 
 | Area | Missing from candidate | Extra in candidate |
 |---|---|---|
-| Files | `.config/wezterm/wezterm.lua` | `.config/fnox/clan-defaults.toml`, `.config/git/github-token` |
-| Packages | `install-brew-packages` | `git-ssh-doctor`, `vivaldi` |
+| Files | — | `.config/fnox/clan-defaults.toml`, `.config/git/github-token` |
+| Packages | `beads-q`, `install-brew-packages` | `git-ssh-doctor`, `vivaldi` |
 | Enabled programs | `linuxbrew`, `ssh-known-hosts-manager` | — |
 
 Regenerate the Unified reference only after reviewing an intentional profile
@@ -114,10 +117,11 @@ nix build --no-link --max-jobs 2 --cores 2 .#checks.x86_64-linux.phoenix-home-pa
 nix build --no-link --max-jobs 2 --cores 2 .#legacyPackages.x86_64-linux.phoenix-candidate.config.system.build.toplevel
 ```
 
-`nix develop -c clan-admin vars check lattitude` reports all Lattitude vars
-present and valid. A later sequential `nix flake check --no-build` also
-evaluated `checks.x86_64-linux.lattitude-host` successfully and proceeded to
-`checks.x86_64-linux.pve-strix-home-parity`, where it fails while evaluating
-fnox's generated config because the `fnox-config-template.toml.drv` store path
-is invalid. That broader check failure is unrelated to Lattitude's secrets;
-the Phoenix checks are run directly so it does not hide their result.
+The focused Phoenix checks also pass alongside
+`checks.x86_64-linux.emerald-home-parity`. The full `nix flake check
+--no-build` evaluates those checks and proceeds through the Lattitude,
+PVE-Strix, and PVE-Rog checks, then stops while evaluating the real
+`nixosConfigurations.phoenix`: Clan's OpenSSH generator has no generated
+`ssh.id_ed25519.pub` var. This is the documented vars-generation blocker,
+outside the offline wiring bead. The fixture toplevel build below does not
+exercise or satisfy that real Clan machine requirement.

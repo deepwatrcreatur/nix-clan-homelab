@@ -35,6 +35,29 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # WHY: keep Phoenix's package set aligned with the Unified revision used
+    # by its reviewed system inventory until the Phoenix migration is complete.
+    nixbit = {
+      url = "github:pbek/nixbit/19836d5382381190fbd1ea3190fb74e30f332782";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    nix-iodyne = {
+      url = "github:deepwatrcreatur/nix-iodyne/26d7d9b86781b5f7186e2dba203725296e27ffa1";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-utils.follows = "flake-utils";
+    };
+
+    nix-lazyrsync = {
+      url = "github:deepwatrcreatur/nix-lazyrsync/b863b09c3d3057afda1d54b13ea74db40bb92b6f";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    nix-lightpanda = {
+      url = "github:deepwatrcreatur/nix-lightpanda/e8f2208f5b5446c40db43b838d47307a1ba808e6";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     nix-omarchy-screen-mirroring = {
       url = "github:deepwatrcreatur/nix-omarchy-screen-mirroring/f7f91701ebd382fb3e05d84598b8e09f8996bde7";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -90,7 +113,7 @@
     };
 
     openlogi = {
-      url = "github:AprilNEA/OpenLogi";
+      url = "github:AprilNEA/OpenLogi/9ca7ef0cbd1f4577ffdc338f8288f8c3a410f013?dir=packaging";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 

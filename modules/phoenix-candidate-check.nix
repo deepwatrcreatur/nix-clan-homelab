@@ -20,108 +20,52 @@ in
   };
 
   den.aspects.${name} = {
-    includes = with den.aspects; [
-      nixos-base
-      console-password
-      nix-cache-auth
-      remote-builder-client
-      workstation-desktop
-      desktop-niri-cosmic-fallback
-      desktop-network-shares
-      desktop-media-players
-      hardware-printer-phoenix-m477
-      btrfs-snapper
-      safe-mode
-      synology-shares
-      workstation-user-secrets
-      rclone-client
-      vpn-unlimited-client
-      mega-vpn-client
-      workstation-herdr-mobile
-      orca-ide
-      t3code
-    ];
+    includes = [ den.aspects.phoenix ];
 
-    provides.deepwatrcreatur.includes = with den.aspects; [
-      user-workstation-shell
-      user-workstation-developer
-      user-workstation-desktop
-      user-workstation-whitesur
-    ];
-
-    provides.deepwatrcreatur.homeManager.home.stateVersion = "25.11";
-
-    nixos =
-      { lib, ... }:
-      {
-        imports = [
-          inputs.clan-core.inputs.disko.nixosModules.disko
-          inputs.strata.nixosModules.default
-          inputs.nix-omarchy-screen-mirroring.nixosModules.default
-          inputs.nix-omarchy-iphone-mirror.nixosModules.default
-          ../machines/phoenix-disko.nix
-          ../machines/phoenix-hardware.nix
-          ../machines/phoenix-networking.nix
-          {
-            services.omarchy-screen-mirroring.enable = true;
-            services.omarchy-iphone-mirror.enable = true;
-          }
-          {
-            boot.loader = {
-              systemd-boot.enable = lib.mkForce false;
-              limine = {
-                enable = lib.mkForce true;
-                efiInstallAsRemovable = true;
-                biosSupport = true;
-                biosDevice = "/dev/disk/by-id/nvme-TEAM_TM8FPK002T_TPBF2401080020300197";
-                partitionIndex = 3;
-              };
-              efi.canTouchEfiVariables = lib.mkForce false;
+    nixos = { lib, ... }: {
+      imports = [
+        {
+          # WHY: this fixture is not a Clan machine. Inert paths let the
+          # candidate evaluate without reading or decrypting credentials.
+          options.clan = lib.mkOption {
+            type = lib.types.anything;
+            default = { };
+          };
+          config.clan.core.vars.generators = {
+            console-password.files = {
+              root.path = "/run/secrets/phoenix-candidate/root-password";
+              deepwatrcreatur.path = "/run/secrets/phoenix-candidate/user-password";
             };
-          }
-          {
-            # WHY: this legacyPackages fixture is not a Clan machine. Give
-            # secret consumers inert runtime paths so evaluation never reads
-            # or decrypts credentials; the fixture is intentionally not deployable.
-            options.clan = lib.mkOption {
-              type = lib.types.anything;
-              default = { };
+            nix-cache-auth.files = {
+              attic-token.path = "/run/secrets/phoenix-candidate/attic-token";
+              netrc.path = "/run/secrets/phoenix-candidate/nix-ci-netrc";
             };
-            config.clan.core.vars.generators = {
-              console-password.files = {
-                root.path = "/run/secrets/phoenix-candidate/root-password";
-                deepwatrcreatur.path = "/run/secrets/phoenix-candidate/user-password";
-              };
-              nix-cache-auth.files = {
-                attic-token.path = "/run/secrets/phoenix-candidate/attic-token";
-                netrc.path = "/run/secrets/phoenix-candidate/nix-ci-netrc";
-              };
-              nix-remote-builder.files.key.path = "/run/secrets/phoenix-candidate/remote-builder-key";
-              synology-shares.files.credentials.path = "/run/secrets/phoenix-candidate/synology-credentials";
-              workstation-user-secrets.files =
-                lib.genAttrs
-                  [
-                    "anthropic-api-key"
-                    "atuin-key-b64"
-                    "bitwarden-data"
-                    "deepseek-api-key"
-                    "gemini-api-key"
-                    "github-token"
-                    "grok-api-key"
-                    "oauth-creds"
-                    "openai-api-key"
-                    "opencode-zen-api-key"
-                    "openrouter-api-key"
-                    "rclone-conf"
-                    "z-ai-api-key"
-                  ]
-                  (name: {
-                    path = "/run/secrets/phoenix-candidate/${name}";
-                  });
-            };
-          }
-        ];
-      };
+            nix-remote-builder.files.key.path = "/run/secrets/phoenix-candidate/remote-builder-key";
+            synology-shares.files.credentials.path = "/run/secrets/phoenix-candidate/synology-credentials";
+            workstation-user-secrets.files =
+              lib.genAttrs
+                [
+                  "anthropic-api-key"
+                  "atuin-key-b64"
+                  "bitwarden-data"
+                  "deepseek-api-key"
+                  "gemini-api-key"
+                  "github-token"
+                  "grok-api-key"
+                  "oauth-creds"
+                  "openai-api-key"
+                  "opencode-zen-api-key"
+                  "openrouter-api-key"
+                  "rclone-conf"
+                  "z-ai-api-key"
+                ]
+                (name: {
+                  path = "/run/secrets/phoenix-candidate/${name}";
+                });
+          };
+        }
+      ];
+    };
   };
 
   den.aspects.user-workstation-whitesur.homeManager.imports = [
