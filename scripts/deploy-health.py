@@ -4,11 +4,11 @@ Usage:
   deploy-health before ALIAS TARGET > SNAPSHOT
   deploy-health after ALIAS TARGET SNAPSHOT
 
-`before` records the system profile generation and the failed units.
-`after` opens a new SSH connection (so a deploy that broke SSH is caught),
-waits for systemd to leave "starting", and fails if a unit failed that was
-not failed before. On failure it prints the command that returns the host
-to the generation recorded by `before`; it never runs it.
+`before` records the running system and the failed units. `after` opens
+a new SSH connection, never a shared one (so a deploy that broke SSH is
+caught), waits for systemd to leave "starting", and fails if a unit failed
+that was not failed before. On failure it prints the command that returns
+the host to the system recorded by `before`; it never runs it.
 
 Exit status: 0 healthy; 1 unhealthy or unreachable; 2 bad usage.
 """
@@ -23,7 +23,7 @@ import time
 
 REMOTE = r"""
 PATH=/run/current-system/sw/bin
-echo "profile=$(readlink /nix/var/nix/profiles/system)"
+echo "system=$(readlink -f /run/current-system)"
 echo "state=$(systemctl is-system-running)"
 # GOTCHA: test systemctl's own status; inside a pipeline a failed query
 # would look like "no failed units".
@@ -33,7 +33,7 @@ else
   echo "failed_query=error"
 fi
 """
-GENERATION = re.compile(r"^system-(\d+)-link$")
+SYSTEM = re.compile(r"^/nix/store/[0-9a-z]{32}-[^/]+$")
 # WHY: activation restarts units; systemd reports "starting" until jobs drain.
 SETTLE_SECONDS = int(os.environ.get("DEPLOY_HEALTH_SETTLE", "60"))
 POLL_SECONDS = float(os.environ.get("DEPLOY_HEALTH_POLL", "3"))
@@ -46,6 +46,10 @@ def read(alias, target):
         "ssh",
         "-o", "BatchMode=yes",
         "-o", "ConnectTimeout=5",
+        # WHY: the workstations multiplex SSH (ControlPersist 15m); a shared
+        # connection from before the deploy would hide a lockout.
+        "-o", "ControlMaster=no",
+        "-o", "ControlPath=none",
         "-o", f"HostKeyAlias={alias}",
         target,
         REMOTE,
@@ -59,18 +63,21 @@ def read(alias, target):
     facts = dict(line.split("=", 1) for line in done.stdout.splitlines() if "=" in line)
     if "failed_query" in facts or "failed" not in facts:
         raise RuntimeError("systemctl could not list failed units")
-    match = GENERATION.match(facts.get("profile", ""))
+    # WHY: the running system, not the profile: deploy-rs can roll the
+    # profile back and leave the new system running (modules/deploy-rs.nix),
+    # and a host booted from an older menu entry runs something else again.
+    system = facts.get("system", "")
     return {
-        "generation": int(match[1]) if match else None,
+        "system": system if SYSTEM.match(system) else None,
         "state": facts.get("state", ""),
         "failed": sorted(u for u in facts["failed"].split(",") if u),
     }
 
 
-def rollback_command(target, alias, generation):
+def rollback_command(target, alias, system):
     remote = (
-        f"sudo nix-env -p /nix/var/nix/profiles/system --switch-generation {generation}"
-        " && sudo /nix/var/nix/profiles/system/bin/switch-to-configuration switch"
+        f"sudo nix-env -p /nix/var/nix/profiles/system --set {system}"
+        f" && sudo {system}/bin/switch-to-configuration switch"
     )
     return f"ssh -o HostKeyAlias={shlex.quote(alias)} {shlex.quote(target)} {shlex.quote(remote)}"
 
@@ -80,8 +87,8 @@ def verdict(before, after):
     new = sorted(set(after["failed"]) - set(before["failed"]))
     old = sorted(set(after["failed"]) & set(before["failed"]))
     lines = []
-    if after["generation"] == before["generation"]:
-        lines.append(f"System profile still at generation {before['generation']}: nothing was switched.")
+    if after["system"] == before["system"]:
+        lines.append("The running system is unchanged: nothing was switched.")
     if new:
         lines.append(f"Failed since the deploy: {', '.join(new)}")
     if old:
@@ -113,9 +120,10 @@ def main(argv):
         except RuntimeError as error:
             after = {"error": str(error)}
         settling = after.get("state") in ("starting", "initializing")
-        if not settling or time.monotonic() >= deadline:
+        remaining = deadline - time.monotonic()
+        if not settling or remaining <= 0:
             break
-        time.sleep(POLL_SECONDS)
+        time.sleep(min(POLL_SECONDS, remaining))
     if "error" in after:
         healthy, lines = False, [f"Cannot reach the host after the deploy: {after['error']}"]
     else:
@@ -123,10 +131,10 @@ def main(argv):
     print(f"Health check: {'OK' if healthy else 'FAILED'}")
     for line in lines:
         print(f"  {line}")
-    switched = after.get("generation", "unknown") != before.get("generation")
-    if not healthy and switched and before.get("generation") is not None:
-        print(f"To return to generation {before['generation']} (not run automatically):")
-        print(f"  {rollback_command(target, alias, before['generation'])}")
+    switched = after.get("system", "unknown") != before.get("system")
+    if not healthy and switched and before.get("system"):
+        print(f"To return to {before['system']} (not run automatically):")
+        print(f"  {rollback_command(target, alias, before['system'])}")
     return 0 if healthy else 1
 
 

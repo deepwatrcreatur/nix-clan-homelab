@@ -78,10 +78,10 @@ locally and compares it with the list of store paths the host is running
 list over SSH and changes nothing on the host.
 
 After deploying, `fleet-deploy` checks the host over a new SSH connection.
-It waits up to 60 s for systemd to settle and fails if a unit failed that
+It never reuses a shared SSH connection, waits up to 60 s for systemd to settle and fails if a unit failed that
 was not already failing before the deploy, if systemd is not running, or if
 the host cannot be reached. On failure it prints the command that returns
-the host to its previous generation, and never runs it. It also refuses to
+the host to the system it ran before, and never runs it. It also refuses to
 deploy a host it cannot read beforehand. `--no-check` skips the check.
 
 To see which hosts need attention after merges, run

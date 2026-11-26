@@ -23,32 +23,36 @@ def slurp(path):
 exec(compile(slurp(script), script, "exec"), health)
 
 
-def snap(generation=41, state="running", failed=()):
-    return {"generation": generation, "state": state, "failed": sorted(failed)}
+OLD = "/nix/store/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-nixos-system-old"
+NEW = "/nix/store/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb-nixos-system-new"
 
 
-def answer(profile="system-41-link", state="running", failed=""):
-    return f"profile={profile}\nstate={state}\nfailed={failed}\n"
+def snap(system=OLD, state="running", failed=()):
+    return {"system": system, "state": state, "failed": sorted(failed)}
+
+
+def answer(system=OLD, state="running", failed=""):
+    return f"system={system}\nstate={state}\nfailed={failed}\n"
 
 
 class VerdictTests(unittest.TestCase):
     def test_healthy(self):
-        self.assertEqual(health["verdict"](snap(), snap(42)), (True, []))
+        self.assertEqual(health["verdict"](snap(), snap(NEW)), (True, []))
 
     def test_new_failure(self):
-        ok, lines = health["verdict"](snap(), snap(42, "degraded", ["nginx.service"]))
+        ok, lines = health["verdict"](snap(), snap(NEW, "degraded", ["nginx.service"]))
         self.assertFalse(ok)
         self.assertIn("Failed since the deploy: nginx.service", lines)
 
     def test_old_failure_is_reported_not_fatal(self):
         before = snap(failed=["tailscaled-autoconnect.service"])
-        ok, lines = health["verdict"](before, snap(42, "degraded", ["tailscaled-autoconnect.service"]))
+        ok, lines = health["verdict"](before, snap(NEW, "degraded", ["tailscaled-autoconnect.service"]))
         self.assertTrue(ok)
         self.assertIn("Already failed before the deploy: tailscaled-autoconnect.service", lines)
 
     def test_bad_state(self):
         for state in ("starting", "maintenance", "stopping", "offline"):
-            self.assertFalse(health["verdict"](snap(), snap(42, state))[0], state)
+            self.assertFalse(health["verdict"](snap(), snap(NEW, state))[0], state)
 
     def test_no_switch_noted(self):
         ok, lines = health["verdict"](snap(), snap())
@@ -56,12 +60,12 @@ class VerdictTests(unittest.TestCase):
         self.assertIn("nothing was switched", lines[0])
 
     def test_rollback_command(self):
-        command = health["rollback_command"]("deepwatrcreatur@10.0.0.5", "spike.example", 41)
+        command = health["rollback_command"]("deepwatrcreatur@10.0.0.5", "spike.example", OLD)
         self.assertEqual(
             command,
             "ssh -o HostKeyAlias=spike.example deepwatrcreatur@10.0.0.5 "
-            "'sudo nix-env -p /nix/var/nix/profiles/system --switch-generation 41"
-            " && sudo /nix/var/nix/profiles/system/bin/switch-to-configuration switch'",
+            f"'sudo nix-env -p /nix/var/nix/profiles/system --set {OLD}"
+            f" && sudo {OLD}/bin/switch-to-configuration switch'",
         )
 
     def test_remote_is_read_only(self):
@@ -119,28 +123,41 @@ exit $(cat {self.dir}/deploy.rc 2>/dev/null || echo 0)
         return slurp(path) if os.path.exists(path) else ""
 
     def test_healthy_deploy(self):
-        self.queue(answer(), answer("system-42-link"))
+        self.queue(answer(), answer(NEW))
         done = self.deploy("clan-spike")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertEqual(self.deployed(), "machines update clan-spike\n")
         self.assertIn("Health check: OK", done.stdout)
 
     def test_new_failed_unit_fails_and_prints_rollback(self):
-        self.queue(answer(), answer("system-42-link", "degraded", "nginx.service"))
+        self.queue(answer(), answer(NEW, "degraded", "nginx.service"))
         done = self.deploy("clan-spike")
         self.assertEqual(done.returncode, 1)
         self.assertIn("Failed since the deploy: nginx.service", done.stdout)
-        self.assertIn("--switch-generation 41", done.stdout)
+        self.assertIn(f"--set {OLD}", done.stdout)
         # INVARIANT: the rollback is printed, not run: only the two reads went over ssh.
         self.assertEqual(slurp(os.path.join(self.dir, "ssh.count")).strip(), "2")
 
+    def test_probe_never_shares_a_connection(self):
+        self.queue(answer(), answer(NEW))
+        self.deploy("clan-spike")
+        log = slurp(os.path.join(self.dir, "ssh.log"))
+        self.assertEqual(slurp(os.path.join(self.dir, "ssh.count")).strip(), "2")
+        self.assertEqual(log.count("-o ControlMaster=no -o ControlPath=none"), 2)
+
+    def test_rollback_offered_when_profile_rolled_back_but_new_system_runs(self):
+        # deploy-rs case: the running system changed, whatever the profile says.
+        self.queue(answer(), answer(NEW, "degraded", "nginx.service"))
+        done = self.deploy("clan-spike")
+        self.assertIn(f"--set {OLD}", done.stdout)
+
     def test_waits_for_starting_to_settle(self):
-        self.queue(answer(), answer("system-42-link", "starting"), answer("system-42-link"))
+        self.queue(answer(), answer(NEW, "starting"), answer(NEW))
         done = self.deploy("clan-spike")
         self.assertEqual(done.returncode, 0, done.stdout)
 
     def test_still_starting_after_settle_time_fails(self):
-        self.queue(answer(), answer("system-42-link", "starting"))
+        self.queue(answer(), answer(NEW, "starting"))
         done = self.deploy("clan-spike")
         self.assertEqual(done.returncode, 1)
         self.assertIn("systemd state: starting", done.stdout)
@@ -150,7 +167,7 @@ exit $(cat {self.dir}/deploy.rc 2>/dev/null || echo 0)
         done = self.deploy("clan-spike")
         self.assertEqual(done.returncode, 1)
         self.assertIn("Cannot reach the host after the deploy", done.stdout)
-        self.assertIn("--switch-generation 41", done.stdout)
+        self.assertIn(f"--set {OLD}", done.stdout)
 
     def test_unreachable_before_does_not_deploy(self):
         self.queue(None)
