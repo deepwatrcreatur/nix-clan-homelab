@@ -5,6 +5,7 @@
     let
       home = config.home.homeDirectory;
       system = pkgs.stdenv.hostPlatform.system;
+      beadsRust = pkgs.callPackage ../_packages/beads-rust.nix { };
       dmuxPackage =
         let
           upstream = inputs.dmux-flake.packages.${system}.default;
@@ -73,7 +74,13 @@
           tuios
         ]
         ++ lib.optional config.programs.cmux-tui.enable inputs.nix-cmux-tui.packages.${system}.default
-        ++ lib.optional config.programs.beads.enable (pkgs.callPackage ../_packages/beads-rust.nix { })
+        ++ lib.optionals config.programs.beads.enable [
+          beadsRust
+          (pkgs.callPackage ../_packages/beads-queue.nix {
+            beads-rust = beadsRust;
+            script = inputs.unified + "/pkgs/beads-queue.sh";
+          })
+        ]
         ++ lib.optional config.programs.orca-ide.enable (pkgs.callPackage ../_packages/orca-ide.nix { })
         ++ lib.optional config.programs.dmux.enable dmuxPackage
         ++ lib.optional config.programs.frankenterm.enable inputs.nix-frankenterm.packages.${system}.default;
