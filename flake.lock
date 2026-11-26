@@ -2177,11 +2177,11 @@
     "unified": {
       "flake": false,
       "locked": {
-        "lastModified": 1795530623,
-        "narHash": "sha256-o1desnmoBTf97tsZSrvcbFR5dbvFLEl1KbDNSn5q2Hs=",
+        "lastModified": 1795697128,
+        "narHash": "sha256-8Toh3R0hOiffrC0TU33kcCI7Yn0W/uM6jVVEbr4Id7c=",
         "owner": "deepwatrcreatur",
         "repo": "unified-nix-configuration",
-        "rev": "b65c5d986c7740b7107314cf3c6888d53b7e5d61",
+        "rev": "cf5111517ef54d9661142a5f7611e991ae4075de",
         "type": "github"
       },
       "original": {

@@ -6,7 +6,6 @@
   beads-rust,
   coreutils,
   git,
-  lib,
   script,
   util-linux,
   writeShellApplication,
@@ -19,11 +18,5 @@ writeShellApplication {
     git
     util-linux
   ];
-  # UPSTREAM: unified #265 makes the script remove beads-rust 0.7's database
-  # sidecars too; drop this replacement once the unified input includes it.
-  text =
-    lib.replaceStrings
-      [ ''rm -f "$BEADS_DIR"/beads.db "$BEADS_DIR"/beads.db-wal "$BEADS_DIR"/beads.db-shm'' ]
-      [ ''rm -f "$BEADS_DIR"/beads.db "$BEADS_DIR"/beads.db-* "$BEADS_DIR"/beads.db.*'' ]
-      (builtins.readFile script);
+  text = builtins.readFile script;
 }
