@@ -6,6 +6,7 @@
 }:
 let
   inherit (lib) mkOption types;
+  domain = config.homelab.domain;
   optionalString = types.nullOr types.str;
   stringList = types.listOf types.str;
   routerType = types.submodule {
@@ -98,7 +99,7 @@ let
     };
   };
   hostType = types.submodule (
-    { config, ... }:
+    { name, config, ... }:
     {
       options = {
         system = mkOption {
@@ -132,6 +133,12 @@ let
             default = null;
             description = "Explicit SSH endpoint, including management addresses.";
           };
+        };
+        sshHostKeyAlias = mkOption {
+          type = types.str;
+          readOnly = true;
+          default = "${name}.${domain}";
+          description = "Canonical SSH host certificate name, independent of the connection address.";
         };
         sshTarget = mkOption {
           type = optionalString;
