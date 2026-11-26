@@ -32,9 +32,9 @@ beads-q close <id> --reason "<what was done, PR link>" --actor <you>
   `CLAIM_CONFLICT` (exit 4): pick other work.
 - Claim before starting. Put `Bead: <id>` on its own line in the PR
   description (several ids allowed), or `Bead: none (<reason>)` for work
-  without one. The `bead reference` check fails otherwise, and when a named
-  bead is not claimed (`in_progress`) on `beads-queue`; editing the
-  description re-runs it. Close the bead after the PR merges, citing the PR.
+  without one. The required `bead-reference` check fails otherwise, and when
+  a named bead is not claimed (`in_progress`) on `beads-queue`, so the PR
+  cannot merge; editing the description re-runs it. Close the bead after the PR merges, citing the PR.
 - Feature branches and PRs never touch `.beads/`; `checks.no-beads-on-main`
   fails if it reappears on `main`. Don't edit or run `git` in the queue
   worktree by hand, and never force-push `beads-queue`.
