@@ -77,12 +77,13 @@ locally and compares it with the list of store paths the host is running
 (added, removed and changed packages, rebuilt units, kernel). It reads that
 list over SSH and changes nothing on the host.
 
-After deploying, `fleet-deploy` checks the host over a new SSH connection.
-It never reuses a shared SSH connection, waits up to 60 s for systemd to settle and fails if a unit failed that
-was not already failing before the deploy, if systemd is not running, or if
-the host cannot be reached. On failure it prints the command that returns
-the host to the system it ran before, and never runs it. It also refuses to
-deploy a host it cannot read beforehand. `--no-check` skips the check.
+After deploying, `fleet-deploy` checks the host over a fresh SSH connection
+(never a shared one). It waits up to 60 s for systemd to settle and fails if
+a unit failed that was not already failing before the deploy, if systemd is
+not running, or if the host cannot be reached. On failure it prints the
+command that returns the host to the system it ran before, and never runs
+it. It also refuses to deploy a host it cannot read beforehand.
+`--no-check` skips the check.
 
 To see which hosts need attention after merges, run
 `nix develop -c fleet-status [host...]`. For every migrated host it shows
