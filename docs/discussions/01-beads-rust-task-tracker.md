@@ -136,6 +136,52 @@ PRs, an AGENTS.md beads section of ten lines or fewer.
 
 Tracked as beads `nch-a9a.8` (move the queue and add the CI rules), `nch-a9a.9` (race test) and `nch-a9a.10` (shrink AGENTS.md). `nch-a9a.7` (v0.7.6 rollout) now keeps the duplicate-id check.
 
+### Race test results (`nch-a9a.9`, 2026-11-26)
+
+Closure item 4, run with `scripts/beads-q-race-test.sh`:
+- K clones of one local bare remote claim the same bead at a barrier, 100
+  rounds per run. Separate clones take separate `beads-q` locks, so they
+  behave like separate machines.
+- A pre-receive hook rejects the first push of every round, so the retry
+  path runs every round.
+- Each round passes only with exactly one exit 0, K-1 claim conflicts and
+  one claim commit.
+- At the end the history must be linear, and the final JSONL must rebuild
+  into a database that assigns every bead to its round's winner.
+
+| beads-rust | K | Rounds | Failed rounds | Client retries | Merges |
+| --- | --- | --- | --- | --- | --- |
+| 0.1.45 | 2 | 100 | 0 | 143 | 0 |
+| 0.1.45 | 4 | 100 | 0 | 302 | 0 |
+| 0.1.45 | 8 | 100 | 0 | 700 | 0 |
+| 0.7.6 | 2 | 100 | 0 | 124 | 0 |
+| 0.7.6 | 4 | 100 | 0 | 301 | 0 |
+| 0.7.6 | 8 | 100 | 1 | 700 | 0 |
+
+- **No double claim and no lost update in 600 rounds.** Every run ended
+  with 101 commits (seed plus one claim per round) and a final queue that
+  matches the winners.
+- **The one failed round was not a double claim.** Round 70 of 0.7.6 with
+  K=8 still had one winner, six conflicts and one claim commit. The eighth
+  client exited 128 with `couldn't find remote ref refs/heads/beads-queue`:
+  its fetch listed refs while another push was renaming the loose ref into
+  place. `beads-q` treats a failed fetch as fatal instead of retrying. That
+  is safe (no claim was made) but noisy: about 1 in 2,400 heavily contended
+  calls on a local remote.
+- **0.1.45 words the conflict differently.** It reports "issue … already
+  assigned to …" with exit 4 instead of `CLAIM_CONFLICT`.
+- **The harness can fail.** `scripts/beads-q-race-broken.sh` claims on a
+  stale copy and force-pushes, as a writer bypassing `beads-q` would. It
+  produced two or three winners in every round and a final queue that
+  disagreed with them.
+- **Kept as a regression check.** `checks.beads-q-race` runs K=4 for 10
+  rounds with the packaged `beads-q`, plus the negative control, under
+  NixCI.
+
+Exit criterion "a double claim after compare-and-swap claiming lands" is
+not met. Follow-up: make `beads-q` retry a failed fetch (unified
+`pkgs/beads-queue.sh`).
+
 ---
 
 ## Appendix: prompts and raw answers
