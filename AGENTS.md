@@ -6,6 +6,10 @@ succeeds
 [unified-nix-configuration](https://github.com/deepwatrcreatur/unified-nix-configuration)
 ("unified"), which stays authoritative for every host until that host's
 migration bead is closed. Plan: [`docs/plan.md`](docs/plan.md).
+Goals, layers and the gaps we fill locally:
+[`docs/architecture.md`](docs/architecture.md). Before writing a module,
+script or check, look for it in clan-core, nixpkgs and srvos first
+([decision 0003](docs/decisions/0003-upstream-first.md)).
 
 ## Work queue (beads)
 
@@ -36,14 +40,14 @@ beads-rust sync --flush-only && git add -- .beads/issues.jsonl   # before every 
   merges. Reopen it if the PR is abandoned.
 - Stage only `.beads/issues.jsonl`. Other files in `.beads/` (database, merge
   snapshots, history backups) are local.
-- **Never hand-edit a conflicted `.beads/issues.jsonl`.** beads-rust 0.1.45
-  skips records whose `updated_at` is not newer, and the next export writes the
-  old version back. Take `main`'s file, rebuild the local cache, and redo your
+- **Never hand-edit a conflicted `.beads/issues.jsonl`.** beads-rust skips
+  records whose `updated_at` is not newer (seen in 0.1.45), and the next export
+  writes the old version back. Take `main`'s file, rebuild the local cache, and redo your
   own bead commands:
 
   ```sh
   git checkout origin/main -- .beads/issues.jsonl
-  rm -f .beads/beads.db .beads/beads.db-wal .beads/beads.db-shm
+  rm -f .beads/beads.db*   # 0.7 keeps several sidecar files next to it
   beads-rust sync --import-only
   # re-run your claim/create/comment commands, then flush and stage as above
   ```
@@ -55,7 +59,12 @@ beads-rust sync --flush-only && git add -- .beads/issues.jsonl   # before every 
   `owner:claude` beads touch decrypted secrets or live hosts.
 - Before creating child beads under a parent, fetch and check open PRs:
   `<parent>.N` comes from each clone's own counter, so parallel branches mint
-  the same ID.
+  the same ID; same-parent children usually conflict in git (redo as above).
+  Comment IDs also collide, often without a git conflict. beads-rust 0.7
+  renumbers those on import, but 0.1.45 clones cannot import the file, so
+  `checks.beads-integrity` still fails on duplicate issue or comment IDs and
+  dangling dependencies until every machine runs 0.7 (`nch-a9a.7`). If it
+  fails after a rebase, renumber your own record, not the one on `main`.
 - If acceptance needs a deployed host, put those checks in the deployment or
   verification bead, not in a bead that bead depends on.
 - Found new work? Create a bead with a dependency rather than widening scope.
