@@ -14,7 +14,7 @@
           owner = "root";
           mode = "0600";
         };
-        script = ''sed -e '$a\\' "$prompts/key" > "$out/key"'';
+        script = ''sed -e '$a\' "$prompts/key" > "$out/key"'';
       };
 
       systemd.tmpfiles.rules = [
