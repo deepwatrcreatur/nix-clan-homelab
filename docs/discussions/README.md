@@ -8,7 +8,8 @@ marks each question `[satisfied]`, `[satisfied-conditional: X]` or
 narrowed follow-up when needed. Raw answers are kept in each file's appendix.
 
 Router-specific discussions live in
-[nix-router-optimized `docs/discussions/`](https://github.com/deepwatrcreatur/nix-router-optimized/tree/main/docs/discussions).
+[nix-router-optimized `docs/discussions/`](https://github.com/deepwatrcreatur/nix-router-optimized/tree/main/docs/discussions),
+including discussion 23 on integrating that flake with Clan's inventory.
 
 | ID | Title | Date | Status |
 |----|-------|------|--------|
