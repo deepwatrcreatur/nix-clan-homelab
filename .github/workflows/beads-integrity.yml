@@ -1,0 +1,17 @@
+# WHY: this branch is the shared queue; every beads-q push lands here.
+# Duplicate ids or dangling dependencies break every fresh clone's import
+# (docs/discussions/01-beads-rust-task-tracker.md on main).
+name: beads integrity
+on:
+  push:
+    branches: [beads-queue]
+  pull_request:
+    branches: [beads-queue]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 checks/beads-integrity.py .beads/issues.jsonl
