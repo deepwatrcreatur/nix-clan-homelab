@@ -93,7 +93,11 @@ rejects unknown hosts and hosts that have yet to migrate to Clan. It uses
 `clan machines update` through `clan-admin` for routine deploys and
 deploy-rs with magic rollback for hosts with the `router` inventory role.
 Preview the command without deploying with
-`nix develop -c fleet-deploy --dry-run <host>`.
+`nix develop -c fleet-deploy --dry-run <host>`. To see what a deploy would
+change, run `nix develop -c fleet-deploy --diff <host>`: it builds the system
+locally and compares it with the list of store paths the host is running
+(added, removed and changed packages, rebuilt units, kernel). It reads that
+list over SSH and changes nothing on the host.
 
 Magic rollback requires one successful deploy-rs deploy after installing a
 router. Do that first deploy with a known-good configuration and console
