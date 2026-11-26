@@ -77,6 +77,15 @@ locally and compares it with the list of store paths the host is running
 (added, removed and changed packages, rebuilt units, kernel). It reads that
 list over SSH and changes nothing on the host.
 
+To see which hosts need attention after merges, run
+`nix develop -c fleet-status [host...]`. For every migrated host it shows
+whether the running system matches what this checkout evaluates to
+(`behind` means `fleet-deploy` would change it), whether the booted kernel or
+initrd differs from the current generation's (reboot needed), when the host
+last switched, and its failed units. It evaluates without building, reads
+each host over one SSH connection, and changes nothing. It exits 1 when any
+host is behind, needs a reboot, has failed units or is unreachable.
+
 Magic rollback requires one successful deploy-rs deploy after installing a
 router. Do that first deploy with a known-good configuration and console
 access, before relying on rollback. See [the spike findings](docs/plan.md#spike-findings).
