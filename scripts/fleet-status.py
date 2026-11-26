@@ -29,9 +29,16 @@ echo "current_kernel=$(readlink -f /run/current-system/kernel)"
 echo "booted_initrd=$(readlink -f /run/booted-system/initrd)"
 echo "current_initrd=$(readlink -f /run/current-system/initrd)"
 echo "switched=$(stat -c %Y /nix/var/nix/profiles/system)"
-echo "failed=$(systemctl list-units --failed --plain --no-legend --no-pager | cut -d' ' -f1 | paste -sd, -)"
+# GOTCHA: test systemctl's own status; inside a pipeline and echo a failed
+# query would look like "no failed units".
+if units=$(systemctl list-units --failed --plain --no-legend --no-pager); then
+  echo "failed=$(printf '%s\n' "$units" | cut -d' ' -f1 | paste -sd, -)"
+else
+  echo "failed_query=error"
+fi
 """
 SSH_TIMEOUT = 20
+BOOT_FACTS = ("booted_kernel", "current_kernel", "booted_initrd", "current_initrd")
 
 
 def read_host(name, host):
@@ -86,17 +93,24 @@ def assess(facts, expected, now):
     if "error" in facts:
         return ["unreachable", "-", "-", facts["error"]], True
     state = "current" if facts["current"] == expected else "behind"
-    reboot = (
-        facts.get("booted_kernel") != facts.get("current_kernel")
-        or facts.get("booted_initrd") != facts.get("current_initrd")
-    )
+    boot = [facts.get(k, "") for k in BOOT_FACTS]
+    if not all(boot):
+        reboot = "unknown"
+    elif boot[0] != boot[1] or boot[2] != boot[3]:
+        reboot = "needed"
+    else:
+        reboot = "no"
     try:
         switched = ago(max(0, now - int(facts.get("switched", ""))))
     except ValueError:
         switched = "?"
-    failed = facts.get("failed", "")
-    cells = [state, "needed" if reboot else "no", switched, failed or "none"]
-    return cells, state != "current" or reboot or bool(failed)
+    # WHY: a fact that could not be read is unknown, never healthy.
+    if "failed_query" in facts or "failed" not in facts:
+        failed = "unknown (systemctl failed)"
+    else:
+        failed = facts["failed"] or "none"
+    cells = [state, reboot, switched, failed]
+    return cells, state != "current" or reboot != "no" or failed != "none"
 
 
 def table(rows):

@@ -59,6 +59,38 @@ class AssessTests(unittest.TestCase):
         self.assertEqual(cells, ["unreachable", "-", "-", "Connection refused"])
         self.assertTrue(flag)
 
+    def test_failed_unit_query_is_not_healthy(self):
+        broken = facts(failed_query="error")
+        del broken["failed"]
+        cells, flag = status["assess"](broken, SYSTEM, NOW)
+        self.assertEqual(cells[3], "unknown (systemctl failed)")
+        self.assertTrue(flag)
+
+    def test_unread_boot_fact_is_not_healthy(self):
+        cells, flag = status["assess"](facts(booted_initrd=""), SYSTEM, NOW)
+        self.assertEqual(cells[1], "unknown")
+        self.assertTrue(flag)
+
+    def test_remote_failed_query(self):
+        """Runs REMOTE in sh with systemctl failing like 'Failed to connect to bus'."""
+        stub = tempfile.mkdtemp()
+        with open(os.path.join(stub, "systemctl"), "w") as handle:
+            handle.write("#!/bin/sh\necho 'Failed to connect to bus' >&2\nexit 1\n")
+        os.chmod(os.path.join(stub, "systemctl"), 0o755)
+        remote = status["REMOTE"].replace("PATH=/run/current-system/sw/bin", f"PATH={stub}:$PATH")
+        out = subprocess.run(["sh", "-c", remote], capture_output=True, text=True).stdout
+        self.assertIn("failed_query=error", out)
+        self.assertNotIn("failed=", out.replace("failed_query", ""))
+
+    def test_remote_no_failed_units(self):
+        stub = tempfile.mkdtemp()
+        with open(os.path.join(stub, "systemctl"), "w") as handle:
+            handle.write("#!/bin/sh\nexit 0\n")
+        os.chmod(os.path.join(stub, "systemctl"), 0o755)
+        remote = status["REMOTE"].replace("PATH=/run/current-system/sw/bin", f"PATH={stub}:$PATH")
+        out = subprocess.run(["sh", "-c", remote], capture_output=True, text=True).stdout
+        self.assertIn("failed=\n", out)
+
     def test_bad_switch_time(self):
         self.assertEqual(status["assess"](facts(switched=""), SYSTEM, NOW)[0][2], "?")
 
