@@ -73,7 +73,7 @@ it. Items marked *proposed* are open PRs, not on `main` yet.
 | Gap | Upstream status | Local fill | Exit condition |
 | --- | --- | --- | --- |
 | `clan machines update` has no rollback; a lockout survives reboot | clan-core [#3078](https://git.clan.lol/clan/clan-core/issues/3078), open; NixOS boot counting [nixpkgs#447173](https://github.com/NixOS/nixpkgs/pull/447173) | `fleet-deploy` sends `router` hosts through deploy-rs (magic rollback), others through Clan (`modules/deploy.nix`) | Clan rollback lands: drop deploy-rs |
-| No check that a host is healthy after a deploy | same issue | `nch-a9a.2`: health check in `fleet-deploy`; only router probes stay local | Clan gains a post-activation check |
+| No check that a host is healthy after a deploy | same issue | `fleet-deploy` compares failed units before and after and prints the rollback (`scripts/deploy-health.py`); router probes (WAN, DNS, DHCP) not yet | Clan gains a post-activation check |
 | No preview of what a deploy changes | none filed | *proposed* `fleet-deploy --diff` (#59) | Offer upstream as a `clan machines` option once proven |
 | Clan vars need the admin age key; we do not want a key file on disk | by design, Clan leaves key handling to the operator | `clan-admin` wrapper derives it from the operator SSH key per command (`modules/clan.nix`) | none planned; it is small |
 | Clan empties the global flake registry, so `nix run foo#` does not resolve | by design | *proposed* `flake-registry` aspect pins locked inputs on workstations (#60) | none planned |

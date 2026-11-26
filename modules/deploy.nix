@@ -28,10 +28,18 @@ let
 in
 {
   perSystem =
-    { inputs', pkgs, ... }:
+    {
+      config,
+      inputs',
+      pkgs,
+      ...
+    }:
     let
       closureDiff = pkgs.writeScriptBin "closure-diff" (
         "#!${lib.getExe pkgs.python3}\n" + builtins.readFile ../scripts/closure-diff.py
+      );
+      deployHealth = pkgs.writeScriptBin "deploy-health" (
+        "#!${lib.getExe pkgs.python3}\n" + builtins.readFile ../scripts/deploy-health.py
       );
     in
     {
@@ -43,25 +51,30 @@ in
         # backends', so the operator's SSH setup and Nix version apply.
         runtimeInputs = [
           closureDiff
+          deployHealth
           pkgs.coreutils
         ];
         text = ''
           usage() {
-            printf 'Usage: fleet-deploy [--dry-run | --diff] <host>\n' >&2
+            printf 'Usage: fleet-deploy [--dry-run | --diff | --no-check] <host>\n' >&2
             exit 2
           }
 
           dry_run=false
           diff=false
-          if [[ $# == 2 && ( $2 == --dry-run || $2 == --diff ) ]]; then
-            set -- "$2" "$1"
-          fi
-          case ''${1:-} in
-            --dry-run) dry_run=true; shift ;;
-            --diff) diff=true; shift ;;
-          esac
-          [[ $# == 1 && $1 != -* ]] || usage
-          host=$1
+          check=true
+          host=""
+          for arg; do
+            case $arg in
+              --dry-run) dry_run=true ;;
+              --diff) diff=true ;;
+              --no-check) check=false ;;
+              -*) usage ;;
+              *) [[ -z $host ]] || usage; host=$arg ;;
+            esac
+          done
+          [[ -n $host ]] || usage
+          if "$dry_run" && "$diff"; then usage; fi
 
           case "$host" in
             ${backendCases}
@@ -102,7 +115,30 @@ in
             printf '\n'
             exit 0
           fi
-          exec "''${command[@]}"
+          if ! "$check"; then
+            exec "''${command[@]}"
+          fi
+
+          # WHY: clan machines update has no post-activation check
+          # (clan-core #3078); deploy-rs's magic rollback only proves SSH
+          # still works. Compare failed units with a snapshot from before, so
+          # a unit that was already failing does not fail every deploy.
+          # INVARIANT: the rollback is printed, never run.
+          snapshot=$(mktemp)
+          trap 'rm -f -- "$snapshot"' EXIT
+          deploy-health before "$host_key_alias" "$target" > "$snapshot" || {
+            printf 'Use --no-check to deploy without the health check.\n' >&2
+            exit 1
+          }
+          deploy_status=0
+          "''${command[@]}" || deploy_status=$?
+          health_status=0
+          deploy-health after "$host_key_alias" "$target" "$snapshot" || health_status=$?
+          if (( deploy_status != 0 )); then
+            printf 'Deploy exited %s.\n' "$deploy_status" >&2
+            exit "$deploy_status"
+          fi
+          exit "$health_status"
         '';
       };
 
@@ -118,6 +154,12 @@ in
 
       checks.fleet-status = pkgs.runCommand "fleet-status" { nativeBuildInputs = [ pkgs.python3 ]; } ''
         python3 ${../checks/fleet-status.py} ${../scripts/fleet-status.py}
+        touch $out
+      '';
+
+      checks.deploy-health = pkgs.runCommand "deploy-health" { nativeBuildInputs = [ pkgs.python3 ]; } ''
+        python3 ${../checks/deploy-health.py} ${../scripts/deploy-health.py} \
+          ${lib.getExe config.packages.fleet-deploy}
         touch $out
       '';
 
