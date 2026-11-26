@@ -6,6 +6,10 @@ succeeds
 [unified-nix-configuration](https://github.com/deepwatrcreatur/unified-nix-configuration)
 ("unified"), which stays authoritative for every host until that host's
 migration bead is closed. Plan: [`docs/plan.md`](docs/plan.md).
+Goals, layers and the gaps we fill locally:
+[`docs/architecture.md`](docs/architecture.md). Before writing a module,
+script or check, look for it in clan-core, nixpkgs and srvos first
+([decision 0003](docs/decisions/0003-upstream-first.md)).
 
 ## Work queue (beads)
 
