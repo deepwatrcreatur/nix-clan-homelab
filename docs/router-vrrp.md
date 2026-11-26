@@ -110,6 +110,38 @@ Each live step needs the operator at both consoles and an agreed window
    - pull the MASTER's WAN cable (health check yields);
    - cut the MASTER's power, then boot it (it returns as BACKUP);
    - check the modem kept the IPv4 lease and the /56 at every step.
+   **Done 2026-11-25/26** (nch-sny.36.7). The modem kept 99.237.231.178 and
+   2607:fea8:a4c5:3600::/56 through every step. Gaps from emerald (1 s
+   probes):
+
+   | Step | Gateway | DNS | IPv4 | IPv6 |
+   | --- | --- | --- | --- | --- |
+   | stop keepalived on MASTER | 0 | 0 | 3.5 s | 3.7 s |
+   | fail-back (preempt after 300 s) | 0 | 0 | 0 | 0.3 s |
+   | MASTER's WAN cable pulled | | | about 7 s | |
+   | MASTER power cut | 3.2 s | 2.2 s | 6.7 s | **90 s, then flapping for 2.5 min** |
+   | fail-back after the power cut | 0 | 0 | 0 | 2.8 s |
+
+   Pulling the WAN cable put elitedesk in FAULT with its priority pinned to 1
+   for 900 s, as designed. Kea went PARTNER-DOWN on the survivor and back to
+   hot-standby when the partner returned; zones were promoted and demoted
+   each time.
+
+   **Open problem: IPv6 after the MASTER dies.** Each member advertises
+   itself as default router from its own link-local address. A demotion
+   sends a zero-lifetime RA, so clients drop the old route at once, but a
+   MASTER that loses power cannot. SLAAC clients keep its route (router
+   lifetime 1800 s) and the kernel keeps choosing it while neighbor
+   discovery sits in DELAY, so IPv6 can stay broken for up to 30 minutes.
+   The fix belongs in nix-router-optimized: advertise from a link-local
+   address that moves with the VIP, so clients only ever see one router.
+   Tracked as a follow-up bead under nch-sny.36.
+
+   The first power-cut attempt (router as MASTER) cost about 10 minutes for
+   an unrelated reason: elitedesk's WAN cable had worked loose at its NIC
+   after the cable-pull step, so as MASTER it got no DHCP answer. Check WAN
+   cabling before a drill. The loose cable also raised elitedesk's WAN
+   carrier once while it was BACKUP.
 
 ## Abort
 
