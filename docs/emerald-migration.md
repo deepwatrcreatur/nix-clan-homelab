@@ -7,7 +7,7 @@ Beads:
 - epic `nch-sny.37`: port the operator's home environment from unified;
 - children of `nch-sny.20`: the emerald system port and switch.
 
-`beads-rust show <id>` has the acceptance criteria for each.
+`beads-q show <id>` has the acceptance criteria for each.
 
 ## Why two parts
 

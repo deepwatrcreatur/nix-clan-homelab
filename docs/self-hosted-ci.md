@@ -1,7 +1,7 @@
 # Self-hosted Nix CI on emerald (handoff)
 
 Status: **accepted** (2026-11-20; decisions in
-[ADR 0002](./decisions/0002-self-hosted-ci.md)). Beads: epic `nch-ktp` (`beads-rust show nch-ktp`).
+[ADR 0002](./decisions/0002-self-hosted-ci.md)). Beads: epic `nch-ktp` (`beads-q show nch-ktp`).
 Audience: the agent implementing it (Codex) and the maintainer. Read this
 whole page and `docs/plan.md` first.
 

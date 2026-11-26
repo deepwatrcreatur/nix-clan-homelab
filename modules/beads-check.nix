@@ -2,15 +2,12 @@
   perSystem =
     { pkgs, ... }:
     {
-      # WHY: kept after beads_rust v0.7.0 fixed import (#486, #512): it is the
-      # only guard against writes that bypass beads-q. docs/discussions/01-beads-rust-task-tracker.md
-      # WHY: parallel branches mint the same bead or comment ID from their own
-      # SQLite counters; git merges both, and fresh clones then fail to import.
-      checks.beads-integrity = pkgs.runCommand "beads-integrity" {
-        nativeBuildInputs = [ pkgs.python3 ];
-      } ''
-        python3 ${../checks/beads-integrity.py} ${../.beads/issues.jsonl}
-        touch $out
-      '';
+      # INVARIANT: the beads queue lives on the beads-queue branch, written only
+      # by beads-q. A .beads/ directory on main means a feature PR carried
+      # bead state again, which is what docs/discussions/01-beads-rust-task-tracker.md
+      # moved away from. The duplicate-id check runs on that branch instead.
+      checks.no-beads-on-main =
+        assert !builtins.pathExists ../.beads;
+        pkgs.runCommand "no-beads-on-main" { } "touch $out";
     };
 }

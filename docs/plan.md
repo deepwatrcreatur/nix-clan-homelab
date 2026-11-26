@@ -4,7 +4,7 @@ Goal: run the homelab from this repo on [clan-core](https://docs.clan.lol),
 keeping [den](https://github.com/denful/den) aspects for host composition, and
 retire `unified-nix-configuration` (below: "unified").
 
-The work queue is in `.beads/` (`beads-rust ready`). This file explains the
+The work queue is on the `beads-queue` branch (`beads-q ready`). This file explains the
 phases and the decisions the beads refer to.
 
 ## What Clan replaces
