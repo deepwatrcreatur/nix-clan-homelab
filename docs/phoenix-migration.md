@@ -65,7 +65,7 @@ names and 55 enabled programs. It currently records these reviewed differences:
 | Area | Missing from candidate | Extra in candidate |
 |---|---|---|
 | Files | `.config/wezterm/wezterm.lua` | `.config/fnox/clan-defaults.toml`, `.config/git/github-token` |
-| Packages | `beads-q`, `install-brew-packages` | `git-ssh-doctor`, `vivaldi` |
+| Packages | `install-brew-packages` | `git-ssh-doctor`, `vivaldi` |
 | Enabled programs | `linuxbrew`, `ssh-known-hosts-manager` | — |
 
 Regenerate the reference only after reviewing an intentional Unified profile

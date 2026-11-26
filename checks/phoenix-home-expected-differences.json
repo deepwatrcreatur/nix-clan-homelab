@@ -10,7 +10,6 @@
   },
   "packages": {
     "missing": [
-      "beads-q",
       "install-brew-packages"
     ],
     "extra": [
