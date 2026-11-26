@@ -6,8 +6,8 @@
 # A pre-receive hook rejects the first push of every round, so the retry
 # path runs every time. Checks per round: exactly one exit 0, every other
 # client exits 4 with CLAIM_CONFLICT (0.1.45 says "already assigned"), exactly one claim commit for that bead.
-# Final checks: linear history, and a fresh import shows each bead assigned
-# to that round's winner.
+# Final checks: linear history, and every round's bead is present and
+# assigned to its winner in the final JSONL and in a database rebuilt from it.
 set -uo pipefail
 BQ=$1; K=$2; ROUNDS=$3; W=$4; BR=$5
 rm -rf "$W"; mkdir -p "$W"; cd "$W"
@@ -53,7 +53,7 @@ for r in $(seq -w 1 "$ROUNDS"); do
   wins=0; conflicts=0; other=""
   for c in $(seq 1 "$K"); do
     rc=$(cat "$W/rc.$c")
-    if [ "$rc" = 0 ]; then wins=$((wins+1)); winner[$bead]=c$c
+    if [ "$rc" = 0 ]; then wins=$((wins+1)); winner[$bead]=c$c; echo "$bead c$c" >> "$W/winners"
     elif [ "$rc" = 4 ] && grep -qE "CLAIM_CONFLICT|already assigned" "$W/out.$c"; then conflicts=$((conflicts+1))
     else other="$other c$c:rc=$rc:$(tr '\n' ' ' <"$W/out.$c" | cut -c1-160)"; fi
     grep -q "retrying on the new tip" "$W/out.$c" && retries_seen=$((retries_seen+1))
@@ -73,17 +73,31 @@ merges=$(git -C remote.git log --merges --oneline beads-queue | wc -l)
 mkdir -p fresh/.beads && git -C remote.git show beads-queue:.beads/issues.jsonl > fresh/.beads/issues.jsonl
 cp seed/.beads/config.yaml fresh/.beads/
 git -C fresh init -q
-bad=0
-while read -r line; do
-  id=$(printf '%s' "$line" | python3 -c 'import json,sys;d=json.load(sys.stdin);print(d["id"], d.get("assignee",""), d["status"])')
-  set -- $id
-  [ "${2:-}" = "${winner[$1]:-}" ] && [ "${3:-}" = in_progress ] || { bad=$((bad+1)); echo "FAIL final: $id expected ${winner[$1]:-none}"; }
-done < fresh/.beads/issues.jsonl
-[ "$bad" = 0 ] || fail=$((fail+1))
-# The final JSONL must also rebuild into a database that agrees.
+# Every round's bead must survive with its winner, in the final JSONL and in
+# a database rebuilt from it; iterating only surviving records would miss a
+# claim that dropped an earlier bead.
+python3 - "$W/fresh/.beads/issues.jsonl" "$ROUNDS" "$W/winners" <<'PY' || fail=$((fail+1))
+import json, sys
+records = {}
+for line in open(sys.argv[1]):
+    if line.strip():
+        d = json.loads(line)
+        records[d["id"]] = d
+winners = dict(l.split() for l in open(sys.argv[3]) if l.strip())
+bad = 0
+for r in range(1, int(sys.argv[2]) + 1):
+    bead = f"tst-r{r:0{len(sys.argv[2])}d}"
+    d = records.get(bead)
+    if d is None or d.get("assignee") != winners.get(bead) or d.get("status") != "in_progress":
+        bad += 1
+        print(f"FAIL final JSONL: {bead} = {d and (d.get('assignee'), d.get('status'))}, expected {winners.get(bead)}")
+sys.exit(1 if bad else 0)
+PY
 if ( cd fresh && export BEADS_DIR=$PWD/.beads && "$BR" sync --import-only >/dev/null 2>&1 ); then
-  got=$(cd fresh && BEADS_DIR=$PWD/.beads "$BR" show tst-r$(printf '%0*d' ${#ROUNDS} 1) --json 2>/dev/null | python3 -c 'import json,sys;d=json.load(sys.stdin);d=d[0] if isinstance(d,list) else d;print(d.get("assignee",""))')
-  [ "$got" = "${winner[tst-r$(printf '%0*d' ${#ROUNDS} 1)]}" ] || { fail=$((fail+1)); echo "FAIL: rebuilt DB assignee $got"; }
+  for r in $(seq -w 1 "$ROUNDS"); do
+    got=$(cd fresh && BEADS_DIR=$PWD/.beads "$BR" show "tst-r$r" --json 2>/dev/null | python3 -c 'import json,sys;d=json.load(sys.stdin);d=d[0] if isinstance(d,list) else d;print(d.get("assignee",""))' 2>/dev/null)
+    [ "$got" = "${winner[tst-r$r]:-}" ] || { fail=$((fail+1)); echo "FAIL rebuilt DB: tst-r$r assignee '$got', expected ${winner[tst-r$r]:-none}"; }
+  done
 else fail=$((fail+1)); echo "FAIL: final JSONL does not import"; fi
 
 total_commits=$(git -C remote.git rev-list --count beads-queue)
