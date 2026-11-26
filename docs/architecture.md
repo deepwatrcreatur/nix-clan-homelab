@@ -57,8 +57,13 @@ An aspect can also add itself to a group (`router-hardening` joins
 
 A queue in the repo means the work, its dependencies and its history travel
 with the code and are readable by any agent without a service or login.
-GitHub issues would split that across a web service and need tokens for
-every agent.
+Its strongest feature is graph-aware task selection (`ready --json`,
+blockers, `bv`), which GitHub Issues, git-bug and Markdown files lack.
+[Discussion 01](discussions/01-beads-rust-task-tracker.md) re-examined the
+choice against those and Linear/Symphony and kept beads_rust, with the
+queue on its own `beads-queue` branch written only by `beads-q`
+(`nch-a9a.8`). GitHub Issues is the fallback if the exit criteria there
+trip.
 
 ## Gaps and how we fill them
 
@@ -73,7 +78,7 @@ it. Items marked *proposed* are open PRs, not on `main` yet.
 | Clan vars need the admin age key; we do not want a key file on disk | by design, Clan leaves key handling to the operator | `clan-admin` wrapper derives it from the operator SSH key per command (`modules/clan.nix`) | none planned; it is small |
 | Clan empties the global flake registry, so `nix run foo#` does not resolve | by design | *proposed* `flake-registry` aspect pins locked inputs on workstations (#60) | none planned |
 | Clan's inventory covers machines it manages, not appliances, cameras or APs | out of scope for Clan | `homelab.hosts` inventory feeds Clan machine tags, SSH targets, deploy dispatch, router pairing and checks. DHCP reservations and DDNS still come from unified's `lib/hosts.nix` (`router-role`) | `nch-a9a.6`: one source, no reads from unified, less overlap with Clan's inventory |
-| Beads and comment ids from separate clones collide; fresh clones then fail to import | fixed in beads_rust v0.7.0 ([#486](https://github.com/Dicklesworthstone/beads_rust/issues/486), [#512](https://github.com/Dicklesworthstone/beads_rust/issues/512)); this repo packages v0.7.6, older clones still run 0.1.45 | `checks.beads-integrity`; AGENTS.md rules on child ids | `nch-a9a.7`: every machine on 0.7, then delete the check |
+| Beads and comment ids from separate clones collide; fresh clones then fail to import | fixed in beads_rust v0.7.0 ([#486](https://github.com/Dicklesworthstone/beads_rust/issues/486), [#512](https://github.com/Dicklesworthstone/beads_rust/issues/512)); this repo packages v0.7.6, older clones still run 0.1.45 | `checks.beads-integrity`; AGENTS.md rules on child ids | Kept permanently as a guard against writes that bypass `beads-q` ([discussion 01](discussions/01-beads-rust-task-tracker.md)); `nch-a9a.7` rolls 0.7 out |
 | A beads claim is only local until it reaches `main` | upstream design | AGENTS.md: land claims in a small PR right away | planned shared queue branch |
 | Coding agents run expensive or unsafe commands | not a framework concern | `agent-guard` hook in the developer Home Manager profile | none |
 | No hardening defaults for routers | srvos and the nixpkgs hardened profile exist | *proposed* `router-hardening` aspect (#61) | `nch-sny.42`: compare with srvos; move generic parts to nix-router-optimized |
