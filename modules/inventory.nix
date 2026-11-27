@@ -167,17 +167,19 @@ let
         deployTarget = mkOption {
           type = optionalString;
           readOnly = true;
-          # WHY: a router's management address is reached through the LAN
-          # gateway, which the router itself may be holding; a deploy that
+          # WHY: a VRRP member's management address is reached through the
+          # LAN gateway, which the member itself may be holding; a deploy that
           # moves the VIP then cuts its own SSH session and rolls back
           # (2026-11-27, docs/router-vrrp.md). The LAN address is on the
           # deployer's own segment and survives a handover.
+          # GOTCHA: only in vrrp mode. A primary holds just the gateway on the
+          # LAN and a standby none, so their node address is absent.
           default =
-            if config.router != null then
+            if config.router != null && config.router.mode == "vrrp" then
               builtins.head (lib.splitString "/" config.router.lanAddress)
             else
               config.sshTarget;
-          description = "Address deploys and fleet-status connect to: a router's LAN address, otherwise sshTarget.";
+          description = "Address deploys and fleet-status connect to: a VRRP member's LAN address, otherwise sshTarget.";
         };
         inventoryName = mkOption {
           type = types.str;

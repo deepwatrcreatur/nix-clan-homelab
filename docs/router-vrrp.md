@@ -179,8 +179,11 @@ Each live step needs the operator at both consoles and an agreed window
    over its LAN address: this workstation reaches the management address
    only through the gateway, and that path breaks while the VIP moves.
    `fleet-deploy`, `fleet-status` and the deploy-rs nodes now use each
-   router's LAN address (inventory `deployTarget`), so plain
-   `fleet-deploy <router>` does this.
+   VRRP member's LAN address (inventory `deployTarget`), so plain
+   `fleet-deploy <router>` does this. After an abort to an older
+   `primary` generation the node address is gone from the LAN (a primary
+   holds only the gateway); deploy the current configuration back with
+   `nix develop -c deploy .#elitedesk --hostname 192.168.100.98`.
 
    Done 2026-11-27 with router as MASTER: the gateway was down 145 s
    (15:14:35-15:17:01). The MASTER's keepalived waited the full
@@ -213,3 +216,9 @@ the gateway statically again, as after the 2026-11-24 move. The marker keeps
 router's keepalived off across reboots under both unified and clan (a
 `ConditionPathExists` on the unit, `checks.router-vrrp`); remove it only when
 router may compete for the gateway again.
+
+While elitedesk runs that primary generation, its LAN node address
+10.10.10.4 is absent, and `fleet-deploy elitedesk` (which targets it while
+the inventory says `vrrp`) cannot connect. To return to VRRP, deploy over
+the management address: `nix develop -c deploy .#elitedesk --hostname
+192.168.100.98`.
