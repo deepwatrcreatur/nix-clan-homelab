@@ -2,8 +2,8 @@
 { den, ... }:
 {
   den.aspects.elitedesk = {
-    # SECURITY: router-class host gets NixCI cache auth, separate from the
-    # shared Attic push credential and remote-builder-client credentials.
+    # SECURITY: Router-role cache policy intentionally excludes NixCI auth;
+    # router-secrets declares only the service vars needed for failover.
     includes = [
       den.aspects.nixos-base
       den.aspects.console-password

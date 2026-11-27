@@ -32,7 +32,7 @@ commit before pushing.
 | Synology CIFS | `synology-shares` | `synology-shares/credentials` | Imported from unified; Lattitude and Phoenix are recipients. Emerald remains admin-only. |
 | user/operator | `console-password` (per clan host), `workstation-user-secrets`, `root-ssh-identity` | `console-password/{root,deepwatrcreatur}` (yescrypt hashes); 13 workstation credentials under `vars/shared/workstation-user-secrets`; stable root client key under `vars/shared/root-ssh-identity` | Values are encrypted Clan vars; Lattitude and Phoenix are recipients for their declared vars. No live host has read the workstation credentials. Root SSH identity is preserved for Phoenix, with no Clan vars delivered yet. Workstation credential delivery and state preservation remain in `nch-sny.37.7`. |
 | homeserver services | | | todo |
-| router services | | | todo |
+| router services | `router-role`, `router-secrets`, `console-password` | router service vars plus per-machine health-check URLs | Clan vars and source aspects are in place for the VRRP pair. No Clan vars have been deployed to the live routers; retain Unified's agenix files until each router host migration is complete. |
 
 An agenix file is deleted from unified only once every host that used it
 reads the secret from vars.
