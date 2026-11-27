@@ -23,6 +23,9 @@ let
     alertmanagerCluster = 9094;
   };
   target = host: if host.addresses.ip != null then host.addresses.ip else host.fqdn;
+  # WHY: node_exporter's default also excludes .mount and .automount units,
+  # so a failed network share would never alert.
+  systemdUnitExclude = "--collector.systemd.unit-exclude=.+\\.(device|scope|slice)";
   # WHY: desktops and laptops sleep or are switched off; no host-down alert.
   alwaysOn = host: !(lib.elem "desktop" host.roles);
   fleetTargets =
@@ -113,28 +116,67 @@ let
       # second collector list would repeat flags node_exporter rejects.
       isRouter = options ? routerRole;
       nft = config.networking.nftables.enable;
-      allowFrom = port: {
-        iptables = lib.concatMapStringsSep "\n" (
-          source: "iptables -A nixos-fw -p tcp -s ${source} --dport ${toString port} -j nixos-fw-accept"
-        ) scraperAddresses;
-        nftables = "ip saddr { ${lib.concatStringsSep ", " scraperAddresses} } tcp dport ${toString port} accept";
-      };
       exported = [ ports.node ] ++ lib.optional config.services.prometheus.exporters.smartctl.enable ports.smartctl;
+      portList = lib.concatMapStringsSep ", " toString exported;
+      sourceList = lib.concatStringsSep ", " scraperAddresses;
+      # SECURITY: drop exporter traffic from anyone but the routers in the raw
+      # table, before tailscaled's ts-input chain (which accepts all tailnet
+      # input ahead of nixos-fw) or a trusted interface can accept it. IPv6
+      # is dropped outright: the routers scrape over IPv4.
+      rawChain = lib.concatStringsSep "\n" (
+        lib.concatMap (tool: [
+          "${tool} -t raw -N fleet-exporters 2>/dev/null || ${tool} -t raw -F fleet-exporters"
+          "${tool} -t raw -C PREROUTING -j fleet-exporters 2>/dev/null || ${tool} -t raw -I PREROUTING -j fleet-exporters"
+        ]) [ "iptables" "ip6tables" ]
+        ++ lib.concatMap (
+          port:
+          map (source: "iptables -t raw -A fleet-exporters -p tcp -s ${source} --dport ${toString port} -j RETURN") scraperAddresses
+          ++ [
+            "iptables -t raw -A fleet-exporters -p tcp --dport ${toString port} -j DROP"
+            "ip6tables -t raw -A fleet-exporters -p tcp --dport ${toString port} -j DROP"
+          ]
+        ) exported
+      );
+      rawChainStop = lib.concatMapStringsSep "\n" (tool: ''
+        ${tool} -t raw -D PREROUTING -j fleet-exporters 2>/dev/null || true
+        ${tool} -t raw -F fleet-exporters 2>/dev/null || true
+        ${tool} -t raw -X fleet-exporters 2>/dev/null || true
+      '') [ "iptables" "ip6tables" ];
+      # The accept in nixos-fw itself (default deny); IPv4 iptables, not
+      # ip46tables, because the sources are IPv4.
+      accepts = lib.concatMapStringsSep "\n" (
+        port:
+        lib.concatMapStringsSep "\n" (
+          source: "iptables -A nixos-fw -p tcp -s ${source} --dport ${toString port} -j nixos-fw-accept"
+        ) scraperAddresses
+      ) exported;
     in
     lib.mkIf (!isRouter) {
       services.prometheus.exporters.node = {
         enable = true;
         enabledCollectors = [ "systemd" ];
+        extraFlags = [ systemdUnitExclude ];
       };
       services.prometheus.exporters.smartctl.enable = lib.mkDefault (!config.boot.isContainer);
-      # SECURITY: only the routers may scrape (the exporters bind all
-      # addresses). IPv4 iptables, not ip46tables: the sources are IPv4.
       networking.firewall = lib.mkIf config.networking.firewall.enable (
         if nft then
-          { extraInputRules = lib.concatMapStringsSep "\n" (port: (allowFrom port).nftables) exported; }
+          { extraInputRules = "ip saddr { ${sourceList} } tcp dport { ${portList} } accept"; }
         else
-          { extraCommands = lib.concatMapStringsSep "\n" (port: (allowFrom port).iptables) exported; }
+          {
+            extraCommands = rawChain + "\n" + accepts;
+            extraStopCommands = rawChainStop;
+          }
       );
+      networking.nftables.tables.fleet-exporters = lib.mkIf (nft && config.networking.firewall.enable) {
+        family = "inet";
+        content = ''
+          chain prerouting {
+            type filter hook prerouting priority raw; policy accept;
+            tcp dport { ${portList} } ip saddr { ${sourceList} } return
+            tcp dport { ${portList} } drop
+          }
+        '';
+      };
     };
 
   # Router side: scrape the fleet, deduplicate across the pair, watch the
@@ -196,6 +238,14 @@ let
         "--cluster.listen-address=${own}:${clusterPort}"
         "--cluster.advertise-address=${own}:${clusterPort}"
       ];
+      services.prometheus.exporters.node.extraFlags = [ systemdUnitExclude ];
+      # SECURITY: the cluster carries silences and notification state. The
+      # LAN rule below admits the peer; this drop comes first in the input
+      # chain, so no trusted or overlay interface (tailscale0) admits others.
+      services.router-firewall.extraInputEarlyRules = lib.mkIf (peerIps != [ ]) ''
+        meta l4proto { tcp, udp } th dport ${clusterPort} ip saddr != { ${lib.concatStringsSep ", " peerIps} } drop comment "Alertmanager cluster: peer only"
+        meta nfproto ipv6 meta l4proto { tcp, udp } th dport ${clusterPort} drop comment "Alertmanager cluster: peer only"
+      '';
       services.router-firewall.extraLanLocalRules = lib.mkIf (peerIps != [ ]) ''
         ip saddr { ${lib.concatStringsSep ", " peerIps} } tcp dport ${clusterPort} accept comment "Alertmanager cluster"
         ip saddr { ${lib.concatStringsSep ", " peerIps} } udp dport ${clusterPort} accept comment "Alertmanager cluster"
@@ -230,8 +280,19 @@ in
             in
             node.enable
             && lib.elem "systemd" node.enabledCollectors
+            && lib.elem systemdUnitExclude node.extraFlags
             && !node.openFirewall
-            && lib.all (source: lib.hasInfix "-s ${source} --dport ${toString ports.node}" cfg.networking.firewall.extraCommands) scraperAddresses;
+            && (
+              if cfg.networking.nftables.enable then
+                lib.hasInfix "priority raw" cfg.networking.nftables.tables.fleet-exporters.content
+              else
+                lib.all (
+                  source:
+                  lib.hasInfix "iptables -A nixos-fw -p tcp -s ${source} --dport ${toString ports.node}" cfg.networking.firewall.extraCommands
+                  && lib.hasInfix "iptables -t raw -A fleet-exporters -p tcp -s ${source} --dport ${toString ports.node} -j RETURN" cfg.networking.firewall.extraCommands
+                ) scraperAddresses
+                && lib.hasInfix "ip6tables -t raw -A fleet-exporters -p tcp --dport ${toString ports.node} -j DROP" cfg.networking.firewall.extraCommands
+            );
           routerOk =
             name:
             let
@@ -243,7 +304,12 @@ in
             && cfg.services.prometheus.exporters.smartctl.enable
             && cfg.services.prometheus.exporters.node-cert.enable
             && lib.length cfg.services.router-alerting.clusterPeers == lib.length (lib.attrNames peers)
-            && (peers == { } || lib.hasInfix "dport ${toString ports.alertmanagerCluster}" cfg.services.router-firewall.extraLanLocalRules);
+            && lib.elem systemdUnitExclude cfg.services.prometheus.exporters.node.extraFlags
+            && (
+              peers == { }
+              || lib.hasInfix "dport ${toString ports.alertmanagerCluster}" cfg.services.router-firewall.extraLanLocalRules
+              && lib.hasInfix "dport ${toString ports.alertmanagerCluster} ip saddr != {" cfg.services.router-firewall.extraInputEarlyRules
+            );
         in
         assert lib.all (n: lib.assertMsg (hostOk n) "${n}: fleet exporters or their firewall rules are missing.") (lib.attrNames fleetHosts);
         assert lib.all (n: lib.assertMsg (routerOk n) "${n}: fleet scraping, rules, exporters or Alertmanager clustering are not wired.") (lib.attrNames routers);
@@ -265,6 +331,7 @@ in
                   { series = ''up{job="fleet-node",host="laptop",always_on="false"}''; values = "1 1 0x12"; }
                   { series = ''node_systemd_unit_state{host="spike",name="broken.service",state="failed"}''; values = "0 0 1x8"; }
                   { series = ''node_systemd_unit_state{host="spike",name="fine.service",state="failed"}''; values = "0x10"; }
+                  { series = ''node_systemd_unit_state{host="spike",name="cloud.mount",state="failed"}''; values = "0 0 1x8"; }
                   { series = ''node_filesystem_avail_bytes{host="spike",mountpoint="/",fstype="ext4"}''; values = "10x20"; }
                   { series = ''node_filesystem_size_bytes{host="spike",mountpoint="/",fstype="ext4"}''; values = "100x20"; }
                   { series = ''node_filesystem_readonly{host="spike",mountpoint="/",fstype="ext4"}''; values = "0x20"; }
@@ -294,6 +361,10 @@ in
                       {
                         exp_labels = { severity = "warning"; host = "spike"; name = "broken.service"; state = "failed"; };
                         exp_annotations.summary = "broken.service has failed";
+                      }
+                      {
+                        exp_labels = { severity = "warning"; host = "spike"; name = "cloud.mount"; state = "failed"; };
+                        exp_annotations.summary = "cloud.mount has failed";
                       }
                     ];
                   }

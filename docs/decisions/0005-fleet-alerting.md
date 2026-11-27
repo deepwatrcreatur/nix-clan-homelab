@@ -86,9 +86,12 @@ them.
 
 1. **`fleet-metrics`** (included by `nixos-base`; skipped on routers, whose
    node exporter comes from nix-router-optimized): node exporter with the
-   `systemd` collector, and `smartctl` except in containers. Their ports
-   accept only the routers' node addresses and the gateway address (IPv4
-   `iptables` rules on these hosts, or nftables where enabled).
+   `systemd` collector (mount units included; node_exporter excludes them by
+   default), and `smartctl` except in containers. Their ports accept only the
+   routers' node addresses and the gateway address. A `raw`-table chain drops
+   everyone else, IPv6 included, before tailscaled's `ts-input` chain or a
+   trusted interface could accept them (nftables: a prerouting chain at raw
+   priority).
 2. **`fleet-alerting-router`** (included by `router-role`):
    - both routers scrape every migrated non-router host from
      `homelab.hosts`, as jobs `fleet-node` and `fleet-smartctl`, labelled
@@ -96,7 +99,8 @@ them.
    - `smartctl`, and `node-cert` for Caddy's certificates (Caddy renews them
      on both routers), on the routers themselves;
    - `clusterPeers` set to the VRRP peers, cluster traffic pinned to the
-     node address and allowed only from the peer.
+     node address, admitted only from the peer, and dropped from anyone else
+     at the start of the input chain (ahead of the trusted `tailscale0`).
 3. **Rules** (`fleet.rules.json`, for routers too):
    - `HostDown`: an `always_on` host unscraped for 10 minutes; hosts with
      the `desktop` role are excluded;
