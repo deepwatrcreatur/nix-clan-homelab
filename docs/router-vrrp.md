@@ -192,6 +192,12 @@ Each live step needs the operator at both consoles and an agreed window
    10.10.10.4 and elitedesk's gate heard the first one and started as
    BACKUP.
 
+   Power cut repeated 2026-11-27 16:00 on unicast: router MASTER at
+   16:00:57; gateway 2.2 s, IPv6 5.7 s, IPv4 9.4 s. elitedesk's LAN came up
+   at 16:02:10, its gate heard router at 16:02:18 and keepalived started as
+   BACKUP; it preempted at 16:07:23 (the full 300 s), fail-back 1.3 s IPv4,
+   0.3 s IPv6. Lease and /56 kept; clients' route stayed `via fe80::1`.
+
    The first power-cut attempt (router as MASTER) cost about 10 minutes for
    an unrelated reason: elitedesk's WAN cable had worked loose at its NIC
    after the cable-pull step, so as MASTER it got no DHCP answer. Check WAN
