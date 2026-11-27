@@ -8,6 +8,18 @@ let
   inherit (lib) mkOption types;
   optionalString = types.nullOr types.str;
   stringList = types.listOf types.str;
+  reservationType = types.nullOr (types.submodule {
+    options = {
+      macAddress = mkOption {
+        type = types.str;
+        description = "MAC address reserved for this host by Kea.";
+      };
+      scope = mkOption {
+        type = types.str;
+        description = "Kea reservation scope.";
+      };
+    };
+  });
   routerType = types.submodule {
     options = {
       mode = mkOption {
@@ -97,6 +109,11 @@ let
           docs/router-election.md#preemption-and-stability.
         '';
       };
+      ddnsServices = mkOption {
+        type = stringList;
+        default = [ ];
+        description = "Public Cloudflare labels owned by the primary router.";
+      };
     };
   };
   hostType = types.submodule (
@@ -147,6 +164,26 @@ let
               config.addresses.ip;
           description = "SSH endpoint derived from the inventory addresses.";
         };
+        inventoryName = mkOption {
+          type = types.str;
+          readOnly = true;
+          description = "Canonical host key from homelab.hosts.";
+        };
+        fqdn = mkOption {
+          type = types.str;
+          readOnly = true;
+          description = "Fully qualified host name derived from the inventory key and domain.";
+        };
+        sshHostKeyAlias = mkOption {
+          type = types.str;
+          readOnly = true;
+          description = "SSH host certificate identity derived from the host FQDN.";
+        };
+        deployBackend = mkOption {
+          type = types.enum [ "clan" "deploy-rs" ];
+          readOnly = true;
+          description = "Deployment backend selected from the host's roles.";
+        };
         sshUser = mkOption {
           type = types.str;
           default = "deepwatrcreatur";
@@ -162,6 +199,11 @@ let
           default = [ ];
           description = "Host aliases that unified recognizes as legacy cache server names.";
         };
+        dhcpReservation = mkOption {
+          type = reservationType;
+          default = null;
+          description = "Optional Kea reservation for a host with a stable address.";
+        };
         description = mkOption {
           type = types.str;
           default = "";
@@ -176,11 +218,6 @@ let
           type = types.nullOr routerType;
           default = null;
           description = "Router role settings for hosts composed with the router aspect.";
-        };
-        includeDns = mkOption {
-          type = types.bool;
-          default = true;
-          description = "Include this host in generated DNS records.";
         };
         includeSsh = mkOption {
           type = types.bool;
@@ -222,19 +259,39 @@ in
     '';
   };
 
+  options.homelab.networks = mkOption {
+    type = types.attrsOf (types.submodule {
+      options = {
+        cidr = mkOption { type = types.str; description = "Network CIDR."; };
+        prefixLength = mkOption { type = types.ints.between 0 128; description = "Network prefix length."; };
+      };
+    });
+    default = import ../inventory/networks.nix;
+    description = "Homelab network prefixes used to compose router roles.";
+  };
+
   options.homelab.hosts = mkOption {
     type = types.attrsOf hostType;
     description = "Homelab inventory keyed by canonical host name.";
   };
 
   config = {
-    homelab.hosts = import ../inventory/hosts.nix;
+    homelab.hosts = lib.mapAttrs (name: host: host // {
+      inventoryName = name;
+      fqdn = "${name}.${config.homelab.domain}";
+      sshHostKeyAlias = "${name}.${config.homelab.domain}";
+      deployBackend = if builtins.elem "router" (host.roles or [ ]) then "deploy-rs" else "clan";
+    }) (
+      import ../inventory/hosts.nix
+    );
     perSystem =
       { pkgs, ... }:
       {
         checks.inventory-matches-unified = import ../inventory/check.nix {
           inherit lib pkgs;
           inherit (config.homelab) hosts;
+          inherit (config.homelab) networks;
+          domain = config.homelab.domain;
           unified = inputs.unified.outPath;
         };
       };

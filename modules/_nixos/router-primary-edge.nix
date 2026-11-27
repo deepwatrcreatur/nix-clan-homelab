@@ -3,7 +3,7 @@
 # and role.nix) when elitedesk became the permanent primary (nch-sny.22).
 # INVARIANT: everything here is gated on routerRole.full; a standby or a
 # promoted standby never serves public ingress or PXE.
-{ inputs, legacy, gateway }:
+{ inputs, fleet, gateway }:
 {
   config,
   lib,
@@ -12,9 +12,9 @@
 }:
 let
   enable = config.routerRole.full;
-  domain = legacy.domain;
-  hosts = legacy.hosts;
-  lanCidr = legacy.networks.lan.cidr;
+  domain = fleet.domain;
+  hosts = fleet.hosts;
+  lanCidr = fleet.networks.lan.cidr;
   fqdn = label: "${label}.${domain}";
   tokenFile = config.clan.core.vars.generators.router-cloudflare-api-token.files.value.path;
   iventoyHttpPort = config.services.iventoy.httpPort;
@@ -39,10 +39,10 @@ let
       not path /outpost.goauthentik.io/*
     }
     handle @trustedOutpost {
-      reverse_proxy ${hosts.authentik-host.ip}:9000
+      reverse_proxy ${hosts.authentik-host.addresses.ip}:9000
     }
     handle @trustedApp {
-      forward_auth ${hosts.authentik-host.ip}:9000 {
+      forward_auth ${hosts.authentik-host.addresses.ip}:9000 {
         uri /outpost.goauthentik.io/auth/caddy
         copy_headers X-Authentik-Username X-Authentik-Groups X-Authentik-Email X-Authentik-Name X-Authentik-Uid X-Authentik-Jwt
       }
@@ -64,17 +64,17 @@ let
     "${domain}".extraConfig = "redir https://x.com/deepwatrcreatur permanent";
     "${fqdn "www"}".extraConfig = "redir https://x.com/deepwatrcreatur permanent";
     "${fqdn "dashboard"}".extraConfig = restricted "reverse_proxy 127.0.0.1:8888";
-    "${fqdn "status"}".extraConfig = authenticated "${hosts.homeserver.ip}:8085";
-    "${fqdn "homelab"}".extraConfig = authenticated "${hosts.homeserver.ip}:8082";
+    "${fqdn "status"}".extraConfig = authenticated "${hosts.homeserver.addresses.ip}:8085";
+    "${fqdn "homelab"}".extraConfig = authenticated "${hosts.homeserver.addresses.ip}:8082";
     "${fqdn "pangolin"}".extraConfig = "reverse_proxy 127.0.0.1:3002";
-    "${fqdn "home-assistant"}".extraConfig = "reverse_proxy ${hosts.homeassistant.ip}:8123";
-    "${fqdn "authentik"}".extraConfig = "reverse_proxy ${hosts.authentik-host.ip}:9000";
-    "${fqdn "paperless"}".extraConfig = "reverse_proxy ${hosts.podman.ip}:18000";
-    "${fqdn "nightscout"}".extraConfig = "reverse_proxy ${hosts.podman.ip}:11337";
-    "${fqdn "netalertx"}".extraConfig = restricted "reverse_proxy ${hosts.podman.ip}:20211";
-    "${fqdn "graylog"}".extraConfig = restricted "reverse_proxy ${hosts.podman.ip}:9000";
+    "${fqdn "home-assistant"}".extraConfig = "reverse_proxy ${hosts.homeassistant.addresses.ip}:8123";
+    "${fqdn "authentik"}".extraConfig = "reverse_proxy ${hosts.authentik-host.addresses.ip}:9000";
+    "${fqdn "paperless"}".extraConfig = "reverse_proxy ${hosts.podman.addresses.ip}:18000";
+    "${fqdn "nightscout"}".extraConfig = "reverse_proxy ${hosts.podman.addresses.ip}:11337";
+    "${fqdn "netalertx"}".extraConfig = restricted "reverse_proxy ${hosts.podman.addresses.ip}:20211";
+    "${fqdn "graylog"}".extraConfig = restricted "reverse_proxy ${hosts.podman.addresses.ip}:9000";
     "${fqdn "scrypted"}".extraConfig = ''
-      reverse_proxy https://${hosts.scrypted-lxc.ip}:10443 {
+      reverse_proxy https://${hosts.scrypted-lxc.addresses.ip}:10443 {
         transport http {
           tls_insecure_skip_verify
         }
@@ -84,13 +84,13 @@ let
         header_up X-Forwarded-Proto {scheme}
       }
     '';
-    "${fqdn "roundtable"}".extraConfig = "reverse_proxy ${hosts.vaglio.ip}:4000";
+    "${fqdn "roundtable"}".extraConfig = "reverse_proxy ${hosts.vaglio.addresses.ip}:4000";
     "${fqdn "grafana"}".extraConfig = "reverse_proxy 127.0.0.1:3001";
     "${fqdn "technitium"}".extraConfig = restricted "reverse_proxy 127.0.0.1:5380";
     "${fqdn "netdata"}".extraConfig = restricted "reverse_proxy 127.0.0.1:19999";
     "${fqdn "prometheus"}".extraConfig = restricted "reverse_proxy 127.0.0.1:9090";
     "${fqdn "evebox"}".extraConfig = restricted "reverse_proxy 127.0.0.1:5636";
-    "${fqdn "synology"}".extraConfig = restricted (insecureHttps "${hosts.synology-dsm.ip}:5001");
+    "${fqdn "synology"}".extraConfig = restricted (insecureHttps "${hosts.synology-dsm.addresses.ip}:5001");
   };
 
   # WHY: ACME DNS-01 needs Technitium (local resolver) and the Cloudflare API
@@ -234,8 +234,8 @@ in
     # Plex remote access: WAN TCP 32400 to the Synology DSM VM. Logging is
     # rate limited in its own rule so the limit never applies to traffic.
     services.router-firewall.extraWanInRules = ''
-      ip daddr ${hosts.synology-dsm.ip} tcp dport 32400 limit rate 30/minute log prefix "PLEX-FWD: "
-      ip daddr ${hosts.synology-dsm.ip} tcp dport 32400 counter accept comment "Plex Media Server forward from WAN"
+      ip daddr ${hosts.synology-dsm.addresses.ip} tcp dport 32400 limit rate 30/minute log prefix "PLEX-FWD: "
+      ip daddr ${hosts.synology-dsm.addresses.ip} tcp dport 32400 counter accept comment "Plex Media Server forward from WAN"
     '';
     networking.nftables.tables.plex-remote-access = {
       family = "ip";
@@ -243,7 +243,7 @@ in
         chain prerouting {
           type nat hook prerouting priority dstnat; policy accept;
           iifname "${config.services.router-networking.wan.device}" tcp dport 32400 limit rate 30/minute log prefix "PLEX-DNAT: "
-          iifname "${config.services.router-networking.wan.device}" tcp dport 32400 counter dnat to ${hosts.synology-dsm.ip}:32400 comment "Plex Media Server DNAT"
+          iifname "${config.services.router-networking.wan.device}" tcp dport 32400 counter dnat to ${hosts.synology-dsm.addresses.ip}:32400 comment "Plex Media Server DNAT"
         }
       '';
     };
@@ -259,7 +259,7 @@ in
         { name = "AP25 Ruqayya"; target = "10.10.18.20"; }
         { name = "AP22 Nosheen Living"; target = "10.10.18.21"; }
         { name = "AP11 Nosheen Bedroom"; target = "10.10.18.22"; }
-        { name = "Core Switch"; target = hosts.sw-main.ip; }
+        { name = "Core Switch"; target = hosts.sw-main.addresses.ip; }
         { name = "WAN Cloudflare DNS"; target = "1.1.1.1"; }
         { name = "WAN Google DNS"; target = "8.8.8.8"; }
       ];
@@ -290,7 +290,7 @@ in
         };
         static_configs = [
           {
-            targets = [ hosts.sw-main.ip ];
+            targets = [ hosts.sw-main.addresses.ip ];
             labels.switch = "sw-main";
           }
         ];

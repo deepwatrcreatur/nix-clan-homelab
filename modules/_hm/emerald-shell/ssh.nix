@@ -10,7 +10,7 @@ let
         User = host.sshUser;
       }
       # WHY: Clan host certificates name the canonical DNS name even when the endpoint is an IP.
-      // lib.optionalAttrs host.migrated { HostKeyAlias = "${name}.${domain}"; }
+      // lib.optionalAttrs host.migrated { HostKeyAlias = host.sshHostKeyAlias; }
     )
   ) sshHosts;
   knownHosts = lib.concatStrings (
@@ -28,7 +28,7 @@ let
         clanKey = ../../../vars/per-machine + "/${name}/openssh/ssh.id_ed25519.pub/value";
         key = if host.migrated then clanKey else legacyKey;
         names =
-          if host.migrated then [ "${name}.${domain}" ] else lib.unique ([ host.sshTarget name ] ++ host.aliases);
+          if host.migrated then [ host.fqdn ] else lib.unique ([ host.sshTarget name ] ++ host.aliases);
       in
       lib.optionalString (builtins.pathExists key)
         "${lib.concatStringsSep "," names} ${lib.concatStringsSep " " (lib.take 2 (lib.splitString " " (lib.removeSuffix "\n" (builtins.readFile key))))}\n"

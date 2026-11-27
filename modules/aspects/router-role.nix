@@ -128,8 +128,7 @@ in
         paired = vrrp && vrrpPeers != { };
         peerLanIps = map (peer: ip peer.lanAddress) (lib.attrValues vrrpPeers);
         inherit (router.devices) wan lan management;
-        legacy = import (inputs.unified + "/lib/hosts.nix");
-        topology = legacy.networks;
+        topology = fleet.networks;
         lanCidr = topology.lan.cidr;
         managementCidr = topology.management.cidr;
         gateway = fleet.gateway;
@@ -166,7 +165,7 @@ in
           ])
           ++ [
             ../_nixos/router-snmp.nix
-            (import ../_nixos/router-primary-edge.nix { inherit inputs legacy; inherit (fleet) gateway; })
+            (import ../_nixos/router-primary-edge.nix { inherit inputs fleet; inherit (fleet) gateway; })
             {
               options.routerRole = {
                 promoted = lib.mkOption {
@@ -366,13 +365,13 @@ in
                 lib.mapAttrsToList
                   (name: entry: {
                     hw-address = entry.dhcpReservation.macAddress;
-                    ip-address = entry.ip;
+                    ip-address = entry.addresses.ip;
                     hostname = name;
                   })
                   (
                     lib.filterAttrs (
-                      _: entry: (entry.dhcpReservation or null) != null && (entry.ip or null) != null
-                    ) legacy.hosts
+                      _: entry: (entry.dhcpReservation or null) != null && (entry.addresses.ip or null) != null
+                    ) fleet.hosts
                   );
             }
             // lib.optionalAttrs paired {
@@ -412,7 +411,7 @@ in
           // lib.optionalAttrs full {
             cloudflare = {
               zoneName = fleet.domain;
-              labels = legacy.hosts.router.ddnsServices;
+              labels = fleet.hosts.router.router.ddnsServices;
               apiTokenFile = varPath "cloudflare-api-token";
             };
           };

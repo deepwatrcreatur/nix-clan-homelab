@@ -31,7 +31,7 @@ in
         # WHY: host certificates name <machine>.<domain>; the alias checks them
         # even when the inventory targets an address (e.g. elitedesk's
         # management IP, which has no DNS record).
-        deploy.targetHost = "${host.sshUser}@${host.sshTarget}?HostKeyAlias=${name}.${config.homelab.domain}";
+        deploy.targetHost = "${host.sshUser}@${host.sshTarget}?HostKeyAlias=${host.sshHostKeyAlias}";
       }
     ) denHosts;
 
