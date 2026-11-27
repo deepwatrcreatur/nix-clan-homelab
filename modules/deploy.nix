@@ -4,7 +4,9 @@
   ...
 }:
 let
-  backendFor = host: if builtins.elem "router" host.roles then "deploy-rs" else "clan";
+  backendFor = host: host.deployBackend;
+  routerBackend = config.homelab.hosts.router.deployBackend;
+  workstationBackend = config.homelab.hosts.lattitude.deployBackend;
   deployableHosts = lib.filterAttrs (
     name: host: host.migrated && !host.archived && builtins.hasAttr name config.flake.clan.machines
   ) config.homelab.hosts;
@@ -12,7 +14,7 @@ let
   statusHosts = builtins.toJSON (
     lib.mapAttrs (name: host: {
       target = "${host.sshUser}@${host.sshTarget}";
-      alias = "${name}.${config.homelab.domain}";
+      alias = host.sshHostKeyAlias;
     }) deployableHosts
   );
   backendCases = lib.concatStringsSep "\n" (
@@ -21,7 +23,7 @@ let
         backend=${backendFor host}
         target=${lib.escapeShellArg "${host.sshUser}@${host.sshTarget}"}
         # WHY: same certificate check as clan's targetHost (modules/clan.nix).
-        host_key_alias=${lib.escapeShellArg "${name}.${config.homelab.domain}"}
+        host_key_alias=${lib.escapeShellArg host.sshHostKeyAlias}
         ;;
     '') deployableHosts
   );
@@ -169,9 +171,8 @@ in
       '';
 
       checks.deploy-dispatch =
-        assert backendFor { roles = [ "router" ]; } == "deploy-rs";
-        assert backendFor { roles = [ "router-standby" ]; } == "clan";
-        assert backendFor { roles = [ ]; } == "clan";
+        assert routerBackend == "deploy-rs";
+        assert workstationBackend == "clan";
         pkgs.runCommand "deploy-dispatch" { } "touch $out";
     };
 }

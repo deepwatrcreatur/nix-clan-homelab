@@ -2,10 +2,13 @@
   lib,
   pkgs,
   hosts,
+  domain,
+  networks,
   unified,
 }:
 let
-  legacyNetwork = (import (unified + "/lib/hosts.nix")).hosts;
+  legacyInventory = import (unified + "/lib/hosts.nix");
+  legacyNetwork = legacyInventory.hosts;
   legacyComposition = lib.filterAttrs (_: host: !(host.archived or false)) (
     (import (unified + "/den/inventory/hosts.nix")) // (import (unified + "/den/inventory/darwin.nix"))
   );
@@ -19,6 +22,15 @@ let
   composedInUnified = lib.filterAttrs (name: host: !host.migrated || legacyComposition ? ${name});
   builderClients = composedInUnified (withRole "remoteBuilderClient" hosts);
   cacheServers = withRole "cacheServer" hosts;
+  derivedMetadataMatches = lib.concatLists (lib.mapAttrsToList (
+    name: host:
+    lib.optional (
+      host.inventoryName != name
+      || host.fqdn != "${name}.${domain}"
+      || host.sshHostKeyAlias != host.fqdn
+      || host.deployBackend != (if builtins.elem "router" host.roles then "deploy-rs" else "clan")
+    ) "Derived host metadata differs for ${name}"
+  ) hosts);
 
   sort = lib.sort builtins.lessThan;
   sameNames = actual: expected: sort actual == sort expected;
@@ -39,8 +51,9 @@ let
       || host.sshUser != (legacy.sshUser or "deepwatrcreatur")
       || host.aliases != (legacy.aliases or [ ])
       || host.description != (legacy.description or "")
-      || host.includeDns != (legacy.includeDns or true)
       || host.includeSsh != (legacy.includeSsh or true)
+      || host.dhcpReservation != (legacy.dhcpReservation or null)
+      || (if host.router == null then [ ] else host.router.ddnsServices) != (legacy.ddnsServices or [ ])
     ) "Network inventory differs for ${name}"
   ) legacyNetwork;
 
@@ -59,6 +72,8 @@ let
 
   errors =
     lib.optional (!sameNames (builtins.attrNames active) legacyNames) "Active host names differ"
+    ++ derivedMetadataMatches
+    ++ lib.optional (networks != legacyInventory.networks) "Network topology differs"
     ++ lib.concatLists networkMatches
     ++ lib.concatLists compositionMatches
     ++ lib.optional (

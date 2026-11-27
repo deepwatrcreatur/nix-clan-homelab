@@ -4,6 +4,7 @@
     addresses.ip = "10.10.10.59";
     description = "418 entrance doorbell camera";
     includeSsh = false;
+    dhcpReservation = { macAddress = "ec:71:db:c6:f4:f3"; scope = "LAN"; };
   };
 
   "420" = {
@@ -11,6 +12,7 @@
     addresses.ip = "10.10.10.60";
     description = "420 entrance doorbell camera";
     includeSsh = false;
+    dhcpReservation = { macAddress = "ec:71:db:04:df:fd"; scope = "LAN"; };
   };
 
   ap-nosheen-bedroom = {
@@ -18,6 +20,7 @@
     addresses.ip = "10.10.18.22";
     description = "AP11 Nosheen Bedroom";
     includeSsh = false;
+    dhcpReservation = { macAddress = "FC:7F:F1:CC:E1:CA"; scope = "LAN"; };
   };
 
   ap-nosheen-living = {
@@ -25,6 +28,7 @@
     addresses.ip = "10.10.18.21";
     description = "AP22 Nosheen Living Room";
     includeSsh = false;
+    dhcpReservation = { macAddress = "A8:5B:F7:C2:0A:42"; scope = "LAN"; };
   };
 
   ap-ruqayya = {
@@ -32,6 +36,7 @@
     addresses.ip = "10.10.18.20";
     description = "AP25 Ruqayya Bedroom";
     includeSsh = false;
+    dhcpReservation = { macAddress = "54:D7:E3:C7:51:80"; scope = "LAN"; };
   };
 
   apt-cache = {
@@ -48,6 +53,7 @@
     addresses.ip = "10.10.18.23";
     description = "AirPort Express/Extreme switch";
     includeSsh = false;
+    dhcpReservation = { macAddress = "f8:1e:df:f7:54:8c"; scope = "LAN"; };
   };
 
   authentik-host = {
@@ -56,6 +62,7 @@
     addresses.ip = "10.10.11.70";
     sshUser = "deepwatrcreatur";
     description = "Dedicated Authentik identity host";
+    dhcpReservation = { macAddress = "BC:24:11:A4:01:6F"; scope = "LAN"; };
     roles = [
       "remoteBuilderClient"
       "lxc"
@@ -78,7 +85,6 @@
     addresses.sshHostname = "192.168.100.98";
     sshUser = "deepwatrcreatur";
     description = "Bare-metal primary router (HP EliteDesk); replaced router on 2026-11-24";
-    includeDns = false;
     migrated = true;
     router = {
       # WHY: VRRP member (docs/router-vrrp.md), alone until router joins
@@ -133,6 +139,7 @@
     ];
     cacheAliases = [ "attic-cache" ];
     description = "Nix binary cache server on baremetal (MSI Tomahawk)";
+    dhcpReservation = { macAddress = "34:5a:60:01:5e:f8"; scope = "LAN"; };
     roles = [
       "cacheServer"
       "desktop"
@@ -154,6 +161,7 @@
     sshUser = "deepwatrcreatur";
     aliases = [ "semaphore" ];
     description = "Home automation, Semaphore Ansible UI";
+    dhcpReservation = { macAddress = "BC:24:11:A9:BB:ED"; scope = "LAN"; };
     roles = [
       "remoteBuilderClient"
       "lxc"
@@ -165,7 +173,6 @@
     addresses.hostname = "infisical.deepwatercreature.com";
     sshUser = "deepwatrcreatur";
     description = "Secrets management";
-    includeDns = false;
   };
 
   lattitude = {
@@ -174,6 +181,7 @@
     addresses.ip = "10.10.11.47";
     sshUser = "deepwatrcreatur";
     description = "Latitude laptop - Sway desktop kiosk (migrated)";
+    dhcpReservation = { macAddress = "fc:15:b4:03:06:0a"; scope = "LAN"; };
     # Unified retired its system definition (unified #257); this repo owns it.
     migrated = true;
     roles = [
@@ -186,7 +194,6 @@
     kind = "darwin";
     system = "aarch64-darwin";
     sshUser = "deepwatrcreatur";
-    includeDns = false;
     includeSsh = false;
     description = "Mac mini M4";
   };
@@ -197,6 +204,7 @@
     addresses.ip = "10.10.11.92";
     sshUser = "deepwatrcreatur";
     description = "Phoenix workstation";
+    dhcpReservation = { macAddress = "24:8A:07:8D:66:86"; scope = "LAN"; };
     # WHY: expose an offline Clan candidate while Unified remains authoritative;
     # the fleet-deploy dispatcher only accepts hosts marked migrated.
     clanCandidate = true;
@@ -210,8 +218,8 @@
     kind = "appliance";
     addresses.ip = "10.10.11.56";
     description = "HP PageWide Pro 477dn MFP printer/scanner";
-    includeDns = false;
     includeSsh = false;
+    dhcpReservation = { macAddress = "10:62:e5:26:58:c2"; scope = "LAN"; };
   };
 
   podman = {
@@ -221,6 +229,7 @@
     sshUser = "deepwatrcreatur";
     aliases = [ "plex" ];
     description = "Podman container host (Plex)";
+    dhcpReservation = { macAddress = "BC:24:11:51:F9:5B"; scope = "LAN"; };
     roles = [
       "remoteBuilderClient"
       "lxc"
@@ -300,6 +309,7 @@
       };
       wanBandwidth = "2.5Gbit";
       vrrpPriority = 100;
+      ddnsServices = [ "@" "homelab" "authentik" "paperless" "scrypted" "roundtable" "status" ];
     };
     roles = [ "router" ];
   };
@@ -309,7 +319,6 @@
     system = "x86_64-linux";
     sshUser = "deepwatrcreatur";
     description = "Minimal bootstrap output for router-class installs";
-    includeDns = false;
     includeSsh = false;
   };
 
@@ -317,7 +326,6 @@
     kind = "nixos";
     system = "x86_64-linux";
     description = "Legacy remote-builder client name";
-    includeDns = false;
     includeSsh = false;
     archived = true;
     roles = [ "remoteBuilderClient" ];
@@ -327,7 +335,6 @@
     kind = "nixos";
     system = "x86_64-linux";
     description = "Legacy remote-builder client name";
-    includeDns = false;
     includeSsh = false;
     archived = true;
     roles = [ "remoteBuilderClient" ];
@@ -338,6 +345,7 @@
     sshUser = "root";
     description = "Dedicated Scrypted LXC container on pve-rog";
     roles = [ "lxc" ];
+    dhcpReservation = { macAddress = "BC:24:11:18:16:BD"; scope = "LAN"; };
   };
 
   sw-main = {
@@ -345,6 +353,7 @@
     addresses.ip = "10.10.18.10";
     description = "Core switch (HRUI LG510S-4T2XS, 4x 10G RJ45 / 2x SFP+)";
     includeSsh = false;
+    dhcpReservation = { macAddress = "1c:2a:a3:1e:c3:51"; scope = "LAN"; };
   };
 
   sw-cisco-sg300-52p = {
@@ -352,6 +361,7 @@
     addresses.ip = "10.10.18.11";
     description = "Cisco SG300-52P (52-port PoE, managed)";
     includeSsh = false;
+    dhcpReservation = { macAddress = "00:08:32:53:9f:4e"; scope = "LAN"; };
   };
 
   sw-dell-n1124t-on = {
@@ -359,6 +369,7 @@
     addresses.ip = "10.10.18.12";
     description = "Dell N1124T-ON (24-port, managed)";
     includeSsh = false;
+    dhcpReservation = { macAddress = "14:18:77:15:97:e8"; scope = "LAN"; };
   };
 
   sw-hp-2910al-48g-poe = {
@@ -366,6 +377,7 @@
     addresses.ip = "10.10.18.13";
     description = "HP 2910al-48G-PoE (J9148A)";
     includeSsh = false;
+    dhcpReservation = { macAddress = "f0:92:1c:cc:57:00"; scope = "LAN"; };
   };
 
   sw-dell-powerconnect = {
@@ -373,6 +385,7 @@
     addresses.ip = "10.10.18.14";
     description = "Dell PowerConnect (model unknown)";
     includeSsh = false;
+    dhcpReservation = { macAddress = "d0:67:e5:ba:fb:68"; scope = "LAN"; };
   };
 
   synology-dsm = {
@@ -382,6 +395,7 @@
     aliases = [ "dsm" ];
     description = "Synology DSM virtual machine on pve-rog";
     roles = [ "vm" ];
+    dhcpReservation = { macAddress = "BC:24:11:53:D5:D0"; scope = "LAN"; };
   };
 
   vaglio = {
@@ -390,6 +404,7 @@
     addresses.ip = "10.10.11.71";
     sshUser = "deepwatrcreatur";
     description = "Dedicated Vaglio (Roundtable) discussion orchestrator";
+    dhcpReservation = { macAddress = "BC:24:11:A4:02:7A"; scope = "LAN"; };
     roles = [
       "remoteBuilderClient"
       "lxc"
