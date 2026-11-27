@@ -92,8 +92,7 @@ Found during the 2026-11-25 review, before any local code was written:
 - **Monitoring.** clan-core ships a `monitoring` service (Alloy, Mimir,
   Loki, Grafana; experimental), with no alert rules or notification channel.
   `nch-a9a.5` evaluated it: [decision 0005](decisions/0005-fleet-alerting.md)
-  proposes routing fleet alerts through the routers' existing Alertmanager
-  instead.
+  routes fleet alerts through the routers' existing Alertmanager instead.
 - **Lock updates.** `update-flake-lock` and buildbot-nix schedules exist.
   `nch-a9a.4` uses one of them.
 

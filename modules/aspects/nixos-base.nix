@@ -3,7 +3,10 @@
 { den, ... }:
 {
   den.aspects.nixos-base = {
-    includes = [ den.aspects.home-manager-users ];
+    includes = [
+      den.aspects.home-manager-users
+      den.aspects.fleet-metrics
+    ];
 
     nixos =
       { config, lib, pkgs, ... }:
