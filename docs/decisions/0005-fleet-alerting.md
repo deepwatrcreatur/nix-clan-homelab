@@ -1,7 +1,8 @@
 # 0005: Fleet alerting through the routers' Alertmanager
 
-Status: **Proposed** (2026-11-27, evaluation for `nch-a9a.5`; needs the
-operator's decision).
+Status: **Accepted** (2026-11-27, operator: option B, the same ntfy topic as
+router alerts, build now and deploy after the VRRP drill). Implemented in
+`modules/aspects/fleet-alerting.nix`.
 Context: [`docs/architecture.md`](../architecture.md#gaps-that-turned-out-to-be-filled-upstream-already),
 [decision 0003](0003-upstream-first.md).
 
@@ -49,7 +50,8 @@ filesystems), `smartctl`, `node-cert` (expiry of x509 certificates on disk,
 such as ACME), `blackbox` (TLS expiry of live endpoints).
 
 Not covered by any of them: **SSH CA host certificate** expiry (OpenSSH
-certificates are not x509).
+certificates are not x509). Not needed today: Clan issues the host
+certificates with `Valid: forever` (checked with `ssh-keygen -L`).
 
 Node exporter today: `elitedesk` and `router` only. `clan-spike`,
 `lattitude` and `phoenix` have none.
@@ -75,42 +77,55 @@ bead it adds a heavy single server, still leaves every alert rule and the
 ntfy path to us, and would create a second alerting path beside the
 routers', which already deliver to the phone and report their own death.
 This stays within decision 0003: everything in B is upstream
-(nix-router-optimized and nixpkgs exporters). The only local code is one
-small textfile collector for SSH certificate expiry, a named gap.
+(nix-router-optimized and nixpkgs exporters), plus the wiring that connects
+them.
 
-## Plan (B), once accepted
+## Implementation
 
-1. **Exporters on every migrated host** (a `fleet-metrics` aspect):
-   - node exporter with `systemd`, `filesystem` and `textfile`;
-   - `smartctl` exporter on hosts with disks;
-   - `node-cert` on hosts holding ACME certificates.
+`modules/aspects/fleet-alerting.nix`:
 
-   Ports open only to the two routers' LAN addresses.
-2. **Both routers scrape** the fleet from `homelab.hosts`, so the target list
-   cannot drift from the inventory. Set `clusterPeers` so the pair sends each
-   notification once while the two can reach each other, and the survivor
-   keeps sending. If their link splits while both still reach ntfy, each
-   side sends: Alertmanager prefers a duplicate to a lost alert.
-3. **Rules**, with `host` labels, tested with `promtool` like
-   `router-nic-alerts`:
-   - a unit in `failed` state for 5 minutes;
-   - a filesystem over 85 % (tmpfs and the Nix store excluded);
-   - SMART health failed, or NVMe media errors increasing;
-   - an ACME certificate or SSH host certificate expiring within 14 days;
-   - a host down for 10 minutes, excluding laptops (`lattitude`).
-4. **SSH host certificate expiry:** a textfile collector that runs
-   `ssh-keygen -L` on the host certificate and writes the `Valid: to` time as
-   a metric. It is the one local piece; add a gaps-table row
-   ("OpenSSH certs are not x509").
-5. **Acceptance (from the bead):** with both routers up and clustered, a
-   deliberately failed unit on clan-spike gives exactly one ntfy
+1. **`fleet-metrics`** (included by `nixos-base`; skipped on routers, whose
+   node exporter comes from nix-router-optimized): node exporter with the
+   `systemd` collector, and `smartctl` except in containers. Their ports
+   accept only the routers' node addresses and the gateway address (IPv4
+   `iptables` rules on these hosts, or nftables where enabled).
+2. **`fleet-alerting-router`** (included by `router-role`):
+   - both routers scrape every migrated non-router host from
+     `homelab.hosts`, as jobs `fleet-node` and `fleet-smartctl`, labelled
+     `host` and `always_on`;
+   - `smartctl`, and `node-cert` for Caddy's certificates (Caddy renews them
+     on both routers), on the routers themselves;
+   - `clusterPeers` set to the VRRP peers, cluster traffic pinned to the
+     node address and allowed only from the peer.
+3. **Rules** (`fleet.rules.json`, for routers too):
+   - `HostDown`: an `always_on` host unscraped for 10 minutes; hosts with
+     the `desktop` role are excluded;
+   - `SystemdUnitFailed`: a unit failed for 5 minutes;
+   - `FilesystemAlmostFull`: over 85 % for 15 minutes, pseudo filesystems
+     and read-only mounts excluded;
+   - `DiskSmartFailed`, `DiskCriticalWarning`, `DiskMediaErrors`;
+   - `TlsCertificateExpiring`: within 14 days.
+4. **Checks:** `checks.fleet-alert-rules` (promtool: each alert fires, and a
+   desktop host, a healthy unit, a full tmpfs and a later certificate stay
+   quiet), `checks.fleet-metrics` (every fleet host exports and is
+   firewalled; every router scrapes exactly the fleet, loads the rules, runs
+   the exporters and is clustered).
+5. **Acceptance (from the bead), after the deploy:** with both routers up and
+   clustered, a deliberately failed unit on clan-spike gives exactly one ntfy
    notification, and one resolved message after the unit is fixed.
 
-## Decisions for the operator
+Dropped from the proposal: the SSH certificate collector (the certificates do
+not expire) and `node-cert` for NixOS ACME (no host uses it).
 
-- **B or A?** This record recommends B.
-- **Deploy timing:** steps 1–3 change both routers (scrape config,
-  clustering) and every host, so the deploy waits until the VRRP drill is
-  over.
-- **Notifications:** fleet alerts on the same ntfy topic as router alerts
-  (simplest), or on a separate topic.
+**Expect on the first deploy:** routers now alert on their own failed units
+too, so any unit still failed 5 minutes after the deploy raises an alert.
+`tailscaled-autoconnect.service` is failed on `router` today. The same
+deploy carries its fix (nix-router-optimized #192, pinned since
+nix-clan-homelab #79), and switching restarts the changed unit, so it should
+clear rather than fire.
+
+## Operator decisions (2026-11-27)
+
+- Option B.
+- Fleet alerts use the same ntfy topic as router alerts.
+- Build now; deploy after the VRRP drill.
