@@ -127,15 +127,25 @@ Each live step needs the operator at both consoles and an agreed window
    hot-standby when the partner returned; zones were promoted and demoted
    each time.
 
-   **Open problem: IPv6 after the MASTER dies.** Each member advertises
-   itself as default router from its own link-local address. A demotion
-   sends a zero-lifetime RA, so clients drop the old route at once, but a
-   MASTER that loses power cannot. SLAAC clients keep its route (router
-   lifetime 1800 s) and the kernel keeps choosing it while neighbor
-   discovery sits in DELAY, so IPv6 can stay broken for up to 30 minutes.
-   The fix belongs in nix-router-optimized: advertise from a link-local
-   address that moves with the VIP, so clients only ever see one router.
-   Tracked as a follow-up bead under nch-sny.36.
+   **IPv6 after the MASTER dies (fixed).** Each member used to advertise
+   itself from its own link-local address. A demotion sends a zero-lifetime
+   RA, but a MASTER that loses power cannot, so SLAAC clients kept its route
+   (router lifetime 1800 s) while neighbor discovery sat in DELAY.
+   nix-router-optimized #193 (clan #81) has the MASTER advertise from
+   `fe80::1`, which moves with VRRP; clients keep one route `via fe80::1`.
+   Power cut repeated 2026-11-27: gateway 3.2 s, DNS 2.2 s, IPv4 6.7 s,
+   **IPv6 7.0 s**; the lease and /56 kept; fail-back 1.3 s IPv4, 1.5 s IPv6.
+
+   **Open problem: the rebooted member can preempt without the 300 s
+   hold.** In the repeat, elitedesk's keepalived started (5 s boot timer)
+   8 s after its LAN carrier came up, heard no adverts for 3.5 s and became
+   MASTER on the master-down timer, which `preempt_delay` does not cover.
+   router heard elitedesk's first advert 14 s after that carrier, which
+   points at the switch port not forwarding yet (spanning-tree delay).
+   Harmless this time (WAN came up, 1.5 s gaps), but a member that is not
+   ready would take the gateway. Fix candidates: make router ports edge
+   (portfast) on the switch, and have router-ha hold keepalived until it
+   hears an advert or a timeout passes. nch-sny.36.11.
 
    The first power-cut attempt (router as MASTER) cost about 10 minutes for
    an unrelated reason: elitedesk's WAN cable had worked loose at its NIC
