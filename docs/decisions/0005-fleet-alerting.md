@@ -60,7 +60,7 @@ Node exporter today: `elitedesk` and `router` only. `clan-spike`,
 | --- | --- | --- | --- |
 | Alert delivery | to build: Grafana rules, contact point, ntfy relay | exists: Alertmanager → ntfy, watchdog | B's |
 | New services | Alloy everywhere; Mimir, Loki, nginx, Grafana (and its database) on one server | exporters on each host | A's, minus alerting |
-| Single point of failure | the one server (the role allows one) | none: both routers scrape, clustered Alertmanagers dedupe | B's for alerts |
+| Single point of failure | the one server (the role allows one) | none: both routers scrape; clustered Alertmanagers dedupe while they can reach each other | B's for alerts |
 | Who tells you the alerter is down | nothing yet | per-router healthchecks watchdog | B's |
 | Maturity | experimental, will change | in use, checked | mixed |
 | Logs | yes (Loki) | no | yes |
@@ -88,7 +88,9 @@ small textfile collector for SSH certificate expiry, a named gap.
    Ports open only to the two routers' LAN addresses.
 2. **Both routers scrape** the fleet from `homelab.hosts`, so the target list
    cannot drift from the inventory. Set `clusterPeers` so the pair sends each
-   notification once, and the survivor keeps sending.
+   notification once while the two can reach each other, and the survivor
+   keeps sending. If their link splits while both still reach ntfy, each
+   side sends: Alertmanager prefers a duplicate to a lost alert.
 3. **Rules**, with `host` labels, tested with `promtool` like
    `router-nic-alerts`:
    - a unit in `failed` state for 5 minutes;
@@ -100,9 +102,9 @@ small textfile collector for SSH certificate expiry, a named gap.
    `ssh-keygen -L` on the host certificate and writes the `Valid: to` time as
    a metric. It is the one local piece; add a gaps-table row
    ("OpenSSH certs are not x509").
-5. **Acceptance (from the bead):** a deliberately failed unit on clan-spike
-   gives exactly one ntfy notification, and one resolved message after the
-   unit is fixed.
+5. **Acceptance (from the bead):** with both routers up and clustered, a
+   deliberately failed unit on clan-spike gives exactly one ntfy
+   notification, and one resolved message after the unit is fixed.
 
 ## Decisions for the operator
 
