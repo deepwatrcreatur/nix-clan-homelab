@@ -29,6 +29,7 @@ let
       || host.fqdn != "${name}.${domain}"
       || host.sshHostKeyAlias != host.fqdn
       || host.deployBackend != (if builtins.elem "router" host.roles then "deploy-rs" else "clan")
+      || host.deployTarget != (if host.router != null && host.router.mode == "vrrp" then builtins.head (lib.splitString "/" host.router.lanAddress) else host.sshTarget)
     ) "Derived host metadata differs for ${name}"
   ) hosts);
 

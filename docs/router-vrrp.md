@@ -176,10 +176,14 @@ Each live step needs the operator at both consoles and an agreed window
    reverse, so a half-switched pair has two MASTERs. Mask keepalived on
    the BACKUP (`systemctl mask --runtime --now keepalived`), deploy it,
    deploy the MASTER, then unmask and start the BACKUP. Deploy elitedesk
-   over its LAN address (`deploy .#elitedesk --hostname 10.10.10.4`):
-   this workstation reaches the management address only through the
-   gateway, and that path breaks while the VIP moves. Deploy the MASTER
-   the same way (router: `--hostname 10.10.10.2`).
+   over its LAN address: this workstation reaches the management address
+   only through the gateway, and that path breaks while the VIP moves.
+   `fleet-deploy`, `fleet-status` and the deploy-rs nodes now use each
+   VRRP member's LAN address (inventory `deployTarget`), so plain
+   `fleet-deploy <router>` does this. After an abort to an older
+   `primary` generation the node address is gone from the LAN (a primary
+   holds only the gateway); deploy the current configuration back with
+   `nix develop -c deploy .#elitedesk --hostname 192.168.100.98`.
 
    Done 2026-11-27 with router as MASTER: the gateway was down 145 s
    (15:14:35-15:17:01). The MASTER's keepalived waited the full
@@ -190,6 +194,12 @@ Each live step needs the operator at both consoles and an agreed window
    `activationTimeout = 300`. Afterwards router sent unicast adverts to
    10.10.10.4 and elitedesk's gate heard the first one and started as
    BACKUP.
+
+   Power cut repeated 2026-11-27 16:00 on unicast: router MASTER at
+   16:00:57; gateway 2.2 s, IPv6 5.7 s, IPv4 9.4 s. elitedesk's LAN came up
+   at 16:02:10, its gate heard router at 16:02:18 and keepalived started as
+   BACKUP; it preempted at 16:07:23 (the full 300 s), fail-back 1.3 s IPv4,
+   0.3 s IPv6. Lease and /56 kept; clients' route stayed `via fe80::1`.
 
    The first power-cut attempt (router as MASTER) cost about 10 minutes for
    an unrelated reason: elitedesk's WAN cable had worked loose at its NIC
@@ -206,3 +216,9 @@ the gateway statically again, as after the 2026-11-24 move. The marker keeps
 router's keepalived off across reboots under both unified and clan (a
 `ConditionPathExists` on the unit, `checks.router-vrrp`); remove it only when
 router may compete for the gateway again.
+
+While elitedesk runs that primary generation, its LAN node address
+10.10.10.4 is absent, and `fleet-deploy elitedesk` (which targets it while
+the inventory says `vrrp`) cannot connect. To return to VRRP, deploy over
+the management address: `nix develop -c deploy .#elitedesk --hostname
+192.168.100.98`.

@@ -29,9 +29,9 @@ in
       {
         tags = host.roles;
         # WHY: host certificates name <machine>.<domain>; the alias checks them
-        # even when the inventory targets an address (e.g. elitedesk's
-        # management IP, which has no DNS record).
-        deploy.targetHost = "${host.sshUser}@${host.sshTarget}?HostKeyAlias=${host.sshHostKeyAlias}";
+        # even when the deploy target is an address (a router's LAN IP has no
+        # DNS record).
+        deploy.targetHost = "${host.sshUser}@${host.deployTarget}?HostKeyAlias=${host.sshHostKeyAlias}";
       }
     ) denHosts;
 
