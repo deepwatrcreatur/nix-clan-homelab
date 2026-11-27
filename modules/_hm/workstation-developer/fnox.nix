@@ -33,6 +33,10 @@ in
       "age17mn5lnlh2mgttp950wc7a2nl9kphewa4jj8e0uhlv3svx68a54vqyngcyr"
       "age1awqed0la6x3rr39et8fjruw42mf8v2sqct78mcjzx5d226gcx9nqrjdmjz"
     ];
+    seedSecretSources = lib.mkIf (credentialsDirectory != null) {
+      DEEPSEEK_API_KEY = [ "${credentialsDirectory}/deepseek-api-key" ];
+      OPENAI_API_KEY = [ "${credentialsDirectory}/openai-api-key" ];
+    };
     wrappedCommands = {
       gemini-fnox = withCredential "GEMINI_API_KEY" "gemini-api-key" wrappedCommands.gemini-fnox;
       claude-fnox = withCredential "ANTHROPIC_API_KEY" "anthropic-api-key" {

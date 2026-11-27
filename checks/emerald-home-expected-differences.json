@@ -2,6 +2,7 @@
   "files": {
     "extra": [],
     "missing": [
+      ".config/fnox/config.toml",
       ".gnupg/public-key.asc"
     ]
   },

@@ -2,7 +2,6 @@
   "files": {
     "missing": [],
     "extra": [
-      ".config/fnox/clan-defaults.toml",
       ".config/git/github-token"
     ]
   },
