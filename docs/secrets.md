@@ -24,7 +24,7 @@ commit before pushing.
 
 | Domain | Aspects | Vars | Status |
 | --- | --- | --- | --- |
-| cache/builder | `nix-cache-auth`, `nix-ci-cache-auth`, `remote-builder-client` | `nix-cache-auth/{attic-token,netrc}`, `nix-ci-cache-auth/netrc`, `nix-remote-builder/key` | Existing values are imported; Phoenix is now a recipient for the vars it declares. Routers declare only `nix-ci-cache-auth/netrc`; its token still needs maintainer-coordinated provisioning. Builder keys remain off routers. |
+| cache/builder | `nix-cache-auth`, `nix-ci-cache-auth`, `remote-builder-client` | `nix-cache-auth/{attic-token,netrc}`, `nix-ci-cache-auth/netrc`, `nix-remote-builder/key` | Existing values are imported; Phoenix is now a recipient for the vars it declares. Routers receive only the separate `nix-ci-cache-auth/netrc` var; it is encrypted for both and not delivered to either live host yet. Builder keys remain off routers. |
 | Synology CIFS | `synology-shares` | `synology-shares/credentials` | Imported from unified; Lattitude and Phoenix are recipients. Emerald remains admin-only. |
 | user/operator | `console-password` (per clan host), `workstation-user-secrets`, `root-ssh-identity` | `console-password/{root,deepwatrcreatur}` (yescrypt hashes); 13 workstation credentials under `vars/shared/workstation-user-secrets`; stable root client key under `vars/shared/root-ssh-identity` | Values are encrypted Clan vars; Lattitude and Phoenix are recipients for their declared vars. No live host has read the workstation credentials. Root SSH identity is preserved for Phoenix, with no Clan vars delivered yet. Workstation credential delivery and state preservation remain in `nch-sny.37.7`. |
 | homeserver services | | | todo |
@@ -72,8 +72,8 @@ defaults use a separate file so an existing writable config stays in place.
   to that account and writes only to that user's private cache namespace; its
   hosted cache docs do not describe a read-only user token. Anyone provisioning
   this var should account for that write scope, or use an account restricted to
-  the required repositories. The router var remains unprovisioned pending
-  maintainer coordination (see [NixCI cache access](https://nix-ci.com/documentation/nix-ci-cache)).
+  the required repositories. The value is encrypted for elitedesk and router;
+  host delivery remains pending a coordinated rollout (see [NixCI cache access](https://nix-ci.com/documentation/nix-ci-cache)).
 - The `nix-cache-auth` flake check verifies the NixCI endpoint, key and netrc
   on the exported NixOS configurations and checks the public-cache fallback.
 - attic's `cache-local` answers unauthenticated reads on the LAN, so pulls
