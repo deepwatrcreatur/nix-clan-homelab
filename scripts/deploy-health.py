@@ -67,8 +67,10 @@ def read(alias, target):
     # profile back and leave the new system running (modules/deploy-rs.nix),
     # and a host booted from an older menu entry runs something else again.
     system = facts.get("system", "")
+    if not SYSTEM.match(system):
+        raise RuntimeError("could not read /run/current-system")
     return {
-        "system": system if SYSTEM.match(system) else None,
+        "system": system,
         "state": facts.get("state", ""),
         "failed": sorted(u for u in facts["failed"].split(",") if u),
     }
@@ -125,14 +127,14 @@ def main(argv):
             break
         time.sleep(min(POLL_SECONDS, remaining))
     if "error" in after:
-        healthy, lines = False, [f"Cannot reach the host after the deploy: {after['error']}"]
+        healthy, lines = False, [f"Cannot read the host after the deploy: {after['error']}"]
     else:
         healthy, lines = verdict(before, after)
     print(f"Health check: {'OK' if healthy else 'FAILED'}")
     for line in lines:
         print(f"  {line}")
     switched = after.get("system", "unknown") != before.get("system")
-    if not healthy and switched and before.get("system"):
+    if not healthy and switched:
         print(f"To return to {before['system']} (not run automatically):")
         print(f"  {rollback_command(target, alias, before['system'])}")
     return 0 if healthy else 1

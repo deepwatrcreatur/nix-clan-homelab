@@ -166,7 +166,7 @@ exit $(cat {self.dir}/deploy.rc 2>/dev/null || echo 0)
         self.queue(answer(), None)
         done = self.deploy("clan-spike")
         self.assertEqual(done.returncode, 1)
-        self.assertIn("Cannot reach the host after the deploy", done.stdout)
+        self.assertIn("Cannot read the host after the deploy", done.stdout)
         self.assertIn(f"--set {OLD}", done.stdout)
 
     def test_unreachable_before_does_not_deploy(self):
@@ -175,6 +175,13 @@ exit $(cat {self.dir}/deploy.rc 2>/dev/null || echo 0)
         self.assertEqual(done.returncode, 1)
         self.assertEqual(self.deployed(), "")
         self.assertIn("--no-check", done.stderr)
+
+    def test_missing_running_system_before_does_not_deploy(self):
+        self.queue(answer(system=""))
+        done = self.deploy("clan-spike")
+        self.assertEqual(done.returncode, 1)
+        self.assertEqual(self.deployed(), "")
+        self.assertIn("could not read /run/current-system", done.stderr)
 
     def test_failed_deploy_keeps_its_status_and_still_checks(self):
         with open(os.path.join(self.dir, "deploy.rc"), "w") as handle:
