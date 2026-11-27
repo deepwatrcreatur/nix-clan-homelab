@@ -4,10 +4,11 @@
   den.aspects.elitedesk = {
     # SECURITY: router-class host gets NixCI cache auth, separate from the
     # shared Attic push credential and remote-builder-client credentials.
-    includes = [
-      den.aspects.nixos-base
-      den.aspects.console-password
-      den.aspects.router-role
+    includes = with den.aspects; [
+      nixos-base
+      console-password
+      router-role
+      nix-ci-cache-auth
     ];
     nixos = {
       imports = [ ../../machines/elitedesk/disko.nix ];

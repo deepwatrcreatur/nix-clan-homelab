@@ -4,10 +4,13 @@
 { den, ... }:
 {
   den.aspects.router = {
-    includes = [
-      den.aspects.nixos-base
-      den.aspects.console-password
-      den.aspects.router-role
+    # SECURITY: routers receive only the NixCI user-cache token, not the
+    # Attic push token or Emerald builder key.
+    includes = with den.aspects; [
+      nixos-base
+      console-password
+      router-role
+      nix-ci-cache-auth
     ];
     nixos =
       { config, lib, ... }:

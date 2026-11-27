@@ -29,6 +29,15 @@
   perSystem =
     { pkgs, ... }:
     let
+      routerNames = [ "elitedesk" "router" ];
+      routerAuthProblems = lib.filter (name:
+        let
+          generators = config.flake.nixosConfigurations.${name}.config.clan.core.vars.generators;
+        in
+        !(generators ? nix-ci-cache-auth)
+        || generators ? nix-cache-auth
+        || generators ? nix-remote-builder
+      ) routerNames;
       invalid = lib.filterAttrs (
         _: host:
         let
@@ -46,9 +55,9 @@
     in
     {
       checks.nix-ci-cache-auth =
-        if invalid == { } then
+        if invalid == { } && routerAuthProblems == [ ] then
           pkgs.runCommand "nix-ci-cache-auth" { } "touch $out"
         else
-          throw "Inconsistent Nix cache settings on ${lib.concatStringsSep ", " (builtins.attrNames invalid)}";
+          throw "Inconsistent NixCI cache settings on ${lib.concatStringsSep ", " (builtins.attrNames invalid)}; router auth missing or overprivileged on ${lib.concatStringsSep ", " routerAuthProblems}";
     };
 }
