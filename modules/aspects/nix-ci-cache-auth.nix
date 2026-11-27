@@ -34,6 +34,7 @@
         let
           settings = host.config.nix.settings;
           generator = host.config.clan.core.vars.generators.nix-ci-cache-auth or null;
+          legacyGenerator = host.config.clan.core.vars.generators.nix-cache-auth or null;
           advertisesNixCI = lib.elem "https://cache.nix-ci.com" settings.substituters;
           trustsNixCI = lib.any (lib.hasPrefix "nix-ci:") settings.trusted-public-keys;
           netrc = settings.netrc-file or null;
@@ -45,8 +46,8 @@
         || advertisesNixCI != trustsNixCI
         || (advertisesNixCI && (netrc == null || netrc == ""))
         || (generator != null && (!advertisesNixCI || netrc != generator.files.netrc.path))
-        # SECURITY: Router-class hosts do not receive the NixCI credential.
-        || (isRouter && (advertisesNixCI || generator != null))
+        # SECURITY: Both cache-auth aspects can materialize the NixCI netrc.
+        || (isRouter && (advertisesNixCI || generator != null || legacyGenerator != null))
       ) config.flake.nixosConfigurations;
     in
     {
