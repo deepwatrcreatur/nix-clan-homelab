@@ -1,8 +1,6 @@
 {
   "files": {
-    "missing": [
-      ".config/wezterm/wezterm.lua"
-    ],
+    "missing": [],
     "extra": [
       ".config/fnox/clan-defaults.toml",
       ".config/git/github-token"

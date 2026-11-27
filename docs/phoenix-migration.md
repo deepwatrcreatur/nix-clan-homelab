@@ -2,16 +2,23 @@
 
 The source comparison is Unified commit
 `2eccceae94485ecfd2d72cc5fb1c1adabe613e72`, matching the `unified-pve` pin.
-The candidate is exposed only as
-`legacyPackages.x86_64-linux.phoenix-candidate`; Phoenix is not marked as a
-migrated Clan machine and the fixture is not a deployment target.
+The comparison fixture is exposed as
+`legacyPackages.x86_64-linux.phoenix-candidate`. Phoenix is also registered
+as a Clan inventory candidate so its machine composition can be evaluated,
+but `migrated` remains false and the fleet deployment dispatcher rejects it.
+Unified remains authoritative, and the comparison fixture is not a deployment
+target.
 
-`modules/phoenix-candidate-check.nix` composes the ported workstation base,
-Niri/Noctalia/COSMIC fallback, networking, media, printer, snapshot, safe-mode,
-builder, cache, share, developer, desktop and user-secret aspects. The Phoenix
-disk, hardware and networking modules are copied into `machines/`. WhiteSur
-desktop settings are ported into `modules/_hm/workstation-desktop/` and its
-upstream inputs are pinned to the Unified revisions.
+`modules/hosts/phoenix.nix` is shared by the Clan machine and the
+`legacyPackages.x86_64-linux.phoenix-candidate` fixture, which adds inert
+secret paths for evaluation. The shared aspect composes the ported workstation
+base, Niri/Noctalia/COSMIC fallback, networking, media, printer, snapshot,
+safe-mode, builder, cache, share, developer, desktop and user-secret aspects.
+The Phoenix disk, hardware and networking modules are copied into `machines/`.
+WhiteSur desktop settings are ported into `modules/_hm/workstation-desktop/`
+and its upstream inputs are pinned to the Unified revisions. The OpenLogi
+NixOS module now points directly to the `packaging` subflake at the previously
+locked revision, avoiding its deprecated root-flake alias.
 
 The check asserts the Phoenix hostname, Limine device and partition, scratch
 and data filesystems, Synology share mounts, NetworkManager firewall ports,
@@ -28,16 +35,27 @@ or decrypted. They make the candidate unsuitable for deployment. A live
 Phoenix configuration must use actual Clan var paths and pass `clan-admin vars
 check phoenix` before deployment.
 
-The required console password, cache netrc and Attic token, Emerald builder
-SSH key, Synology credentials, and 13 workstation credentials are Clan vars
-with shared generators. The workstation credential values are already
-imported under `vars/shared/workstation-user-secrets`; `vars check lattitude`
-reports them present and valid. Lattitude is the only workstation recipient
-currently, and no live workstation has read those credentials yet. Adding
-Phoenix to Clan and declaring the same generators should make it a recipient
-without another import. The maintainer still needs to coordinate that
-recipient check and first live delivery. The GPG recovery key is not part of
-this migration.
+Phoenix now has a Clan machine age identity and state-version var. Generating
+the machine identity added Phoenix as a recipient to the existing shared
+vars declared by its aspects: console password hashes, cache credentials,
+builder key, Synology credentials, and all 13 workstation credentials. Clan
+re-encrypted those files for the new recipient; no plaintext files were
+written.
+
+Phoenix's existing Ed25519 SSH host private key was streamed from the live
+host into `clan-admin vars set`, then the public key and host certificate were
+stored as Clan vars. The Clan key fingerprint matches the key on Phoenix and
+the key currently presented by SSH. `clan-admin vars check phoenix` reports
+all vars present and valid, and the real Phoenix toplevel evaluates. No vars
+were uploaded to Phoenix, and it has not been deployed or activated.
+
+Unified also installs a stable root SSH client key at
+`/root/.ssh/id_ed25519`. Phoenix's live key fingerprint matches Unified's
+`root-stable-identity.pub`. The `root-ssh-identity` aspect now declares a
+shared Clan var and exposes it at the same path with root-only permissions.
+Its existing private key was streamed into the encrypted Clan var; no
+plaintext file was written. The GPG recovery key is not part of this
+migration.
 
 The source WhiteSur configuration names a wallpaper under the old Unified
 checkout, but that image is absent from the Unified worktree and this repo.
@@ -52,24 +70,24 @@ both phone-mirroring services. CIFS mount options match except for the
 credential path, which is a runtime Clan var in the live candidate and an
 inert fixture path during this check.
 
-The logical system package inventory has 327 names in Unified and 321 in the
-candidate. The candidate is missing `graphite-cli`, `iodyne`, `lazyrsync`,
-`lightpanda`, `nixbit` and `wezterm`; `command-not-found` is extra. These are
-reviewed differences to resolve or explicitly retain before Phoenix is marked
-migrated.
+The logical system package inventory has 327 names in both Unified and the
+candidate after restoring `graphite-cli`, `iodyne`, `lazyrsync`,
+`lightpanda`, `nixbit` and `wezterm`. NixOS's `command-not-found` helper is
+the one candidate-only package and remains enabled.
 
 The Home Manager snapshot has 102 file targets, 184 package names and 57
-enabled programs in Unified. The candidate has 103 file targets, 184 package
-names and 55 enabled programs. It currently records these reviewed differences:
+enabled programs in Unified. The candidate has 104 file targets, 184 package
+names and 55 enabled programs. It currently records these differences:
 
 | Area | Missing from candidate | Extra in candidate |
 |---|---|---|
-| Files | `.config/wezterm/wezterm.lua` | `.config/fnox/clan-defaults.toml`, `.config/git/github-token` |
-| Packages | `install-brew-packages` | `git-ssh-doctor`, `vivaldi` |
+| Files | — | `.config/fnox/clan-defaults.toml`, `.config/git/github-token` |
+| Packages | `beads-q`, `install-brew-packages` | `git-ssh-doctor`, `vivaldi` |
 | Enabled programs | `linuxbrew`, `ssh-known-hosts-manager` | — |
 
-Regenerate the reference only after reviewing an intentional Unified profile
-change:
+Regenerate the Unified reference only after reviewing an intentional profile
+change. The command writes the sorted Unified inventory to
+`checks/phoenix-home-reference.json`:
 
 ```sh
 nix eval --impure --json --expr '
@@ -80,25 +98,32 @@ nix eval --impure --json --expr '
 ' | jq -S . > checks/phoenix-home-reference.json
 ```
 
-Then review and update `checks/phoenix-home-expected-differences.json` against
-`nix eval --json .#legacyPackages.x86_64-linux.phoenixHomeInventory`.
+Capture the sorted candidate inventory with:
 
-The candidate deliberately does not mark Phoenix migrated, change Unified's
-authoritative host config, activate a generation, change boot defaults, reboot,
-restart services, or decrypt secrets. Resolve or accept the listed desktop
-and package differences before migrating Phoenix.
+```sh
+nix eval --json .#legacyPackages.x86_64-linux.phoenixHomeInventory \
+  | jq -S . > /tmp/phoenix-home-candidate.json
+```
+
+Compare each `files`, `packages`, and `enabledPrograms` list with the reference,
+review every changed name, then update
+`checks/phoenix-home-expected-differences.json` with the intended deltas.
+
+This work does not mark Phoenix migrated, change Unified's authoritative host
+config, activate a generation, change boot defaults, reboot, restart services,
+or deliver Clan vars to Phoenix. Resolve or accept the listed desktop and
+package differences before migrating Phoenix.
 
 Build-only validation:
 
 ```sh
-nix build --no-link --max-jobs 2 --cores 2 .#checks.x86_64-linux.phoenix-home-parity .#checks.x86_64-linux.phoenix-candidate
+nix build --no-link --max-jobs 2 --cores 2 .#checks.x86_64-linux.phoenix-home-parity .#checks.x86_64-linux.phoenix-candidate .#checks.x86_64-linux.phoenix-clan-candidate
 nix build --no-link --max-jobs 2 --cores 2 .#legacyPackages.x86_64-linux.phoenix-candidate.config.system.build.toplevel
 ```
 
-`nix develop -c clan-admin vars check lattitude` reports all Lattitude vars
-present and valid. A later sequential `nix flake check --no-build` also
-evaluated `checks.x86_64-linux.lattitude-host` successfully and proceeded to
-`checks.x86_64-linux.pve-strix-home-parity`, where it fails while evaluating
-fnox's generated config because the `fnox-config-template.toml.drv` store path
-is invalid. That broader check failure is unrelated to Lattitude's secrets;
-the Phoenix checks are run directly so it does not hide their result.
+The focused Phoenix checks also pass alongside
+`checks.x86_64-linux.emerald-home-parity`. After generating Phoenix's machine
+vars, `nix flake check --no-build` passes, including evaluation of the real
+Phoenix toplevel. It reports the repo's existing `boot.zfs.forceImportRoot`
+and unknown-output warnings. The fixture toplevel build does not exercise or
+satisfy Clan machine var requirements.

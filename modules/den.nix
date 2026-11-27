@@ -8,8 +8,10 @@
 }:
 let
   hosts = config.homelab.hosts;
-  migrated = lib.filterAttrs (_: host: host.migrated && !host.archived) hosts;
-  bySystem = lib.groupBy (name: migrated.${name}.system) (builtins.attrNames migrated);
+  clanHosts = lib.filterAttrs (
+    _: host: (host.migrated || host.clanCandidate) && !host.archived
+  ) hosts;
+  bySystem = lib.groupBy (name: clanHosts.${name}.system) (builtins.attrNames clanHosts);
 in
 {
   imports = [ inputs.den.flakeModule ];

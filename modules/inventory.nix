@@ -49,26 +49,28 @@ let
         description = "WAN bandwidth for router diagnostics.";
       };
       takeover = mkOption {
-        type = types.nullOr (types.submodule {
-          options = {
-            wanMac = mkOption {
-              type = types.str;
-              description = "WAN MAC address of the router whose lease this node takes over.";
+        type = types.nullOr (
+          types.submodule {
+            options = {
+              wanMac = mkOption {
+                type = types.str;
+                description = "WAN MAC address of the router whose lease this node takes over.";
+              };
+              dhcpDuidRawData = mkOption {
+                type = types.str;
+                description = ''
+                  That router's DHCP DUID as networkd DUIDRawData (DUID-EN: enterprise
+                  number plus identifier, colon-separated bytes). The modem binds
+                  the IPv4 lease and the delegated prefix to it.
+                '';
+              };
+              dhcpIaid = mkOption {
+                type = types.ints.unsigned;
+                description = "That router's WAN IAID, in decimal.";
+              };
             };
-            dhcpDuidRawData = mkOption {
-              type = types.str;
-              description = ''
-                That router's DHCP DUID as networkd DUIDRawData (DUID-EN: enterprise
-                number plus identifier, colon-separated bytes). The modem binds
-                the IPv4 lease and the delegated prefix to it.
-              '';
-            };
-            dhcpIaid = mkOption {
-              type = types.ints.unsigned;
-              description = "That router's WAN IAID, in decimal.";
-            };
-          };
-        });
+          }
+        );
         default = null;
         description = ''
           WAN identity of the router this standby replaces. When set, the host
@@ -189,6 +191,11 @@ let
           type = types.bool;
           default = false;
           description = "Keep this record for historical or compatibility purposes.";
+        };
+        clanCandidate = mkOption {
+          type = types.bool;
+          default = false;
+          description = "Compose an offline Clan host candidate without enabling the fleet deployment dispatcher.";
         };
         migrated = mkOption {
           type = types.bool;
