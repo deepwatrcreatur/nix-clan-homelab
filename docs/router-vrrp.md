@@ -136,16 +136,21 @@ Each live step needs the operator at both consoles and an agreed window
    Power cut repeated 2026-11-27: gateway 3.2 s, DNS 2.2 s, IPv4 6.7 s,
    **IPv6 7.0 s**; the lease and /56 kept; fail-back 1.3 s IPv4, 1.5 s IPv6.
 
-   **Open problem: the rebooted member can preempt without the 300 s
-   hold.** In the repeat, elitedesk's keepalived started (5 s boot timer)
-   8 s after its LAN carrier came up, heard no adverts for 3.5 s and became
-   MASTER on the master-down timer, which `preempt_delay` does not cover.
-   router heard elitedesk's first advert 14 s after that carrier, which
-   points at the switch port not forwarding yet (spanning-tree delay).
-   Harmless this time (WAN came up, 1.5 s gaps), but a member that is not
-   ready would take the gateway. Fix candidates: make router ports edge
-   (portfast) on the switch, and have router-ha hold keepalived until it
-   hears an advert or a timeout passes. nch-sny.36.11.
+   **Rebooted member preempting without the 300 s hold (fixed in code,
+   not yet drilled).** In the repeat, elitedesk's keepalived started (5 s
+   boot timer) 8 s after its LAN carrier came up, heard no adverts for
+   3.5 s and became MASTER on the master-down timer, which `preempt_delay`
+   does not cover. router heard elitedesk's first advert 14 s after that
+   carrier: the switch port was likely not forwarding yet (spanning-tree
+   delay). nix-router-optimized #196 holds keepalived's start until it
+   captures a VRRP advert for our VRID on the LAN, or `peerWaitSec` passes;
+   clan sets 60 s on paired members and 0 on a lone member
+   (`checks.router-vrrp`: "keepalived waits for the peer iff paired"). A
+   member with a live peer starts as soon as its port forwards. The cost:
+   when both routers cold-start together (a house power cut), neither hears
+   the other until one gives up, so the gateway comes up to 60 s later than
+   before. Making both router ports edge/portfast on the switch still
+   shortens every boot. nch-sny.36.11.
 
    The first power-cut attempt (router as MASTER) cost about 10 minutes for
    an unrelated reason: elitedesk's WAN cable had worked loose at its NIC

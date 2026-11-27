@@ -321,6 +321,11 @@ in
             vrrpInterface = lan.name;
             vrrpPasswordFile = varPath "vrrp-password";
             routerAdvertisements.mode = "vrrp-owner";
+            # WHY: hold keepalived until the peer is audible, so a switch
+            # port still learning after boot cannot bypass preemptDelay
+            # (docs/router-vrrp.md, nch-sny.36.11). Alone there is no one to
+            # hear, and waiting would only delay the gateway.
+            peerWaitSec = if paired then 60 else 0;
             wan = {
               enable = true;
               interface = wan.name;
@@ -916,6 +921,7 @@ in
               "the preferred member starts as master" = ha.role == (if preferred then "master" else "backup");
               "WAN follows VRRP with the modem's MAC" = ha.wan.enable && ha.wan.clonedMac == node.takeover.wanMac;
               "WAN health check yields iff paired" = ha.wan.healthCheck.enable == paired;
+              "keepalived waits for the peer iff paired" = (ha.peerWaitSec > 0) == paired;
               "WAN keeps the modem's DUID-EN and IAID" =
                 wanNet.linkConfig.ActivationPolicy == "manual"
                 && wanNet.dhcpV4Config.DUIDRawData == node.takeover.dhcpDuidRawData
