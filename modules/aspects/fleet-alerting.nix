@@ -272,11 +272,13 @@ in
       # by them, and the pair deduplicates (decision 0005).
       checks.fleet-metrics =
         let
-          hostOk =
-            name:
+          sourceSet = "{ ${lib.concatStringsSep ", " scraperAddresses} }";
+          hostCfgOk =
+            cfg:
             let
-              cfg = hostCfg name;
               node = cfg.services.prometheus.exporters.node;
+              fw = cfg.networking.firewall;
+              portSet = "{ ${lib.concatMapStringsSep ", " toString ([ ports.node ] ++ lib.optional cfg.services.prometheus.exporters.smartctl.enable ports.smartctl)} }";
             in
             node.enable
             && lib.elem "systemd" node.enabledCollectors
@@ -284,15 +286,31 @@ in
             && !node.openFirewall
             && (
               if cfg.networking.nftables.enable then
-                lib.hasInfix "priority raw" cfg.networking.nftables.tables.fleet-exporters.content
+                let
+                  raw = cfg.networking.nftables.tables.fleet-exporters.content;
+                in
+                lib.hasInfix "ip saddr ${sourceSet} tcp dport ${portSet} accept" fw.extraInputRules
+                && lib.hasInfix "priority raw" raw
+                && lib.hasInfix "tcp dport ${portSet} ip saddr ${sourceSet} return" raw
+                && lib.hasInfix "tcp dport ${portSet} drop" raw
               else
                 lib.all (
                   source:
-                  lib.hasInfix "iptables -A nixos-fw -p tcp -s ${source} --dport ${toString ports.node}" cfg.networking.firewall.extraCommands
-                  && lib.hasInfix "iptables -t raw -A fleet-exporters -p tcp -s ${source} --dport ${toString ports.node} -j RETURN" cfg.networking.firewall.extraCommands
+                  lib.hasInfix "iptables -A nixos-fw -p tcp -s ${source} --dport ${toString ports.node}" fw.extraCommands
+                  && lib.hasInfix "iptables -t raw -A fleet-exporters -p tcp -s ${source} --dport ${toString ports.node} -j RETURN" fw.extraCommands
                 ) scraperAddresses
-                && lib.hasInfix "ip6tables -t raw -A fleet-exporters -p tcp --dport ${toString ports.node} -j DROP" cfg.networking.firewall.extraCommands
+                && lib.hasInfix "iptables -t raw -A fleet-exporters -p tcp --dport ${toString ports.node} -j DROP" fw.extraCommands
+                && lib.hasInfix "ip6tables -t raw -A fleet-exporters -p tcp --dport ${toString ports.node} -j DROP" fw.extraCommands
+                && lib.hasInfix "-D PREROUTING -j fleet-exporters" fw.extraStopCommands
             );
+          hostOk = name: hostCfgOk (hostCfg name);
+          # WHY: no fleet host uses nftables yet; prove that branch too.
+          nftVariantOk =
+            name:
+            hostCfgOk
+              (config.flake.nixosConfigurations.${name}.extendModules {
+                modules = [ { networking.nftables.enable = true; } ];
+              }).config;
           routerOk =
             name:
             let
@@ -312,6 +330,7 @@ in
             );
         in
         assert lib.all (n: lib.assertMsg (hostOk n) "${n}: fleet exporters or their firewall rules are missing.") (lib.attrNames fleetHosts);
+        assert lib.all (n: lib.assertMsg (nftVariantOk n) "${n}: with nftables, fleet exporter firewall rules are missing.") (lib.attrNames fleetHosts);
         assert lib.all (n: lib.assertMsg (routerOk n) "${n}: fleet scraping, rules, exporters or Alertmanager clustering are not wired.") (lib.attrNames routers);
         pkgs.runCommand "fleet-metrics" { } "touch $out";
 
