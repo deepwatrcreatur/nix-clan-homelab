@@ -25,6 +25,11 @@
       # elitedesk's first router-role deploy and left the profile rolled back
       # while the new system kept running.
       confirmTimeout = 120;
+      # WHY: a paired router's keepalived start waits up to peerWaitSec (60 s)
+      # for the peer's advert, and switch-to-configuration waits for it. With
+      # the peer silent (masked during a rollout) deploy-rs's shorter default
+      # cancelled a good activation on 2026-11-27 (docs/router-vrrp.md).
+      activationTimeout = 300;
       # WHY: push every path from the deployer. Without it the target
       # substitutes on its own, and elitedesk's management-only network has
       # no internet: the substituters timed out and the copy aborted
