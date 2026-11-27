@@ -5,6 +5,10 @@ group and to the machines whose config declares its generator, and to no one
 else. Routers stay least-privilege by not including the aspects that declare
 the vars they don't need.
 
+Secrets used by commands that agents or the operator run (API keys, the
+GitHub token) go through fnox instead; see
+[fnox-survey.md](fnox-survey.md) for what still bypasses it.
+
 ## Moving a secret over from unified
 
 The value comes from unified's agenix file, piped straight into the var, so it
