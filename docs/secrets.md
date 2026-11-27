@@ -65,6 +65,17 @@ aspect is enabled. The remaining API keys are available as user-owned
 files under `WORKSTATION_CREDENTIALS_DIRECTORY`. The generated fnox
 defaults use a separate file so an existing writable config stays in place.
 
+The developer aspect declares `DEEPSEEK_API_KEY` and `OPENAI_API_KEY` in that
+separate fnox config and seeds them from the matching files in
+`WORKSTATION_CREDENTIALS_DIRECTORY` when those source files exist. The
+generated config is exposed as `FNOX_CONFIG`, but fnox 1.19.0 does not load
+that environment variable by itself: callers must pass the config explicitly
+with `fnox -c "$FNOX_CONFIG" ...` (including `fnox exec` launchers). The
+encrypted values also require a private identity matching one of the
+configured age recipients. This change does not provision or verify that
+identity, so the seeded keys are not considered usable until a user-approved
+seed-and-read check succeeds.
+
 ### cache/builder notes
 
 - `netrc` contains only the cache.nix-ci.com entry (HTTPS).
