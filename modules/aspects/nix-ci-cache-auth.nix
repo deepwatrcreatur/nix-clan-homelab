@@ -30,18 +30,24 @@
     { pkgs, ... }:
     let
       invalid = lib.filterAttrs (
-        _: host:
+        name: host:
         let
           settings = host.config.nix.settings;
           generator = host.config.clan.core.vars.generators.nix-ci-cache-auth or null;
+          legacyGenerator = host.config.clan.core.vars.generators.nix-cache-auth or null;
           advertisesNixCI = lib.elem "https://cache.nix-ci.com" settings.substituters;
           trustsNixCI = lib.any (lib.hasPrefix "nix-ci:") settings.trusted-public-keys;
           netrc = settings.netrc-file or null;
+          hostName = host.config.networking.hostName or name;
+          inventory = config.homelab.hosts.${hostName} or { };
+          isRouter = lib.elem "router" (inventory.roles or [ ]);
         in
         !lib.elem "https://cache.nixos.org" settings.substituters
         || advertisesNixCI != trustsNixCI
         || (advertisesNixCI && (netrc == null || netrc == ""))
         || (generator != null && (!advertisesNixCI || netrc != generator.files.netrc.path))
+        # SECURITY: Both cache-auth aspects can materialize the NixCI netrc.
+        || (isRouter && (advertisesNixCI || generator != null || legacyGenerator != null))
       ) config.flake.nixosConfigurations;
     in
     {

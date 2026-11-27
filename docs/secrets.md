@@ -28,7 +28,7 @@ commit before pushing.
 
 | Domain | Aspects | Vars | Status |
 | --- | --- | --- | --- |
-| cache/builder | `nix-cache-auth`, `nix-ci-cache-auth`, `remote-builder-client` | `nix-cache-auth/{attic-token,netrc}`, `nix-ci-cache-auth/netrc`, `nix-remote-builder/key` | Existing values are imported; Phoenix is now a recipient for the vars it declares. Router token scope decision remains in `nch-sny.38`; builder keys remain off routers. |
+| cache/builder | `nix-cache-auth`, `nix-ci-cache-auth`, `remote-builder-client` | `nix-cache-auth/{attic-token,netrc}`, `nix-ci-cache-auth/netrc`, `nix-remote-builder/key` | Existing values are imported; Phoenix is a recipient for declared vars. Router-class hosts do not use NixCI; builder keys remain off routers. |
 | Synology CIFS | `synology-shares` | `synology-shares/credentials` | Imported from unified; Lattitude and Phoenix are recipients. Emerald remains admin-only. |
 | user/operator | `console-password` (per clan host), `workstation-user-secrets`, `root-ssh-identity` | `console-password/{root,deepwatrcreatur}` (yescrypt hashes); 13 workstation credentials under `vars/shared/workstation-user-secrets`; stable root client key under `vars/shared/root-ssh-identity` | Values are encrypted Clan vars; Lattitude and Phoenix are recipients for their declared vars. No live host has read the workstation credentials. Root SSH identity is preserved for Phoenix, with no Clan vars delivered yet. Workstation credential delivery and state preservation remain in `nch-sny.37.7`. |
 | homeserver services | | | todo |
@@ -68,14 +68,12 @@ defaults use a separate file so an existing writable config stays in place.
 ### cache/builder notes
 
 - `netrc` contains only the cache.nix-ci.com entry (HTTPS).
-- The `nix-cache-auth` aspect enables the NixCI substituter and signing key
-  alongside that netrc, and keeps the shared Attic push token for later use.
-  Router-class hosts can use `nix-ci-cache-auth`, which provisions only a
-  NixCI user token and does not expose the Attic push token or builder
-  credentials. NixCI's hosted user token can also write to the user's private
-  cache namespace, so router access is pending a dedicated read-only token
-  path in `nch-sny.38` (see [NixCI cache access](https://nix-ci.com/documentation/nix-ci-cache)).
-  Elitedesk currently omits the aspect until that path is ready.
+- The `nix-cache-auth` aspect enables NixCI and Attic client credentials for
+  hosts that explicitly include it. Router-class hosts must not include
+  `nix-cache-auth` or `nix-ci-cache-auth`: the operator chose no NixCI
+  credential for routers. They retain the local Attic and public substituters;
+  the `nix-ci-cache-auth` check enforces this policy on router-role NixOS
+  configurations.
 - The `nix-cache-auth` flake check verifies the NixCI endpoint, key and netrc
   on the exported NixOS configurations and checks the public-cache fallback.
 - attic's `cache-local` answers unauthenticated reads on the LAN, so pulls
