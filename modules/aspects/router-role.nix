@@ -326,6 +326,12 @@ in
             # (docs/router-vrrp.md, nch-sny.36.11). Alone there is no one to
             # hear, and waiting would only delay the gateway.
             peerWaitSec = if paired then 60 else 0;
+            # WHY: switches on the LAN dropped VRRP multicast toward elitedesk,
+            # which then never heard router and took over after every start
+            # (docs/router-vrrp.md, nch-sny.36.11). Unicast to the peer's LAN
+            # address does not depend on switch multicast handling; alone
+            # there is nobody to send to.
+            unicastPeers = peerLanIps;
             wan = {
               enable = true;
               interface = wan.name;
@@ -922,6 +928,8 @@ in
               "WAN follows VRRP with the modem's MAC" = ha.wan.enable && ha.wan.clonedMac == node.takeover.wanMac;
               "WAN health check yields iff paired" = ha.wan.healthCheck.enable == paired;
               "keepalived waits for the peer iff paired" = (ha.peerWaitSec > 0) == paired;
+              "VRRP adverts go unicast to each peer's LAN address" =
+                ha.unicastPeers == map (peer: builtins.head (lib.splitString "/" peer.lanAddress)) (lib.attrValues peers);
               "WAN keeps the modem's DUID-EN and IAID" =
                 wanNet.linkConfig.ActivationPolicy == "manual"
                 && wanNet.dhcpV4Config.DUIDRawData == node.takeover.dhcpDuidRawData

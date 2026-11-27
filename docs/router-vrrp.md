@@ -152,6 +152,34 @@ Each live step needs the operator at both consoles and an agreed window
    before. Making both router ports edge/portfast on the switch still
    shortens every boot. nch-sny.36.11.
 
+   **The real cause: elitedesk never hears VRRP multicast.** Deploying
+   #196 on 2026-11-27 showed the gate on elitedesk waiting the full 60 s
+   while router sent adverts every second. From a LAN host, UDP multicast,
+   protocol-112 broadcast and unicast all reached elitedesk, but no
+   protocol-112 multicast did (224.0.0.1, .18, .19), even with the group
+   joined: its NIC's `rx_multicast_phy` stayed flat through a 2000-packet
+   burst that router received. Something on the LAN drops it on the way
+   to elitedesk's port; router hears elitedesk fine, so the drop is
+   one-way. A freshly started elitedesk therefore always took over after
+   about 3 s, and the pair only looked healthy because router heard the
+   higher priority and stepped aside. Spanning tree was not the cause.
+   The path from router to elitedesk crossed sw-main (TE6) and two more
+   switches. "Unknown multicast: flood" on sw-main did not help; after one
+   switch was removed (leaving the Dell N1124T-ON), router's adverts
+   reached elitedesk, but test packets from a LAN host still did not.
+   Instead of depending on switch settings, VRRP now goes unicast to the
+   peer's LAN address (nix-router-optimized `unicastPeers`;
+   `checks.router-vrrp`: "VRRP adverts go unicast to each peer's LAN
+   address").
+
+   Switching the live pair: a unicast node drops multicast adverts and the
+   reverse, so a half-switched pair has two MASTERs. Mask keepalived on
+   the BACKUP (`systemctl mask --runtime --now keepalived`), deploy it,
+   deploy the MASTER, then unmask and start the BACKUP. Deploy elitedesk
+   over its LAN address (`deploy .#elitedesk --hostname 10.10.10.4`):
+   this workstation reaches the management address only through the
+   gateway, and that path breaks while the VIP moves.
+
    The first power-cut attempt (router as MASTER) cost about 10 minutes for
    an unrelated reason: elitedesk's WAN cable had worked loose at its NIC
    after the cable-pull step, so as MASTER it got no DHCP answer. Check WAN
