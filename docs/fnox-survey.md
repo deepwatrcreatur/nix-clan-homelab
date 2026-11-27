@@ -22,8 +22,9 @@ printed; files were checked by name, length and shape.
 User API keys come from agenix user secrets (unified,
 `~/.local/share/agenix-user-secrets/*`) or systemd credentials (Clan
 workstations, `modules/_nixos/workstation-user-secrets.nix`) and are seeded
-into fnox. The seed source is authoritative; fnox is the only interface
-agents use.
+into fnox. The seed source is authoritative, and the goal is that fnox is
+the only interface agents use. Current exceptions: the Clan wrappers in item
+8, and the keys in item 4 that fnox does not declare.
 
 ## Ranked findings
 
@@ -34,8 +35,9 @@ agents use.
 | 3 | `git-credential-fnox` exists (fnox-flake #28) but no home enables it | unified HM, Clan homes | Enable `programs.fnox.gitCredentialHelper` on each machine once fnox decrypts there (after `nch-a67.2` rolls out); it replaces the `gh auth git-credential` fallback, so verify with the probe in the guide first | `nch-a67.3` (remaining acceptance) |
 | 4 | Keys provisioned to Clan workstations but not declared in fnox-flake's defaults: `deepseek-api-key`, `openai-api-key`. `DEEPSEEK_API_KEY` exists on emerald only as a hand-added entry | Clan `workstation-user-secrets.nix`; fnox-flake `defaultSecretDefinitions` | Declare `DEEPSEEK_API_KEY` and `OPENAI_API_KEY` (or declare them in the consumers) so seeding and wrappers cover them; roundtable seats then use `fnox exec` instead of reading key files | `nch-a67.8` |
 | 5 | Docs show `TOKEN=$(sudo cat …)` for the Technitium API token and then pass it in argv | nix-router-optimized `docs/router-technitium-automation.md`, `docs/troubleshooting.md`; unified `docs/router-nixos-anywhere-lessons.md` | These are host-side service secrets (agenix, root-only), so fnox does not apply, but the snippets should send the token on stdin (`curl -H @-`) and never echo it | `nch-a67.9` |
-| 6 | Drift between a seed source and fnox is invisible | all fnox hosts | Run `fnox check` / a probe in Home Manager activation (the drift check in `nch-a67.2`'s acceptance) | `nch-a67.2` |
+| 6 | Drift between a seed source and fnox is invisible | all fnox hosts | In Home Manager activation, compare a hash of each seed source with a hash of the value fnox returns (`fnox -c "$FNOX_CONFIG" --if-missing error get NAME \| sha256sum`, never printing either) and warn on a mismatch; `fnox check` alone only proves the value resolves, not that it is current. This is the drift check in `nch-a67.2`'s acceptance | `nch-a67.2` |
 | 7 | Committed secrets are caught only by GitGuardian on PRs | all repos | `fnox scan` in pre-commit and CI | `nch-a67.5` |
+| 8 | On Clan workstations with `WORKSTATION_CREDENTIALS_DIRECTORY` set, `claude-fnox` and `gemini-fnox` skip fnox: they use an already-exported `ANTHROPIC_API_KEY`/`GEMINI_API_KEY`, else `cat` the systemd credential file | nix-clan-homelab `modules/_hm/workstation-developer/fnox.nix` (`withCredential`) | Seed those credentials into fnox (as unified seeds agenix user secrets) and drop the direct read, or record the systemd credential as the accepted interface for those two tools. Part of porting the fnox integration to Clan homes | `nch-a67.6` |
 
 ## Checked and fine
 
@@ -60,4 +62,4 @@ agents use.
 | `fnox sync` (pull from a remote provider) | Only if Bitwarden becomes the source of truth instead of agenix user secrets; `BW_SESSION` is already declared. Not proposed. |
 | `fnox scan` | Tracked in `nch-a67.5`. |
 | `fnox activate` | **Reject for agent shells**: it puts every secret into the shell environment, the ambient pattern the guide forbids. |
-| `fnox check` / `fnox doctor` | Use for the activation health check (item 6). |
+| `fnox check` / `fnox doctor` | Part of the activation health check (item 6), next to the hash comparison: they show that values resolve, not that they match the seed. |
