@@ -301,10 +301,19 @@ A standby therefore keeps copies by zone transfer
   unified's `router` reads the same value from
   `secrets-agenix/technitium-zone-transfer-tsig.age` until it migrates.
 
-Open for VRRP (`nch-sny.30`): a secondary is read-only, so the new MASTER must
-promote both zones to Primary (Technitium `zones/convert`) before Kea DDNS can
-write to it, and demote them again on BACKUP. The sync unit never demotes a
-promoted zone on its own, so activation during a failover is safe.
+VRRP zone ownership (`nch-sny.30`) is implemented by
+`zoneReplication.ha` in nix-router-optimized and the
+`technitium-zone-ha-owner` single-active unit. A MASTER promotes both zones to
+Primary before Kea DDNS writes; on BACKUP the zones return to Secondary and
+resync from the new primary. The unit avoids demoting a zone during activation
+while a failover is in progress. The November VRRP drill recorded the zones
+promoting and demoting on each transition
+([results](router-vrrp.md#rollout)).
+
+That drill verified zone ownership transitions, but did not explicitly verify
+a newly leased client's DDNS record appearing on the promoted MASTER and
+remaining visible on its peer after fail-back. That end-to-end check is tracked
+separately in `nch-sny.30.1` and requires a coordinated live verification.
 
 
 ## Router NIC alerts
