@@ -176,10 +176,11 @@ Each live step needs the operator at both consoles and an agreed window
    reverse, so a half-switched pair has two MASTERs. Mask keepalived on
    the BACKUP (`systemctl mask --runtime --now keepalived`), deploy it,
    deploy the MASTER, then unmask and start the BACKUP. Deploy elitedesk
-   over its LAN address (`deploy .#elitedesk --hostname 10.10.10.4`):
-   this workstation reaches the management address only through the
-   gateway, and that path breaks while the VIP moves. Deploy the MASTER
-   the same way (router: `--hostname 10.10.10.2`).
+   over its LAN address: this workstation reaches the management address
+   only through the gateway, and that path breaks while the VIP moves.
+   `fleet-deploy`, `fleet-status` and the deploy-rs nodes now use each
+   router's LAN address (inventory `deployTarget`), so plain
+   `fleet-deploy <router>` does this.
 
    Done 2026-11-27 with router as MASTER: the gateway was down 145 s
    (15:14:35-15:17:01). The MASTER's keepalived waited the full

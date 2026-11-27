@@ -164,6 +164,21 @@ let
               config.addresses.ip;
           description = "SSH endpoint derived from the inventory addresses.";
         };
+        deployTarget = mkOption {
+          type = optionalString;
+          readOnly = true;
+          # WHY: a router's management address is reached through the LAN
+          # gateway, which the router itself may be holding; a deploy that
+          # moves the VIP then cuts its own SSH session and rolls back
+          # (2026-11-27, docs/router-vrrp.md). The LAN address is on the
+          # deployer's own segment and survives a handover.
+          default =
+            if config.router != null then
+              builtins.head (lib.splitString "/" config.router.lanAddress)
+            else
+              config.sshTarget;
+          description = "Address deploys and fleet-status connect to: a router's LAN address, otherwise sshTarget.";
+        };
         inventoryName = mkOption {
           type = types.str;
           readOnly = true;

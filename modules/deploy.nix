@@ -13,7 +13,7 @@ let
   # The hosts fleet-status reads, with the same SSH target and host key alias.
   statusHosts = builtins.toJSON (
     lib.mapAttrs (name: host: {
-      target = "${host.sshUser}@${host.sshTarget}";
+      target = "${host.sshUser}@${host.deployTarget}";
       alias = host.sshHostKeyAlias;
     }) deployableHosts
   );
@@ -21,7 +21,7 @@ let
     lib.mapAttrsToList (name: host: ''
       ${lib.escapeShellArg name})
         backend=${backendFor host}
-        target=${lib.escapeShellArg "${host.sshUser}@${host.sshTarget}"}
+        target=${lib.escapeShellArg "${host.sshUser}@${host.deployTarget}"}
         # WHY: same certificate check as clan's targetHost (modules/clan.nix).
         host_key_alias=${lib.escapeShellArg host.sshHostKeyAlias}
         ;;

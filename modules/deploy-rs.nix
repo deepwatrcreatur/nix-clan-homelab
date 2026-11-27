@@ -13,7 +13,7 @@
       host = config.homelab.hosts.${name};
     in
     {
-      hostname = host.sshTarget;
+      hostname = host.deployTarget;
       inherit (host) sshUser;
       # WHY: all deploy paths use the inventory-derived SSH certificate identity.
       sshOpts = [ "-o" "HostKeyAlias=${host.sshHostKeyAlias}" ];
