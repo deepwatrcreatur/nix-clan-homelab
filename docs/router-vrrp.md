@@ -178,7 +178,18 @@ Each live step needs the operator at both consoles and an agreed window
    deploy the MASTER, then unmask and start the BACKUP. Deploy elitedesk
    over its LAN address (`deploy .#elitedesk --hostname 10.10.10.4`):
    this workstation reaches the management address only through the
-   gateway, and that path breaks while the VIP moves.
+   gateway, and that path breaks while the VIP moves. Deploy the MASTER
+   the same way (router: `--hostname 10.10.10.2`).
+
+   Done 2026-11-27 with router as MASTER: the gateway was down 145 s
+   (15:14:35-15:17:01). The MASTER's keepalived waited the full
+   `peerWaitSec` because the masked BACKUP sent nothing, and
+   switch-to-configuration waited with it; deploy-rs's default activation
+   timeout cancelled the activation and the rollback restarted keepalived
+   through a second 60 s wait. `modules/deploy-rs.nix` now sets
+   `activationTimeout = 300`. Afterwards router sent unicast adverts to
+   10.10.10.4 and elitedesk's gate heard the first one and started as
+   BACKUP.
 
    The first power-cut attempt (router as MASTER) cost about 10 minutes for
    an unrelated reason: elitedesk's WAN cable had worked loose at its NIC
