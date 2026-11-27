@@ -512,7 +512,9 @@ in
             enable = true;
             sshTarget = "ssh ${config.networking.hostName}";
             listenAddress = "0.0.0.0";
-            netdataAllowConnectionsFrom = "${lanCidr} ${managementCidr}";
+            # WHY: Caddy serves netdata.<domain> by proxying to 127.0.0.1:19999;
+            # without localhost netdata refuses it and the site returns 502.
+            netdataAllowConnectionsFrom = "localhost ${lanCidr} ${managementCidr}";
           };
           router-observability.enable = true;
           # WHY: alerts reach the operator by phone (ntfy); the healthchecks
@@ -928,6 +930,8 @@ in
               "WAN follows VRRP with the modem's MAC" = ha.wan.enable && ha.wan.clonedMac == node.takeover.wanMac;
               "WAN health check yields iff paired" = ha.wan.healthCheck.enable == paired;
               "keepalived waits for the peer iff paired" = (ha.peerWaitSec > 0) == paired;
+              "netdata accepts Caddy's localhost proxy" =
+                lib.hasPrefix "localhost " cfg.services.router-homelab.netdataAllowConnectionsFrom;
               "VRRP adverts go unicast to each peer's LAN address" =
                 ha.unicastPeers == map (peer: builtins.head (lib.splitString "/" peer.lanAddress)) (lib.attrValues peers);
               "WAN keeps the modem's DUID-EN and IAID" =
