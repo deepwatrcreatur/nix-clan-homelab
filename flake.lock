@@ -744,11 +744,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1775471662,
-        "narHash": "sha256-jAYTThxbsQvbqfv33UYu8tUuNCUbozCcZWi/yFO9UWQ=",
+        "lastModified": 1795830051,
+        "narHash": "sha256-xYe9KdcDokCdNivW56bIiSzLYgFlHwXq7Ft9VEwhIq4=",
         "owner": "deepwatrcreatur",
         "repo": "fnox-flake",
-        "rev": "0186fa138a7032118bcb3d2f2c62da35f8903733",
+        "rev": "f34ec7a0be6038b1e7db11c7c86f10c31931c7ea",
         "type": "github"
       },
       "original": {
