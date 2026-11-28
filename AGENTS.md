@@ -13,40 +13,16 @@ script or check, look for it in clan-core, nixpkgs and srvos first
 
 ## Work queue (beads)
 
-The queue lives on the **`beads-queue` branch** (only `.beads/`), not on
-`main`. Use `beads-q`, which wraps `beads-rust` (`br` can be a different
-Homebrew tool) and works from any worktree of this repo:
+The queue is on the `beads-queue` branch; use `beads-q` (not `br`) from any worktree. Rules, reasons and recovery: [nix-agent-guides `guides/beads.md`](https://github.com/deepwatrcreatur/nix-agent-guides/blob/main/guides/beads.md).
 
 ```sh
-beads-q ready --json                                  # unblocked work
-beads-q show <id>                                     # description and acceptance
-beads-q update <id> --claim --actor <you>             # claim (pushed at once)
-beads-q comments add <id> "<note>" --actor <you>
-beads-q create "<title>" --parent nch-sny -l <labels> -d "<why + acceptance>" --actor <you>
-beads-q close <id> --reason "<what was done, PR link>" --actor <you>
+beads-q ready --json && beads-q show <id>
+beads-q update <id> --claim --actor <you>   # before starting; CLAIM_CONFLICT (exit 4): pick other work
+beads-q close <id> --reason "<what, PR link>" --actor <you>   # after the PR merges
 ```
 
-- Each call resets this machine's queue worktree
-  (`~/flakes-worktrees/nix-clan-homelab/beads`) to the remote tip, runs the
-  command, and pushes writes; a claim someone else already holds fails with
-  `CLAIM_CONFLICT` (exit 4): pick other work.
-- Claim before starting. Put `Bead: <id>` on its own line in the PR
-  description (several ids allowed), or `Bead: none (<reason>)` for work
-  without one. The required `bead-reference` check fails otherwise, and when
-  a named bead is not claimed (`in_progress`) on `beads-queue`, so the PR
-  cannot merge; editing the description re-runs it. Close the bead after the PR merges, citing the PR.
-- Feature branches and PRs never touch `.beads/`; `checks.no-beads-on-main`
-  fails if it reappears on `main`. Don't edit or run `git` in the queue
-  worktree by hand, and never force-push `beads-queue`.
-- Take only `owner:any` beads unless you are Claude working with the user;
-  `owner:claude` beads touch decrypted secrets or live hosts.
-- Why this layout, and when to reconsider it:
-  [discussion 01](docs/discussions/01-beads-rust-task-tracker.md); practice
-  across repos:
-  [nix-agent-guides `guides/beads.md`](https://github.com/deepwatrcreatur/nix-agent-guides/blob/main/guides/beads.md).
-- If acceptance needs a deployed host, put those checks in the deployment or
-  verification bead, not in a bead that bead depends on.
-- Found new work? Create a bead with a dependency rather than widening scope.
+- In the PR description: `Bead: <id>` (claimed) or `Bead: none (<reason>)`; CI blocks the merge otherwise. Never commit `.beads/`.
+- Take only `owner:any` beads unless you are Claude working with the user. New work gets its own bead (`--parent nch-sny`), not a wider scope.
 
 ## Layout and validation
 
