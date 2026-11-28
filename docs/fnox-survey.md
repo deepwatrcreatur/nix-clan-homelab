@@ -39,6 +39,17 @@ the only interface agents use. Current exceptions: the Clan wrappers in item
 | 7 | Committed secrets are caught only by GitGuardian on PRs | all repos | `fnox scan` in pre-commit and CI | `nch-a67.5` |
 | 8 | On Clan workstations with `WORKSTATION_CREDENTIALS_DIRECTORY` set, `claude-fnox` and `gemini-fnox` skip fnox: they use an already-exported `ANTHROPIC_API_KEY`/`GEMINI_API_KEY`, else `cat` the systemd credential file | nix-clan-homelab `modules/_hm/workstation-developer/fnox.nix` (`withCredential`) | Seed those credentials into fnox (as unified seeds agenix user secrets) and drop the direct read, or record the systemd credential as the accepted interface for those two tools. Part of porting the fnox integration to Clan homes | `nch-a67.6` |
 
+On Clan workstations `FNOX_CONFIG` points at `fnox/clan-defaults.toml` to keep
+that store separate from an existing writable global config. Fnox does not
+automatically honor that environment variable for ordinary CLI invocations;
+select the store explicitly, for example:
+
+```sh
+fnox -c "$FNOX_CONFIG" exec -- <command>
+```
+
+The `gh-fnox` and `bw-fnox` launchers also pass that config explicitly.
+
 ## Checked and fine
 
 - **Agent and MCP configs on emerald:** no MCP server in `~/.claude.json` or

@@ -81,6 +81,7 @@ in
       candidate = host.config;
       clanCandidate = config.flake.nixosConfigurations.phoenix.config;
       home = candidate.home-manager.users.deepwatrcreatur;
+      fnox = home.programs.fnox;
       inventory = import ../checks/emerald-home-inventory.nix;
       actual = inventory home;
       reference = builtins.fromJSON (builtins.readFile ../checks/phoenix-home-reference.json);
@@ -98,6 +99,25 @@ in
           pkgs.runCommand "phoenix-home-parity" { } "touch $out"
         else
           throw "Phoenix Home Manager differences changed. Observed: ${builtins.toJSON differences}";
+
+      checks.phoenix-fnox-config =
+        let
+          credentialDirectory =
+            candidate.home-manager.users.deepwatrcreatur.home.sessionVariables.WORKSTATION_CREDENTIALS_DIRECTORY;
+          expectedSources = [
+            "${credentialDirectory}/github-token"
+            "${home.home.homeDirectory}/.local/share/agenix-user-secrets/github-token"
+          ];
+        in
+        if
+          fnox.sshIdentity.enable
+          && fnox.seedSecretSources.GITHUB_TOKEN == expectedSources
+          && builtins.hasAttr "GEMINI_API_KEY" fnox.secretDefinitions
+          && builtins.hasAttr "ANTHROPIC_API_KEY" fnox.secretDefinitions
+        then
+          pkgs.runCommand "phoenix-fnox-config" { } "touch $out"
+        else
+          throw "Phoenix fnox must use its SSH identity, preserve seed precedence, and retain wrapper secret definitions";
 
       checks.phoenix-candidate =
         assert candidate.networking.hostName == "phoenix";

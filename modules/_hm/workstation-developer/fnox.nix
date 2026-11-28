@@ -1,10 +1,17 @@
 { fnox, llm-agents }:
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   fnoxLib = import (fnox + "/lib/default.nix") { inherit lib pkgs; };
   agentPackages = (pkgs.extend llm-agents.overlays.shared-nixpkgs).llm-agents;
   wrappedCommands = fnoxLib.defaultWrappedCommandSpecs {
-    pkgs = pkgs // { inherit (agentPackages) claude-code gemini-cli; };
+    pkgs = pkgs // {
+      inherit (agentPackages) claude-code gemini-cli;
+    };
   };
   fnoxPackage = config.programs.fnox.package;
   credentialsDirectory = config.home.sessionVariables.WORKSTATION_CREDENTIALS_DIRECTORY or null;
@@ -19,16 +26,18 @@ let
     OPENROUTER_API_KEY = "openrouter-api-key";
     Z_AI_API_KEY = "z-ai-api-key";
   };
-  seedSecretSources = lib.mapAttrs
-    (_: file:
-      (lib.optional (credentialsDirectory != null) "${credentialsDirectory}/${file}")
-      ++ [ "${config.home.homeDirectory}/.local/share/agenix-user-secrets/${file}" ])
-    seedFiles;
-  withCredential = variable: name: spec:
+  seedSecretSources = lib.mapAttrs (
+    _: file:
+    (lib.optional (credentialsDirectory != null) "${credentialsDirectory}/${file}")
+    ++ [ "${config.home.homeDirectory}/.local/share/agenix-user-secrets/${file}" ]
+  ) seedFiles;
+  withCredential =
+    variable: name: spec:
     if credentialsDirectory == null then
       spec
     else
-      spec // {
+      spec
+      // {
         secrets = [ ];
         extraWrapperScript = ''
           if [ -z "''${${variable}:-}" ]; then
@@ -49,7 +58,7 @@ in
     # configured source files restore values after the recipient changes.
     recipients = [ ];
     sshIdentity.enable = true;
-    secretDefinitions = {
+    secretDefinitions = fnoxLib.defaultSecretDefinitions // {
       DEEPSEEK_API_KEY.description = "DeepSeek API key";
       OPENAI_API_KEY.description = "OpenAI API key";
     };

@@ -48,7 +48,7 @@ let
           if [ -n "$token" ]; then
             export GH_TOKEN="$token"
           else
-            token="$(fnox get GITHUB_TOKEN 2>/dev/null || true)"
+            token="$(fnox -c "''${FNOX_CONFIG:-$HOME/.config/fnox/config.toml}" get GITHUB_TOKEN 2>/dev/null || true)"
             if github_token_is_sane "$token"; then
               export GH_TOKEN="$token"
             fi
