@@ -115,6 +115,7 @@ in
           && fnox.seedSecretSources.GITHUB_TOKEN == expectedSources
           && builtins.hasAttr "GEMINI_API_KEY" fnox.secretDefinitions
           && builtins.hasAttr "ANTHROPIC_API_KEY" fnox.secretDefinitions
+          && !(builtins.hasAttr "credential \"https://github.com\"" home.programs.git.settings)
           && (
             home.programs.git.settings.credential."https://github.com".helper == (
               [ "" ]
