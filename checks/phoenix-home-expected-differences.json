@@ -6,9 +6,7 @@
     ]
   },
   "packages": {
-    "missing": [
-      "install-brew-packages"
-    ],
+    "missing": [],
     "extra": [
       "fnox-check",
       "git-credential-fnox",
@@ -18,7 +16,6 @@
   },
   "programs": {
     "missing": [
-      "linuxbrew",
       "ssh-known-hosts-manager"
     ],
     "extra": []

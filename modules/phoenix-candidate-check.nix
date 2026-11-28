@@ -185,6 +185,8 @@ in
           ];
         assert candidate.services.tailscale.enable;
         assert candidate.services.printing.enable;
+        assert candidate.programs.linuxbrew.enableSystemSetup;
+        assert candidate.programs.linuxbrew.owner == "deepwatrcreatur";
         assert candidate.programs.niri.enable;
         assert candidate.services.greetd.enable;
         assert candidate.services.omarchy-screen-mirroring.enable;
@@ -198,6 +200,7 @@ in
         assert candidate.programs.strata.enable;
         assert home.programs.firefox.enable;
         assert home.programs.google-chrome.enable;
+        assert home.programs.linuxbrew.enable;
         assert home.programs.herdr.desktopApp.enable;
         assert home.programs.noctalia.enable;
         assert home.programs.vicinae.enable;
