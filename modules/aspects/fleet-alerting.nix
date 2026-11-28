@@ -127,6 +127,8 @@ let
         lib.concatMap (tool: [
           "${tool} -t raw -N fleet-exporters 2>/dev/null || ${tool} -t raw -F fleet-exporters"
           "${tool} -t raw -C PREROUTING -j fleet-exporters 2>/dev/null || ${tool} -t raw -I PREROUTING -j fleet-exporters"
+          # WHY: local tools (curl localhost:9100) must still reach the exporters.
+          "${tool} -t raw -A fleet-exporters -i lo -j RETURN"
         ]) [ "iptables" "ip6tables" ]
         ++ lib.concatMap (
           port:
@@ -172,6 +174,7 @@ let
         content = ''
           chain prerouting {
             type filter hook prerouting priority raw; policy accept;
+            iifname "lo" return
             tcp dport { ${portList} } ip saddr { ${sourceList} } return
             tcp dport { ${portList} } drop
           }
@@ -291,6 +294,12 @@ in
                 in
                 lib.hasInfix "ip saddr ${sourceSet} tcp dport ${portSet} accept" fw.extraInputRules
                 && lib.hasInfix "priority raw" raw
+                && (
+                  let
+                    parts = lib.splitString "iifname \"lo\" return" raw;
+                  in
+                  builtins.length parts == 2 && !(lib.hasInfix "drop" (builtins.head parts))
+                )
                 && lib.hasInfix "tcp dport ${portSet} ip saddr ${sourceSet} return" raw
                 && lib.hasInfix "tcp dport ${portSet} drop" raw
               else
@@ -302,6 +311,15 @@ in
                 && lib.hasInfix "iptables -t raw -A fleet-exporters -p tcp --dport ${toString ports.node} -j DROP" fw.extraCommands
                 && lib.hasInfix "ip6tables -t raw -A fleet-exporters -p tcp --dport ${toString ports.node} -j DROP" fw.extraCommands
                 && lib.hasInfix "-D PREROUTING -j fleet-exporters" fw.extraStopCommands
+                # INVARIANT: the loopback RETURN comes before any DROP in the chain.
+                && lib.all (
+                  tool:
+                  let
+                    lo = "${tool} -t raw -A fleet-exporters -i lo -j RETURN";
+                    parts = lib.splitString lo fw.extraCommands;
+                  in
+                  builtins.length parts == 2 && !(lib.hasInfix "-j DROP" (builtins.head parts))
+                ) [ "iptables" "ip6tables" ]
             );
           hostOk = name: hostCfgOk (hostCfg name);
           # WHY: no fleet host uses nftables yet; prove that branch too.
