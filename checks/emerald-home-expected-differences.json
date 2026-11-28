@@ -2,12 +2,14 @@
   "files": {
     "extra": [],
     "missing": [
+      ".config/fnox/config.toml",
       ".gnupg/public-key.asc"
     ]
   },
   "packages": {
     "extra": [
       "beads-q",
+      "fnox-check",
       "git-ssh-doctor"
     ],
     "missing": [

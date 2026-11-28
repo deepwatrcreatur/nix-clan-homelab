@@ -18,7 +18,7 @@ let
       session_file=''${XDG_CONFIG_HOME:-"$HOME/.config"}/sops/BW_SESSION
 
       if [ -z "''${BW_SESSION:-}" ]; then
-        session="$(fnox get BW_SESSION 2>/dev/null || true)"
+        session="$(fnox -c "''${FNOX_CONFIG:-$HOME/.config/fnox/config.toml}" get BW_SESSION 2>/dev/null || true)"
         if [ -n "$session" ]; then
           export BW_SESSION="$session"
         elif [ -f "$session_file" ]; then

@@ -65,6 +65,16 @@ aspect is enabled. The remaining API keys are available as user-owned
 files under `WORKSTATION_CREDENTIALS_DIRECTORY`. The generated fnox
 defaults use a separate file so an existing writable config stays in place.
 
+The fnox store uses the workstation account's `~/.ssh/id_ed25519` key as its
+age identity. Home Manager derives the matching recipient at activation, so
+each workstation has its own decrypting identity. It seeds the nine declared
+API keys from `WORKSTATION_CREDENTIALS_DIRECTORY` first, then falls back to
+the matching Unified file under `~/.local/share/agenix-user-secrets` while a
+host is still awaiting its workstation-secret migration. Changed source files
+refresh the encrypted fnox value on the next activation. `fnox-check` reports
+missing or differing values by secret name only; it never prints a value or
+hash.
+
 ### cache/builder notes
 
 - `netrc` contains only the cache.nix-ci.com entry (HTTPS).
