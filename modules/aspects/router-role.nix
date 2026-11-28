@@ -478,6 +478,17 @@ in
             enable = true;
             allowSsh = true;
             hairpinNat.enable = true;
+            # GOTCHA: on a newly promoted MASTER the LAN fallback route (via
+            # the VIP, metric 2000) is the only default route until the
+            # WAN's DHCP route arrives. A client packet forwarded then goes
+            # back out the LAN without NAT, and a flow that keeps sending
+            # (WireGuard, 2026-11-27) keeps that un-NATed entry alive and is
+            # dead from then on. Dropping it leaves no entry; the next packet
+            # is NATed. Hairpin NAT is unaffected: its daddr is already the
+            # LAN host after DNAT.
+            extraForwardEarlyRules = lib.optionalString vrrp ''
+              iifname "${lan.name}" oifname "${lan.name}" ip daddr != ${lanCidr} drop comment "no un-NATed hairpin while the WAN comes up"
+            '';
             flowtable.sipFriendly.enable = true;
             flowLogging.enable = true;
             trustedTcpPorts = [
@@ -956,6 +967,8 @@ in
               "WAN is not required for boot" = (wanNet.linkConfig.RequiredForOnline or "no") == "no";
               "LAN holds only the node address" = lanNet.address == [ node.lanAddress ];
               "LAN fallback route via the VIP" = lib.elem { Gateway = gateway; Metric = 2000; } lanNet.routes;
+              "the LAN fallback route cannot forward clients un-NATed" =
+                lib.hasInfix "oifname \"${node.devices.lan.name}\" ip daddr != " cfg.services.router-firewall.extraForwardEarlyRules;
               "no manual-failover specialisation" = cfg.specialisation == { };
               "DDNS, UPnP and Avahi run on the MASTER only" =
                 lib.all owned [ "inadyn.timer" "miniupnpd.service" "avahi-daemon.service" "avahi-daemon.socket" ];
