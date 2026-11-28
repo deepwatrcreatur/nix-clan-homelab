@@ -81,6 +81,8 @@ in
       candidate = host.config;
       clanCandidate = config.flake.nixosConfigurations.phoenix.config;
       home = candidate.home-manager.users.deepwatrcreatur;
+      fnox = home.programs.fnox;
+      credentialsDirectory = home.home.sessionVariables.WORKSTATION_CREDENTIALS_DIRECTORY;
       inventory = import ../checks/emerald-home-inventory.nix;
       actual = inventory home;
       reference = builtins.fromJSON (builtins.readFile ../checks/phoenix-home-reference.json);
@@ -171,6 +173,12 @@ in
         assert home.programs.herdr.desktopApp.enable;
         assert home.programs.noctalia.enable;
         assert home.programs.vicinae.enable;
+        assert fnox.secretDefinitions.DEEPSEEK_API_KEY.provider == "age";
+        assert fnox.secretDefinitions.OPENAI_API_KEY.provider == "age";
+        assert
+          fnox.seedSecretSources.DEEPSEEK_API_KEY == [ "${credentialsDirectory}/deepseek-api-key" ];
+        assert
+          fnox.seedSecretSources.OPENAI_API_KEY == [ "${credentialsDirectory}/openai-api-key" ];
         builtins.seq candidate.system.build.toplevel.drvPath (
           pkgs.runCommand "phoenix-candidate" { } "touch $out"
         );
