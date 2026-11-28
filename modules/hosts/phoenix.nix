@@ -6,6 +6,7 @@
       console-password
       nix-cache-auth
       remote-builder-client
+      linuxbrew
       workstation-desktop
       desktop-niri-cosmic-fallback
       desktop-network-shares

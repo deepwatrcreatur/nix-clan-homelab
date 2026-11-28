@@ -7,9 +7,7 @@
     ]
   },
   "packages": {
-    "missing": [
-      "install-brew-packages"
-    ],
+    "missing": [],
     "extra": [
       "git-ssh-doctor",
       "vivaldi"
@@ -17,7 +15,6 @@
   },
   "programs": {
     "missing": [
-      "linuxbrew",
       "ssh-known-hosts-manager"
     ],
     "extra": []

@@ -76,14 +76,26 @@ candidate after restoring `graphite-cli`, `iodyne`, `lazyrsync`,
 the one candidate-only package and remains enabled.
 
 The Home Manager snapshot has 102 file targets, 184 package names and 57
-enabled programs in Unified. The candidate has 104 file targets, 184 package
-names and 55 enabled programs. It currently records these differences:
+enabled programs in Unified. The candidate has 104 file targets, 186 package
+names and 56 enabled programs. Linuxbrew is enabled in the candidate through
+the upstream Nix Linuxbrew Home Manager module, including its
+`install-brew-packages` command. Its system setup and owner are supplied by the
+existing workstation aspect. The remaining recorded differences are:
 
 | Area | Missing from candidate | Extra in candidate |
 |---|---|---|
 | Files | — | `.config/fnox/clan-defaults.toml`, `.config/git/github-token` |
-| Packages | `beads-q`, `install-brew-packages` | `git-ssh-doctor`, `vivaldi` |
-| Enabled programs | `linuxbrew`, `ssh-known-hosts-manager` | — |
+| Packages | — | `git-ssh-doctor`, `vivaldi` |
+| Enabled programs | `ssh-known-hosts-manager` | — |
+
+These remaining differences are understood. The fnox defaults file and
+GitHub-token link are the candidate's Clan-backed credential integration;
+they contain paths to runtime credentials, not credential values. The
+candidate adds `git-ssh-doctor` as a diagnostic. Vivaldi remains installed
+for the user but moves from Unified's system package set to the candidate's
+Home Manager package set. Unified's SSH known-host manager is replaced by
+`modules/_hm/emerald-shell/ssh.nix`, which generates the managed known-hosts
+file from the homelab inventory and the pinned legacy or Clan host keys.
 
 Regenerate the Unified reference only after reviewing an intentional profile
 change. The command writes the sorted Unified inventory to
@@ -108,6 +120,9 @@ nix eval --json .#legacyPackages.x86_64-linux.phoenixHomeInventory \
 Compare each `files`, `packages`, and `enabledPrograms` list with the reference,
 review every changed name, then update
 `checks/phoenix-home-expected-differences.json` with the intended deltas.
+The command reads the pinned Unified Phoenix Home Manager configuration and
+writes only the sorted reference snapshot; it does not change the candidate
+inventory or expected differences automatically.
 
 This work does not mark Phoenix migrated, change Unified's authoritative host
 config, activate a generation, change boot defaults, reboot, restart services,
