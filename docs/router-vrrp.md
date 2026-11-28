@@ -28,6 +28,7 @@ backup to a peer, alone) plus its real inventory entry.
 | BACKUP's own internet | LAN route via the VIP, metric 2000 | on the MASTER the WAN's DHCP route wins |
 | Credentials | all primary ones, plus the shared `router-vrrp-password` | a member becomes MASTER without a deploy |
 | Transitions | applied in order through keepalived's notify FIFO | nix-router-optimized #186 (pinned) |
+| Connection state | conntrackd syncs flows with the peer over the management NICs (eno1 ↔ ens18, 192.168.100.0/24); the new MASTER commits them before its WAN comes up | `router-ha.conntrackSync`, nix-router-optimized #202; only when paired; `checks.router-vrrp`: "conntrack state syncs over management iff paired". Established connections through NAT survive failover and fail-back |
 
 ## Ownership
 
