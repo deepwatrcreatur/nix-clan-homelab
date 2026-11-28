@@ -75,6 +75,12 @@ refresh the encrypted fnox value on the next activation. `fnox-check` reports
 missing or differing values by secret name only; it never prints a value or
 hash.
 
+The workstation developer aspect enables `git-credential-fnox` for GitHub
+HTTPS. Git reads `GITHUB_TOKEN` directly from fnox; the helper is configured
+only on homes that include this aspect and seed the token. A live GitHub push
+without the token-file fallback is verified separately during the coordinated
+host migration.
+
 ### cache/builder notes
 
 - `netrc` contains only the cache.nix-ci.com entry (HTTPS).

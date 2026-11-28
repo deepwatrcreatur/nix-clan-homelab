@@ -11,6 +11,7 @@
     ],
     "extra": [
       "fnox-check",
+      "git-credential-fnox",
       "git-ssh-doctor",
       "vivaldi"
     ]
