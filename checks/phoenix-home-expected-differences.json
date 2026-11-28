@@ -2,7 +2,6 @@
   "files": {
     "missing": [],
     "extra": [
-      ".config/fnox/clan-defaults.toml",
       ".config/git/github-token"
     ]
   },
@@ -11,6 +10,7 @@
       "install-brew-packages"
     ],
     "extra": [
+      "fnox-check",
       "git-ssh-doctor",
       "vivaldi"
     ]
