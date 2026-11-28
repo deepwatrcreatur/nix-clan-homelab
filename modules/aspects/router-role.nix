@@ -332,6 +332,17 @@ in
             # address does not depend on switch multicast handling; alone
             # there is nobody to send to.
             unicastPeers = peerLanIps;
+            # WHY: without state sync every failover and fail-back broke flows
+            # through NAT (docs/router-vrrp.md). Sync rides the management
+            # segment, which carries no client traffic.
+            conntrackSync = lib.mkIf paired {
+              enable = true;
+              interface = management.name;
+              localAddress = ip router.managementAddress;
+              peerAddress = ip (lib.head (lib.attrValues vrrpPeers)).managementAddress;
+              # Flows that end on this router (SSH, DNS to its own address).
+              ignoreAddresses = [ (ip router.lanAddress) ];
+            };
             wan = {
               enable = true;
               interface = wan.name;
@@ -932,6 +943,10 @@ in
               "keepalived waits for the peer iff paired" = (ha.peerWaitSec > 0) == paired;
               "netdata accepts Caddy's localhost proxy" =
                 lib.hasPrefix "localhost " cfg.services.router-homelab.netdataAllowConnectionsFrom;
+              "conntrack state syncs over management iff paired" =
+                ha.conntrackSync.enable == paired
+                && (!paired || (ha.conntrackSync.interface == node.devices.management.name
+                  && ha.conntrackSync.peerAddress == builtins.head (lib.splitString "/" (builtins.head (lib.attrValues peers)).managementAddress)));
               "VRRP adverts go unicast to each peer's LAN address" =
                 ha.unicastPeers == map (peer: builtins.head (lib.splitString "/" peer.lanAddress)) (lib.attrValues peers);
               "WAN keeps the modem's DUID-EN and IAID" =
