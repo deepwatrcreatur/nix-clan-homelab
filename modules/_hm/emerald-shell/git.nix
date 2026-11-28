@@ -53,7 +53,6 @@
 
     '';
 
-
     home.packages =
       with pkgs;
       [
@@ -66,8 +65,17 @@
       ++ [
         (pkgs.writeShellApplication {
           name = "git-ssh-doctor";
-          runtimeInputs = [ pkgs.git pkgs.openssh pkgs.coreutils pkgs.gnugrep pkgs.gnused ];
-          bashOptions = [ "nounset" "pipefail" ];
+          runtimeInputs = [
+            pkgs.git
+            pkgs.openssh
+            pkgs.coreutils
+            pkgs.gnugrep
+            pkgs.gnused
+          ];
+          bashOptions = [
+            "nounset"
+            "pipefail"
+          ];
           text = ''
             export GIT_SSH_DOCTOR_EXPECTED_KEY=${(import ./github-identity.nix).publicKey}
             ${lib.removePrefix "#!/usr/bin/env bash\n" (builtins.readFile ./git-ssh-doctor.sh)}
@@ -89,10 +97,14 @@
         core.pager = lib.mkDefault "delta";
         interactive.diffFilter = lib.mkDefault "delta --color-only";
 
-        # GitHub credential helpers
-        "credential \"https://github.com\"".helper = "!gh auth git-credential";
+        # WHY: when fnox owns GitHub HTTPS credentials, retaining the legacy
+        # gh helper after fnox's reset could still source a token file.
+        "credential \"https://github.com\"" =
+          lib.mkIf (!(config.programs.fnox.gitCredentialHelper.enable or false))
+            {
+              helper = "!gh auth git-credential";
+            };
         "credential \"https://gist.github.com\"".helper = "!gh auth git-credential";
-
 
         # Delta settings
         delta.navigate = true;

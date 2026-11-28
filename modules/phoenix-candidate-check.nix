@@ -111,9 +111,19 @@ in
         in
         if
           fnox.sshIdentity.enable
+          && fnox.gitCredentialHelper.enable
           && fnox.seedSecretSources.GITHUB_TOKEN == expectedSources
           && builtins.hasAttr "GEMINI_API_KEY" fnox.secretDefinitions
           && builtins.hasAttr "ANTHROPIC_API_KEY" fnox.secretDefinitions
+          && !(builtins.hasAttr "credential \"https://github.com\"" home.programs.git.settings)
+          && (
+            home.programs.git.settings.credential."https://github.com".helper == (
+              [ "" ]
+              ++
+                lib.filter (lib.hasInfix "git-credential-fnox")
+                  home.programs.git.settings.credential."https://github.com".helper
+            )
+          )
         then
           pkgs.runCommand "phoenix-fnox-config" { } "touch $out"
         else

@@ -62,6 +62,9 @@ in
       DEEPSEEK_API_KEY.description = "DeepSeek API key";
       OPENAI_API_KEY.description = "OpenAI API key";
     };
+    # WHY: the helper reads GITHUB_TOKEN from this fnox store; enabling it
+    # replaces other GitHub HTTPS helpers only on these credentialed homes.
+    gitCredentialHelper.enable = true;
     inherit seedSecretSources;
     wrappedCommands = {
       gemini-fnox = withCredential "GEMINI_API_KEY" "gemini-api-key" wrappedCommands.gemini-fnox;

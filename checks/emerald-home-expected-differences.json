@@ -10,6 +10,7 @@
     "extra": [
       "beads-q",
       "fnox-check",
+      "git-credential-fnox",
       "git-ssh-doctor"
     ],
     "missing": [
