@@ -24,8 +24,9 @@
           efi.canTouchEfiVariables = false;
         };
         boot.kernelParams = [
-          # WHY: serial console for recovery without a monitor.
-          "console=ttyS0,115200"
+          # GOTCHA: no console=ttyS0. This board has no serial UART
+          # (/dev/ttyS0: not a tty), and the getty systemd generates for it
+          # failed every 10 s; recovery uses the monitor and keyboard.
           # WHY: Energy Efficient Ethernet on the I225/I226-V caused link
           # flaps and drops (unified hardware-configuration.nix).
           "igc.eee_enable=0"
